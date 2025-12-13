@@ -590,14 +590,16 @@ const POLLINATIONS_API_URL = 'https://enter.pollinations.ai/api/generate/v1/chat
 interface ImageGenerationParams {
   prompt: string;
   orientation?: 'portrait' | 'landscape';
-  inputImageUrl?: string;
+  inputImageUrls?: string[];
+  persona?: keyof typeof AI_PERSONAS;
 }
 
 function generateImageUrl(params: ImageGenerationParams): string {
   const {
     prompt,
     orientation = 'portrait',
-    inputImageUrl
+    inputImageUrls,
+    persona = 'default'
   } = params;
 
   // Set dimensions based on orientation
@@ -607,10 +609,15 @@ function generateImageUrl(params: ImageGenerationParams): string {
   const encodedPrompt = encodeURIComponent(prompt);
   const hardcodedToken = "plln_sk_GnhDxr0seAiz92cgYsAh3VjBGQM8NRLK";
 
-  let url = `https://enter.pollinations.ai/api/generate/image/${encodedPrompt}?width=${width}&height=${height}&enhance=false&private=true&nologo=true&model=seedream-pro&key=${hardcodedToken}`;
+  // Select model based on persona
+  const model = persona === 'girlie' ? 'zimage' : 'seedream-pro';
 
-  if (inputImageUrl) {
-    url += `&image=${encodeURIComponent(inputImageUrl)}`;
+  let url = `https://enter.pollinations.ai/api/generate/image/${encodedPrompt}?width=${width}&height=${height}&enhance=false&private=true&nologo=true&model=${model}&key=${hardcodedToken}`;
+
+  // Handle multiple reference images (up to 4)
+  if (inputImageUrls && inputImageUrls.length > 0) {
+    const imageUrls = inputImageUrls.slice(0, 4).map(encodeURIComponent).join(',');
+    url += `&image=${imageUrls}`;
   }
 
   return url;
@@ -1296,8 +1303,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         const params: ImageGenerationParams = JSON.parse(toolCall.function.arguments);
 
                         if (inputImageUrls && inputImageUrls.length > 0) {
-                          params.inputImageUrl = inputImageUrls[0];
+                          params.inputImageUrls = inputImageUrls;
                         }
+
+                        params.persona = persona;
 
                         const imageMarkdown = createImageMarkdown(params);
                         res.write(`\n\n${imageMarkdown}`);
@@ -1447,8 +1456,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               const params: ImageGenerationParams = JSON.parse(toolCall.function.arguments);
 
               if (inputImageUrls && inputImageUrls.length > 0) {
-                params.inputImageUrl = inputImageUrls[0];
+                params.inputImageUrls = inputImageUrls;
               }
+
+              params.persona = persona;
 
               const imageMarkdown = createImageMarkdown(params);
               fullContent += `\n\n${imageMarkdown}`;
