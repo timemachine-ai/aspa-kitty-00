@@ -610,34 +610,16 @@ function generateImageUrl(params: ImageGenerationParams): string {
     persona = 'default'
   } = params;
 
+  // Generate a proxy URL that points to our secure image endpoint
+  // The actual Pollinations URL with the secret key is constructed server-side in /api/image
   const encodedPrompt = encodeURIComponent(prompt);
-  const hardcodedToken = "plln_sk_GnhDxr0seAiz92cgYsAh3VjBGQM8NRLK";
 
-  // Select model based on process type and persona
-  let model: string;
-  if (process === 'edit') {
-    // Edit process: use nanobanana models
-    model = persona === 'girlie' ? 'nanobanana' : 'nanobanana-pro';
-  } else {
-    // Create process: use seedream/zimage models
-    model = persona === 'girlie' ? 'zimage' : 'seedream-pro';
-  }
-
-  let url: string;
-  if (process === 'edit') {
-    // For edit process: no width/height parameters
-    url = `https://enter.pollinations.ai/api/generate/image/${encodedPrompt}?enhance=false&private=true&nologo=true&model=${model}&key=${hardcodedToken}`;
-  } else {
-    // For create process: include width/height based on orientation
-    const width = orientation === 'landscape' ? 3840 : 2160;
-    const height = orientation === 'landscape' ? 2160 : 3840;
-    url = `https://enter.pollinations.ai/api/generate/image/${encodedPrompt}?width=${width}&height=${height}&enhance=false&private=true&nologo=true&model=${model}&key=${hardcodedToken}`;
-  }
+  let url = `/api/image?prompt=${encodedPrompt}&orientation=${orientation}&process=${process}&persona=${persona}`;
 
   // Handle multiple reference images (up to 4)
   if (inputImageUrls && inputImageUrls.length > 0) {
     const imageUrls = inputImageUrls.slice(0, 4).map(encodeURIComponent).join(',');
-    url += `&image=${imageUrls}`;
+    url += `&inputImageUrls=${imageUrls}`;
   }
 
   return url;
