@@ -218,14 +218,14 @@ export function AIMessage({
     img: ({ src, alt }: { src?: string; alt?: string }) => {
       // Check if this is a Pollinations.ai generated image
       if (src && src.includes('enter.pollinations.ai')) {
-        return <GeneratedImage src={src} alt={alt || 'Generated image'} />;
+        return <GeneratedImage src={src} alt={alt || 'Generated image'} persona={displayPersona} />;
       }
-      
+
       // Fallback to regular image for other sources
       return (
-        <img 
-          src={src} 
-          alt={alt} 
+        <img
+          src={src}
+          alt={alt}
           className="max-w-full h-auto rounded-xl my-4"
           loading="lazy"
         />

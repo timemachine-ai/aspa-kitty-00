@@ -528,7 +528,7 @@ const imageGenerationTool = {
   type: "function" as const,
   function: {
     name: "generate_image",
-    description: "Generate an image using this tool call.",
+    description: "Generate or edit an image using this tool call.",
     parameters: {
       type: "object",
       properties: {
@@ -538,9 +538,15 @@ const imageGenerationTool = {
         },
         orientation: {
           type: "string",
-          description: "Orientation of the image.",
+          description: "Orientation of the image. Only used when creating new images, ignored for editing.",
           enum: ["portrait", "landscape"],
           default: "portrait"
+        },
+        process: {
+          type: "string",
+          description: "The type of image process. Use 'create' to generate a new image from scratch. Use 'edit' when the user wants to modify, transform, or edit an existing image they have provided.",
+          enum: ["create", "edit"],
+          default: "create"
         }
       },
       required: ["prompt"]
@@ -590,6 +596,7 @@ const POLLINATIONS_API_URL = 'https://enter.pollinations.ai/api/generate/v1/chat
 interface ImageGenerationParams {
   prompt: string;
   orientation?: 'portrait' | 'landscape';
+  process?: 'create' | 'edit';
   inputImageUrls?: string[];
   persona?: keyof typeof AI_PERSONAS;
 }
@@ -598,21 +605,34 @@ function generateImageUrl(params: ImageGenerationParams): string {
   const {
     prompt,
     orientation = 'portrait',
+    process = 'create',
     inputImageUrls,
     persona = 'default'
   } = params;
 
-  // Set dimensions based on orientation
-  const width = orientation === 'landscape' ? 3840 : 2160;
-  const height = orientation === 'landscape' ? 2160 : 3840;
-
   const encodedPrompt = encodeURIComponent(prompt);
   const hardcodedToken = "plln_sk_GnhDxr0seAiz92cgYsAh3VjBGQM8NRLK";
 
-  // Select model based on persona
-  const model = persona === 'girlie' ? 'zimage' : 'seedream-pro';
+  // Select model based on process type and persona
+  let model: string;
+  if (process === 'edit') {
+    // Edit process: use nanobanana models
+    model = persona === 'girlie' ? 'nanobanana' : 'nanobanana-pro';
+  } else {
+    // Create process: use seedream/zimage models
+    model = persona === 'girlie' ? 'zimage' : 'seedream-pro';
+  }
 
-  let url = `https://enter.pollinations.ai/api/generate/image/${encodedPrompt}?width=${width}&height=${height}&enhance=false&private=true&nologo=true&model=${model}&key=${hardcodedToken}`;
+  let url: string;
+  if (process === 'edit') {
+    // For edit process: no width/height parameters
+    url = `https://enter.pollinations.ai/api/generate/image/${encodedPrompt}?enhance=false&private=true&nologo=true&model=${model}&key=${hardcodedToken}`;
+  } else {
+    // For create process: include width/height based on orientation
+    const width = orientation === 'landscape' ? 3840 : 2160;
+    const height = orientation === 'landscape' ? 2160 : 3840;
+    url = `https://enter.pollinations.ai/api/generate/image/${encodedPrompt}?width=${width}&height=${height}&enhance=false&private=true&nologo=true&model=${model}&key=${hardcodedToken}`;
+  }
 
   // Handle multiple reference images (up to 4)
   if (inputImageUrls && inputImageUrls.length > 0) {
