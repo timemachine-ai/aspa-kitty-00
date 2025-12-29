@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, X, SkipBack, SkipForward, Volume2, VolumeX, Music2 } from 'lucide-react';
+import { Play, Pause, X, SkipBack, SkipForward, Volume2, VolumeX, Music2, ExternalLink } from 'lucide-react';
 import { YouTubeMusicData } from '../../services/ai/aiProxyService';
 
 // Extend Window interface for YouTube IFrame API
@@ -62,6 +62,8 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
   const [isReady, setIsReady] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -91,6 +93,11 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
   // Initialize player when musicData changes
   useEffect(() => {
     if (!musicData) return;
+
+    // Reset error state for new video
+    setHasError(false);
+    setErrorMessage('');
+    setIsReady(false);
 
     const initPlayer = async () => {
       await loadYouTubeAPI();
@@ -141,6 +148,16 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
           },
           onError: (event) => {
             console.error('YouTube player error:', event.data);
+            setHasError(true);
+            setIsReady(true); // Stop loading indicator
+            // Error codes: 2 = invalid video ID, 5 = HTML5 player error, 100 = video not found, 101/150 = embedding disabled
+            if (event.data === 150 || event.data === 101) {
+              setErrorMessage('This video cannot be embedded. Click to open in YouTube.');
+            } else if (event.data === 100) {
+              setErrorMessage('Video not found.');
+            } else {
+              setErrorMessage('Playback error. Click to open in YouTube.');
+            }
           }
         }
       });
@@ -242,8 +259,16 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
     }
     setIsReady(false);
     setIsPlaying(false);
+    setHasError(false);
+    setErrorMessage('');
     onClose();
   }, [onClose]);
+
+  const openInYouTube = useCallback(() => {
+    if (musicData) {
+      window.open(`https://www.youtube.com/watch?v=${musicData.videoId}`, '_blank');
+    }
+  }, [musicData]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -380,9 +405,25 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
             </div>
 
             {/* Loading indicator */}
-            {!isReady && (
+            {!isReady && !hasError && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+              </div>
+            )}
+
+            {/* Error state with option to open in YouTube */}
+            {hasError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-xl p-4">
+                <p className="text-white/80 text-sm text-center mb-3">{errorMessage}</p>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={openInYouTube}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-full text-white text-sm font-medium transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Open in YouTube
+                </motion.button>
               </div>
             )}
           </div>
