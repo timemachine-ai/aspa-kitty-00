@@ -116,9 +116,12 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
       const playerElement = document.getElementById('yt-player-hidden');
       if (!playerElement) return;
 
+      // Get the current origin for proper cross-origin communication
+      const currentOrigin = window.location.origin;
+
       playerInstance = new window.YT.Player('yt-player-hidden', {
-        height: '0',
-        width: '0',
+        height: '1',
+        width: '1',
         videoId: musicData.videoId,
         playerVars: {
           autoplay: 1,
@@ -128,15 +131,19 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
           fs: 0,
           modestbranding: 1,
           rel: 0,
+          enablejsapi: 1,
+          origin: currentOrigin,
         },
         events: {
           onReady: (event) => {
+            console.log('YouTube player ready, duration:', event.target.getDuration());
             setIsReady(true);
             setDuration(event.target.getDuration());
             event.target.playVideo();
             setIsPlaying(true);
           },
           onStateChange: (event) => {
+            console.log('YouTube player state changed:', event.data);
             if (event.data === window.YT.PlayerState.PLAYING) {
               setIsPlaying(true);
             } else if (event.data === window.YT.PlayerState.PAUSED) {
@@ -282,8 +289,20 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
 
   return (
     <>
-      {/* Hidden YouTube Player Element */}
-      <div id="yt-player-hidden" style={{ position: 'absolute', top: '-9999px', left: '-9999px' }} />
+      {/* Hidden YouTube Player Element - positioned off-screen but still functional */}
+      <div
+        id="yt-player-hidden"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '1px',
+          height: '1px',
+          opacity: 0,
+          pointerEvents: 'none',
+          zIndex: -1
+        }}
+      />
 
       {/* Visible Player UI */}
       <AnimatePresence>
