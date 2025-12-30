@@ -7,8 +7,9 @@ import { LoadingSpinner } from '../loading/LoadingSpinner';
 import { ImagePreview } from './ImagePreview';
 import { AI_PERSONAS } from '../../config/constants';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { MentionCall } from './MentionCall';
-import { uploadToImageBB } from '../../services/imagebb/imageBBService';
+import { uploadImage } from '../../services/image/imageService';
 
 type Persona = keyof typeof AI_PERSONAS;
 
@@ -78,6 +79,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { theme } = useTheme();
+  const { user } = useAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -151,14 +153,15 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
 
           const base64Images = await Promise.all(selectedImages.map(convertImageToBase64));
 
+          // Upload images using the new service (uses Supabase for logged in users, ImgBB for anonymous)
           const uploadResults = await Promise.all(
-            base64Images.map(base64Image => uploadToImageBB(base64Image))
+            base64Images.map(base64Image => uploadImage(base64Image, user?.id))
           );
 
           const successfulUploads = uploadResults.filter(result => result.success);
 
           if (successfulUploads.length === 0) {
-            alert('Failed to upload images to ImageBB. Please try again.');
+            alert('Failed to upload images. Please try again.');
             setIsUploading(false);
             return;
           }
