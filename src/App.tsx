@@ -18,6 +18,9 @@ import { AuthModal, OnboardingModal, AccountPage } from './components/auth';
 import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './config/constants';
 
 function AppContent() {
+  const { theme } = useTheme();
+  const { user, loading: authLoading, needsOnboarding } = useAuth();
+
   const {
     messages,
     isChatMode,
@@ -39,10 +42,7 @@ function AppContent() {
     dismissRateLimitModal,
     loadChat,
     clearYoutubeMusic
-  } = useChat();
-
-  const { theme } = useTheme();
-  const { user, loading: authLoading, needsOnboarding } = useAuth();
+  } = useChat(user?.id);
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
 
   const [isCenterStage, setIsCenterStage] = useState(false);

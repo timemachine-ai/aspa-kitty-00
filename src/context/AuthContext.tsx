@@ -38,26 +38,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if user needs onboarding (no nickname set)
+  // Check if user needs onboarding (has profile but no nickname)
   const needsOnboarding = !!user && !!profile && !profile.nickname;
   const isOnboarded = !!user && !!profile && !!profile.nickname;
 
-  // Fetch user profile
-  const fetchProfile = useCallback(async (userId: string) => {
+  // Fetch or create user profile
+  const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     try {
+      // First try to get existing profile
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle(); // Use maybeSingle instead of single to avoid error when no rows
 
       if (error) {
         console.error('Error fetching profile:', error);
         return null;
       }
-      return data;
+
+      // If profile exists, return it
+      if (data) {
+        return data;
+      }
+
+      // Profile doesn't exist, create one
+      console.log('Creating new profile for user:', userId);
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert({ id: userId })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error creating profile:', createError);
+        // Return a minimal profile object so the app can continue
+        return {
+          id: userId,
+          nickname: null,
+          about_me: null,
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as Profile;
+      }
+
+      return newProfile;
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Error in fetchProfile:', error);
       return null;
     }
   }, []);
@@ -71,21 +99,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Initialize auth state
   useEffect(() => {
+    let mounted = true;
+
     const initializeAuth = async () => {
       try {
         // Get initial session
         const { data: { session: initialSession } } = await supabase.auth.getSession();
 
+        if (!mounted) return;
+
         if (initialSession?.user) {
           setSession(initialSession);
           setUser(initialSession.user);
           const userProfile = await fetchProfile(initialSession.user.id);
-          setProfile(userProfile);
+          if (mounted) {
+            setProfile(userProfile);
+          }
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -95,21 +131,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log('Auth state changed:', event);
+
+        if (!mounted) return;
+
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
         if (newSession?.user) {
-          const userProfile = await fetchProfile(newSession.user.id);
-          setProfile(userProfile);
+          // Fetch profile in background, don't block
+          fetchProfile(newSession.user.id).then(userProfile => {
+            if (mounted) {
+              setProfile(userProfile);
+            }
+          });
         } else {
           setProfile(null);
         }
 
+        // Always ensure loading is false after auth change
         setLoading(false);
       }
     );
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, [fetchProfile]);
