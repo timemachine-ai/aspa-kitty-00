@@ -141,48 +141,30 @@ export async function saveSupabaseSession(
   userId: string
 ): Promise<string | null> {
   try {
-    // Check if session exists
-    const { data: existing } = await supabase
+    // Use upsert to handle both insert and update in one operation
+    const { data: savedSession, error: sessionError } = await supabase
       .from('chat_sessions')
-      .select('id')
-      .eq('id', session.id)
+      .upsert({
+        id: session.id,
+        user_id: userId,
+        name: session.name,
+        persona: session.persona,
+        heat_level: session.heat_level || 2,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'id'
+      })
+      .select()
       .single();
 
-    let sessionId = session.id;
-
-    if (existing) {
-      // Update existing session
-      const { error: updateError } = await supabase
-        .from('chat_sessions')
-        .update({
-          name: session.name,
-          persona: session.persona,
-          heat_level: session.heat_level,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', session.id);
-
-      if (updateError) throw updateError;
-    } else {
-      // Create new session
-      const { data: newSession, error: createError } = await supabase
-        .from('chat_sessions')
-        .insert({
-          id: session.id,
-          user_id: userId,
-          name: session.name,
-          persona: session.persona,
-          heat_level: session.heat_level || 2,
-        })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-      if (newSession) sessionId = newSession.id;
+    if (sessionError) {
+      console.error('Error upserting session:', sessionError);
+      throw sessionError;
     }
 
-    // Save messages (delete old ones and insert new)
-    // First, get existing message count to only insert new ones
+    const sessionId = savedSession?.id || session.id;
+
+    // Get existing message count to only insert new ones
     const { count: existingCount } = await supabase
       .from('chat_messages')
       .select('*', { count: 'exact', head: true })
