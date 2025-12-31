@@ -4,6 +4,20 @@ import { generateAIResponse, generateAIResponseStreaming, YouTubeMusicData } fro
 import { INITIAL_MESSAGE, AI_PERSONAS } from '../config/constants';
 import { chatService, ChatSession } from '../services/chat/chatService';
 
+// Generate a proper UUID for session IDs
+function generateUUID(): string {
+  // Use crypto.randomUUID if available (modern browsers)
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback for older browsers
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export function useChat(userId?: string | null) {
   const [messages, setMessages] = useState<Message[]>([{ ...INITIAL_MESSAGE, hasAnimated: false }]);
   const [isChatMode, setChatMode] = useState(true);
@@ -104,7 +118,7 @@ export function useChat(userId?: string | null) {
     setError(null);
 
     // Start new chat with new persona
-    const newSessionId = Date.now().toString();
+    const newSessionId = generateUUID();
     setCurrentSessionId(newSessionId);
 
     const initialMessage = cleanContent(AI_PERSONAS[persona].initialMessage);
@@ -127,7 +141,7 @@ export function useChat(userId?: string | null) {
     }
 
     // Start fresh chat with same persona
-    const newSessionId = Date.now().toString();
+    const newSessionId = generateUUID();
     setCurrentSessionId(newSessionId);
 
     const initialMessage = cleanContent(AI_PERSONAS[currentPersona].initialMessage);
@@ -202,7 +216,7 @@ export function useChat(userId?: string | null) {
   // Initialize session ID on first load
   useEffect(() => {
     if (!currentSessionId) {
-      setCurrentSessionId(Date.now().toString());
+      setCurrentSessionId(generateUUID());
     }
   }, [currentSessionId]);
 
