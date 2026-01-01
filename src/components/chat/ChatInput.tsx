@@ -321,7 +321,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
           </motion.button>
 
           {/* Main input container - liquid glass */}
-          <div className={`liquid-glass-input ${personaClass} liquid-shimmer flex-1 relative`}>
+          <div className={`liquid-glass-input ${personaClass} flex-1 relative`}>
             <div className="relative flex items-end">
               <textarea
                 ref={textareaRef}
