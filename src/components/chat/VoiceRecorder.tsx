@@ -100,6 +100,7 @@ function AudioVisualizer({ analyser, currentPersona = 'default' }: { analyser: A
 export function VoiceRecorder({ onSendMessage, disabled, currentPersona = 'default' }: VoiceRecorderProps) {
   const { isRecording, startRecording, stopRecording, error, analyser } = useAudioRecording();
   const [showError, setShowError] = useState(false);
+  const personaClass = `persona-${currentPersona}`;
 
   const handleToggleRecording = async () => {
     try {
@@ -121,39 +122,29 @@ export function VoiceRecorder({ onSendMessage, disabled, currentPersona = 'defau
   return (
     <div className="relative">
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
         onClick={handleToggleRecording}
         disabled={disabled && !isRecording}
-        className={`p-3 rounded-full transition-all duration-300 relative group
-          backdrop-blur-xl border border-white/10
-          disabled:opacity-50 disabled:cursor-not-allowed
-          ${isRecording 
-            ? 'bg-gradient-to-r from-red-600/20 to-pink-600/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]' 
-            : `bg-gradient-to-r ${personaBorderColors[currentPersona]} shadow-[0_0_15px_${personaGlowColors[currentPersona]}]
-               ${currentPersona === 'girlie' ? 'hover:shadow-[0_0_25px_rgba(255,0,128,0.7)]' : ''}`
-          }`}
+        className={`glass-action-button ${personaClass} p-2.5
+          disabled:opacity-40 disabled:cursor-not-allowed
+          ${isRecording ? 'recording-active' : ''}`}
+        style={isRecording ? {
+          background: 'rgba(239, 68, 68, 0.15)',
+          borderColor: 'rgba(239, 68, 68, 0.3)',
+          boxShadow: '0 0 20px rgba(239, 68, 68, 0.3), 0 0 40px rgba(239, 68, 68, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+        } : undefined}
         type="button"
       >
-        {/* Premium glow effect */}
-        <div className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100
-          transition-opacity duration-300 animate-pulse"
-          style={{
-            background: isRecording
-              ? 'linear-gradient(to right, rgba(239,68,68,0), rgba(239,68,68,0.3), rgba(239,68,68,0))'
-              : `linear-gradient(to right, transparent, ${personaGlowColors[currentPersona]}, transparent)`
-          }}
-        />
-        
-        <div className="relative z-10 flex items-center justify-center w-5 h-5">
+        <div className="relative z-10 flex items-center justify-center w-4 h-4">
           {isRecording ? (
             analyser ? (
               <AudioVisualizer analyser={analyser} currentPersona={currentPersona} />
             ) : (
-              <Square className="w-5 h-5 text-white drop-shadow-glow" />
+              <Square className="w-4 h-4 text-white" />
             )
           ) : (
-            <AiMicIcon className="w-5 h-5 text-white drop-shadow-glow" />
+            <AiMicIcon className="w-4 h-4 text-white" />
           )}
         </div>
       </motion.button>
@@ -161,21 +152,21 @@ export function VoiceRecorder({ onSendMessage, disabled, currentPersona = 'defau
       <AnimatePresence>
         {showError && error && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2
-              bg-gradient-to-r from-red-900/90 to-pink-900/90
-              backdrop-blur-xl text-white text-sm px-4 py-2
-              rounded-lg whitespace-nowrap border border-red-500/30
-              shadow-[0_0_15px_rgba(239,68,68,0.2)]"
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="liquid-glass-dropdown absolute bottom-full mb-3 left-1/2 transform -translate-x-1/2
+              text-white text-sm px-4 py-3 whitespace-nowrap"
+            style={{
+              borderColor: 'rgba(239, 68, 68, 0.2)',
+              boxShadow: '0 0 30px rgba(239, 68, 68, 0.15), 0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+            }}
           >
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              <span>{error}</span>
+              <AlertCircle className="w-4 h-4 text-red-400" />
+              <span className="text-white/80">{error}</span>
             </div>
-            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2
-              rotate-45 w-2 h-2 bg-gradient-to-br from-red-900/90 to-pink-900/90" />
           </motion.div>
         )}
       </AnimatePresence>
