@@ -76,50 +76,326 @@ html, body {
   display: none;
 }
 
-/* Enhanced glass morphism */
+/* ═══════════════════════════════════════════════════════════════════════════
+   PREMIUM LIQUID GLASS DESIGN SYSTEM
+   Inspired by Apple's visionOS and iOS liquid glass aesthetics
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Base liquid glass - the foundation */
 .glass-morphism {
-  background: rgba(200, 200, 255, 0.1); /* Slight blue tint for frosted glass */
-  backdrop-filter: blur(20px) saturate(200%);
-  -webkit-backdrop-filter: blur(20px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 
-    0 8px 16px rgba(0, 0, 0, 0.1), /* Softer, diffused shadow */
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08); /* Inner highlight */
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.15);
+  --glass-shadow: rgba(0, 0, 0, 0.25);
+
+  background:
+    /* Top specular highlight - like light hitting glass edge */
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.04) 8%,
+      transparent 20%
+    ),
+    /* Subtle depth gradient */
+    linear-gradient(
+      180deg,
+      var(--glass-bg) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    );
+  backdrop-filter: blur(40px) saturate(180%) brightness(1.1);
+  -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.1);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    /* Outer glow - ambient light */
+    0 0 0 0.5px rgba(255, 255, 255, 0.1),
+    /* Soft diffused shadow */
+    0 8px 32px var(--glass-shadow),
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    /* Inner top highlight */
+    inset 0 1px 0 0 var(--glass-highlight),
+    /* Inner bottom shadow for depth */
+    inset 0 -1px 0 0 rgba(0, 0, 0, 0.05);
 }
 
+/* Premium liquid glass input - the star of the show */
+.liquid-glass-input {
+  --input-glow: rgba(139, 0, 255, 0.15);
+
+  position: relative;
+  background:
+    /* Specular highlight sweep */
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      transparent 40%,
+      transparent 60%,
+      rgba(255, 255, 255, 0.05) 100%
+    ),
+    /* Base frosted layer */
+    rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(60px) saturate(200%) brightness(1.05);
+  -webkit-backdrop-filter: blur(60px) saturate(200%) brightness(1.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 28px;
+  box-shadow:
+    /* Outer ambient glow */
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    /* Primary shadow */
+    0 10px 40px -10px rgba(0, 0, 0, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    /* Inner top highlight - the key to glass realism */
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    /* Subtle inner shadow at bottom */
+    inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-input:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 12px 48px -8px rgba(0, 0, 0, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.liquid-glass-input:focus-within {
+  border-color: rgba(139, 0, 255, 0.3);
+  box-shadow:
+    /* Purple glow aura */
+    0 0 0 4px rgba(139, 0, 255, 0.1),
+    0 0 40px rgba(139, 0, 255, 0.2),
+    0 0 80px rgba(139, 0, 255, 0.1),
+    /* Maintained shadows */
+    0 12px 48px -8px rgba(0, 0, 0, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+}
+
+/* Persona-specific focus glows */
+.liquid-glass-input.persona-default:focus-within {
+  border-color: rgba(139, 0, 255, 0.3);
+  box-shadow:
+    0 0 0 4px rgba(139, 0, 255, 0.1),
+    0 0 40px rgba(139, 0, 255, 0.2),
+    0 0 80px rgba(139, 0, 255, 0.1),
+    0 12px 48px -8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+
+.liquid-glass-input.persona-girlie:focus-within {
+  border-color: rgba(236, 72, 153, 0.3);
+  box-shadow:
+    0 0 0 4px rgba(236, 72, 153, 0.1),
+    0 0 40px rgba(236, 72, 153, 0.2),
+    0 0 80px rgba(236, 72, 153, 0.1),
+    0 12px 48px -8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+
+.liquid-glass-input.persona-pro:focus-within {
+  border-color: rgba(34, 211, 238, 0.3);
+  box-shadow:
+    0 0 0 4px rgba(34, 211, 238, 0.1),
+    0 0 40px rgba(34, 211, 238, 0.2),
+    0 0 80px rgba(34, 211, 238, 0.1),
+    0 12px 48px -8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+
+/* Premium liquid glass dropdown/modal */
+.liquid-glass-dropdown {
+  background:
+    /* Top edge highlight */
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.15) 0%,
+      rgba(255, 255, 255, 0.05) 2px,
+      transparent 20px
+    ),
+    /* Diagonal specular sweep */
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      transparent 50%
+    ),
+    /* Base */
+    rgba(20, 20, 25, 0.7);
+  backdrop-filter: blur(80px) saturate(180%) brightness(0.95);
+  -webkit-backdrop-filter: blur(80px) saturate(180%) brightness(0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  box-shadow:
+    /* Multi-layer shadows for depth */
+    0 0 0 0.5px rgba(255, 255, 255, 0.1),
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    0 12px 24px -8px rgba(0, 0, 0, 0.3),
+    0 4px 8px rgba(0, 0, 0, 0.2),
+    /* Inner highlights */
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 0 20px rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+/* Dropdown menu item */
+.liquid-glass-item {
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.liquid-glass-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.liquid-glass-item:hover::before {
+  opacity: 1;
+}
+
+/* Glass divider */
+.glass-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 20%,
+    rgba(255, 255, 255, 0.1) 80%,
+    transparent 100%
+  );
+}
+
+/* Premium glass button */
 .glass-button {
-  background: rgba(200, 200, 255, 0.1); /* Match the tint */
-  backdrop-filter: blur(15px) saturate(200%);
-  -webkit-backdrop-filter: blur(15px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 
-    0 2px 4px rgba(0, 0, 0, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    );
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .glass-button:hover {
-  background: rgba(200, 200, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    0 0 8px rgba(255, 255, 255, 0.2), /* Subtle glow on hover */
-    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.15) 0%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.25),
+    0 0 20px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
 }
 
 .glass-button:active {
   transform: translateY(0);
-  box-shadow: 
-    0 1px 2px rgba(0, 0, 0, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Action buttons with glow */
+.glass-action-button {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-action-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(139, 0, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.glass-action-button.persona-girlie:hover {
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(236, 72, 153, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.glass-action-button.persona-pro:hover {
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(34, 211, 238, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 /* Ensure icons inside glass buttons stand out */
 .glass-button svg,
-.glass-button i {
-  color: #FFFFFF !important;
-  text-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+.glass-button i,
+.glass-action-button svg,
+.glass-action-button i {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+}
+
+/* Animated shimmer effect for premium feel */
+@keyframes liquid-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.liquid-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: liquid-shimmer 8s ease-in-out infinite;
+  pointer-events: none;
 }
 
 /* Enhanced glow effects */

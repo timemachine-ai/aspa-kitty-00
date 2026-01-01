@@ -101,140 +101,145 @@ export function BrandLogo({ onPersonaChange, currentPersona, onLoadChat, onStart
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            initial={{ opacity: 0, y: -10, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.25, ease: 'easeOut' }}
-            className={`absolute top-full left-0 mt-3 w-72 bg-black/10 backdrop-blur-3xl rounded-3xl z-50 overflow-hidden border border-white/5`}
-            style={{
-              background: 'linear-gradient(145deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))'
-            }}
+            exit={{ opacity: 0, y: -10, scale: 0.96 }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="liquid-glass-dropdown liquid-shimmer absolute top-full left-0 mt-4 w-80 z-50"
           >
             {/* Sign In / My Account Button */}
             <motion.button
-              whileHover={{
-                scale: 1.03,
-                background: user
-                  ? 'linear-gradient(90deg, rgba(34,197,94,0.2) 0%, transparent 100%)'
-                  : 'linear-gradient(90deg, rgba(168,85,247,0.3) 0%, transparent 100%)'
-              }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
               onClick={handleAuthClick}
-              className={`w-full px-4 py-3 text-left transition-all duration-300 ${theme.text} flex items-center gap-3 border-b border-white/5`}
+              className={`liquid-glass-item w-full px-5 py-4 text-left ${theme.text} flex items-center gap-4`}
             >
               {user ? (
                 <>
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 via-fuchsia-500 to-pink-500 flex items-center justify-center overflow-hidden shadow-lg shadow-purple-500/20">
                     {profile?.avatar_url ? (
                       <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <User className="w-4 h-4 text-white" />
+                      <User className="w-5 h-5 text-white" />
                     )}
                   </div>
-                  <div>
-                    <div className="font-bold text-sm">{profile?.nickname || 'My Account'}</div>
-                    <div className="text-xs opacity-50">View your profile</div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-sm text-white/90">{profile?.nickname || 'My Account'}</div>
+                    <div className="text-xs text-white/40 mt-0.5">View your profile</div>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                    <LogIn className="w-4 h-4 text-white" />
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 via-fuchsia-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                    <LogIn className="w-5 h-5 text-white" />
                   </div>
-                  <div>
-                    <div className="font-bold text-sm">Sign In / Sign Up</div>
-                    <div className="text-xs opacity-50">Unlock unlimited chats</div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-sm text-white/90">Sign In / Sign Up</div>
+                    <div className="text-xs text-white/40 mt-0.5">Unlock unlimited chats</div>
                   </div>
                 </>
               )}
             </motion.button>
 
-            {/* Divider */}
-            <div className="h-px bg-white/10" />
+            {/* Glass Divider */}
+            <div className="glass-divider mx-4" />
+
+            {/* Persona Section Label */}
+            <div className="px-5 py-2 text-[10px] uppercase tracking-widest text-white/30 font-medium">
+              Intelligence Models
+            </div>
 
             {Object.entries(AI_PERSONAS)
-              .filter(([key]) => ['default', 'girlie', 'pro'].includes(key)) // Only show TimeMachine personas
+              .filter(([key]) => ['default', 'girlie', 'pro'].includes(key))
               .map(([key, persona]) => (
               <motion.button
                 key={key}
-                whileHover={{
-                  scale: 1.03,
-                  background: `linear-gradient(90deg, ${personaGlowColors[key as keyof typeof personaGlowColors]} 0%, transparent 100%)`
-                }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handlePersonaSelect(key as keyof typeof AI_PERSONAS)}
-                className={`w-full px-4 py-3 text-left transition-all duration-300
-                  ${currentPersona === key ? personaColors[key as keyof typeof personaColors] : theme.text}
-                  ${currentPersona === key ? `bg-gradient-to-r from-[${personaGlowColors[key as keyof typeof personaGlowColors]}] to-black/10` : 'bg-transparent'}
-                  flex flex-col gap-1 border-b border-white/5 last:border-b-0`}
+                className={`liquid-glass-item w-full px-5 py-3 text-left flex flex-col gap-0.5
+                  ${currentPersona === key ? personaColors[key as keyof typeof personaColors] : 'text-white/80'}`}
                 style={{
-                  background: currentPersona === key ?
-                    `linear-gradient(to right, ${personaGlowColors[key as keyof typeof personaGlowColors]}, rgba(0,0,0,0.1))` :
-                    'transparent'
+                  background: currentPersona === key
+                    ? `linear-gradient(90deg, ${personaGlowColors[key as keyof typeof personaGlowColors].replace(/[\d.]+\)$/, '0.15)')}, transparent)`
+                    : 'transparent'
                 }}
               >
-                <div className="font-bold text-sm">{persona.name}</div>
-                <div className={`text-xs opacity-70 ${theme.text}`}>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm">{persona.name}</span>
+                  {currentPersona === key && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                  )}
+                </div>
+                <div className="text-[11px] text-white/40 leading-relaxed">
                   {personaDescriptions[key as keyof typeof personaDescriptions]}
                 </div>
               </motion.button>
             ))}
+
+            {/* Glass Divider */}
+            <div className="glass-divider mx-4" />
+
+            {/* Actions Section Label */}
+            <div className="px-5 py-2 text-[10px] uppercase tracking-widest text-white/30 font-medium">
+              Actions
+            </div>
+
             <motion.button
-              whileHover={{
-                scale: 1.03,
-                background: 'linear-gradient(90deg, rgba(34,197,94,0.2) 0%, transparent 100%)'
-              }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
               onClick={handleStartNewChat}
-              className={`w-full px-4 py-3 text-left transition-all duration-300 ${theme.text} flex items-center gap-2 border-b border-white/5`}
+              className={`liquid-glass-item w-full px-5 py-3 text-left ${theme.text} flex items-center gap-3`}
             >
-              <Plus className="w-4 h-4" />
-              <div className="font-bold text-sm">Start New Chat</div>
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <Plus className="w-4 h-4 text-emerald-400" />
+              </div>
+              <span className="font-medium text-sm text-white/80">Start New Chat</span>
             </motion.button>
+
             <motion.button
-              whileHover={{
-                scale: 1.03,
-                background: 'linear-gradient(90deg, rgba(168,85,247,0.2) 0%, transparent 100%)'
-              }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => {
                 setShowHistory(true);
                 setIsOpen(false);
               }}
-              className={`w-full px-4 py-3 text-left transition-all duration-300 ${theme.text} flex items-center gap-2 border-b border-white/5`}
+              className={`liquid-glass-item w-full px-5 py-3 text-left ${theme.text} flex items-center gap-3`}
             >
-              <History className="w-4 h-4" />
-              <div className="font-bold text-sm">Chat History</div>
+              <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                <History className="w-4 h-4 text-purple-400" />
+              </div>
+              <span className="font-medium text-sm text-white/80">Chat History</span>
             </motion.button>
+
             <motion.button
-              whileHover={{
-                scale: 1.03,
-                background: 'linear-gradient(90deg, rgba(168,85,247,0.2) 0%, transparent 100%)'
-              }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => {
                 setShowAgents(true);
                 setIsOpen(false);
               }}
-              className={`w-full px-4 py-3 text-left transition-all duration-300 ${theme.text} flex items-center gap-2 border-b border-white/5`}
+              className={`liquid-glass-item w-full px-5 py-3 text-left ${theme.text} flex items-center gap-3`}
             >
-              <Wand2 className="w-4 h-4" />
-              <div className="font-bold text-sm">Flight Controls</div>
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                <Wand2 className="w-4 h-4 text-amber-400" />
+              </div>
+              <span className="font-medium text-sm text-white/80">Flight Controls</span>
             </motion.button>
+
             <motion.button
-              whileHover={{
-                scale: 1.03,
-                background: 'linear-gradient(90deg, rgba(168,85,247,0.2) 0%, transparent 100%)'
-              }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => {
                 setShowSettings(true);
                 setIsOpen(false);
               }}
-              className={`w-full px-4 py-3 text-left transition-all duration-300 ${theme.text} flex items-center gap-2 last:rounded-b-3xl`}
+              className={`liquid-glass-item w-full px-5 py-3.5 text-left ${theme.text} flex items-center gap-3 rounded-b-3xl`}
             >
-              <Settings className="w-4 h-4" />
-              <div className="font-bold text-sm">Themes</div>
+              <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                <Settings className="w-4 h-4 text-blue-400" />
+              </div>
+              <span className="font-medium text-sm text-white/80">Themes</span>
             </motion.button>
           </motion.div>
         )}
