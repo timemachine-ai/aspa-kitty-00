@@ -117,92 +117,79 @@ html, body {
     inset 0 -1px 0 0 rgba(0, 0, 0, 0.05);
 }
 
-/* Premium liquid glass input - the star of the show */
+/* Premium liquid glass input - matching the action button material */
 .liquid-glass-input {
-  --input-glow: rgba(139, 0, 255, 0.15);
-
   position: relative;
-  background:
-    /* Specular highlight sweep */
-    linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.1) 0%,
-      transparent 40%,
-      transparent 60%,
-      rgba(255, 255, 255, 0.05) 100%
-    ),
-    /* Base frosted layer */
-    rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(60px) saturate(200%) brightness(1.05);
-  -webkit-backdrop-filter: blur(60px) saturate(200%) brightness(1.05);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 28px;
   box-shadow:
-    /* Outer ambient glow */
-    0 0 0 1px rgba(255, 255, 255, 0.05),
-    /* Primary shadow */
-    0 10px 40px -10px rgba(0, 0, 0, 0.35),
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    /* Inner top highlight - the key to glass realism */
-    inset 0 1px 1px rgba(255, 255, 255, 0.2),
-    /* Subtle inner shadow at bottom */
-    inset 0 -1px 1px rgba(0, 0, 0, 0.1);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .liquid-glass-input:hover {
+  background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.15);
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 12px 48px -8px rgba(0, 0, 0, 0.4),
-    0 6px 16px rgba(0, 0, 0, 0.2),
-    inset 0 1px 1px rgba(255, 255, 255, 0.25),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(139, 0, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .liquid-glass-input:focus-within {
-  border-color: rgba(139, 0, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(139, 0, 255, 0.4);
   box-shadow:
-    /* Purple glow aura */
-    0 0 0 4px rgba(139, 0, 255, 0.1),
-    0 0 40px rgba(139, 0, 255, 0.2),
-    0 0 80px rgba(139, 0, 255, 0.1),
-    /* Maintained shadows */
-    0 12px 48px -8px rgba(0, 0, 0, 0.4),
-    0 6px 16px rgba(0, 0, 0, 0.2),
-    inset 0 1px 1px rgba(255, 255, 255, 0.25),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+    0 0 0 3px rgba(139, 0, 255, 0.15),
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(139, 0, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 /* Persona-specific focus glows */
 .liquid-glass-input.persona-default:focus-within {
-  border-color: rgba(139, 0, 255, 0.3);
+  border-color: rgba(139, 0, 255, 0.4);
   box-shadow:
-    0 0 0 4px rgba(139, 0, 255, 0.1),
-    0 0 40px rgba(139, 0, 255, 0.2),
-    0 0 80px rgba(139, 0, 255, 0.1),
-    0 12px 48px -8px rgba(0, 0, 0, 0.4),
-    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+    0 0 0 3px rgba(139, 0, 255, 0.15),
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(139, 0, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.liquid-glass-input.persona-girlie:hover {
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(236, 72, 153, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .liquid-glass-input.persona-girlie:focus-within {
-  border-color: rgba(236, 72, 153, 0.3);
+  border-color: rgba(236, 72, 153, 0.4);
   box-shadow:
-    0 0 0 4px rgba(236, 72, 153, 0.1),
-    0 0 40px rgba(236, 72, 153, 0.2),
-    0 0 80px rgba(236, 72, 153, 0.1),
-    0 12px 48px -8px rgba(0, 0, 0, 0.4),
-    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+    0 0 0 3px rgba(236, 72, 153, 0.15),
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(236, 72, 153, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.liquid-glass-input.persona-pro:hover {
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(34, 211, 238, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .liquid-glass-input.persona-pro:focus-within {
-  border-color: rgba(34, 211, 238, 0.3);
+  border-color: rgba(34, 211, 238, 0.4);
   box-shadow:
-    0 0 0 4px rgba(34, 211, 238, 0.1),
-    0 0 40px rgba(34, 211, 238, 0.2),
-    0 0 80px rgba(34, 211, 238, 0.1),
-    0 12px 48px -8px rgba(0, 0, 0, 0.4),
-    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+    0 0 0 3px rgba(34, 211, 238, 0.15),
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(34, 211, 238, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 /* Premium liquid glass dropdown/modal */
