@@ -603,7 +603,7 @@ const memoryTool = {
   type: "function" as const,
   function: {
     name: "memory",
-    description: "Remember something about the user.",
+    description: "Silently save important info about the user (preferences, facts, instructions) for future conversations. Use this proactively when user shares personal details - don't ask, just save and continue talking normally.",
     parameters: {
       type: "object",
       properties: {
@@ -1459,10 +1459,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       memoryContext = formatMemoriesForContext(memories, userProfile);
     }
 
-    // Enhanced system prompt with tool usage instructions and memory context
-    const enhancedSystemPrompt = `${systemPrompt}${memoryContext}
+    // Memory instruction for proactive saving
+    const memoryInstruction = userId ? `
 
-.`;
+[MEMORY INSTRUCTION]
+When the user shares personal info (favorites, preferences, where they live/work, their name, things they like/dislike, instructions for you), automatically save it using the memory tool while continuing to respond normally. Don't announce that you're saving - just do it silently and keep talking.
+[/MEMORY INSTRUCTION]` : '';
+
+    // Enhanced system prompt with tool usage instructions and memory context
+    const enhancedSystemPrompt = `${systemPrompt}${memoryContext}${memoryInstruction}`;
 
     // Initialize model, system prompt, and tools with defaults
     let modelToUse = personaConfig.model;
@@ -1651,6 +1656,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               } else if (data.type === 'finish') {
                 // Process any accumulated tool calls
                 if (toolCallsBuffer.length > 0) {
+                  console.log('Processing tool calls:', toolCallsBuffer.map(t => t.function?.name));
                   for (const toolCall of toolCallsBuffer) {
                     if (toolCall.function?.name === 'generate_image') {
                       try {
@@ -1699,18 +1705,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         fullContent += errorMsg;
                       }
                     } else if (toolCall.function?.name === 'play_youtube_music') {
+                      console.log('YouTube music tool called with:', toolCall.function.arguments);
                       try {
                         const params: YouTubeMusicParams = JSON.parse(toolCall.function.arguments);
-
-                        // Show loading state
-                        const loadingMsg = '\n\n*Searching for music...*';
-                        res.write(loadingMsg);
+                        console.log('Searching YouTube for:', params.query);
 
                         // Search for the music
                         const musicResult = await searchYouTubeMusic(params);
+                        console.log('YouTube search result:', musicResult);
 
                         if (musicResult) {
-                          // Create a special marker that frontend can parse to trigger the YouTube player
                           const musicMsg = `\n\n[YOUTUBE_MUSIC]${JSON.stringify(musicResult)}[/YOUTUBE_MUSIC]\n\n🎵 Now playing: **${musicResult.title}**`;
                           res.write(musicMsg);
                           fullContent += musicMsg;
@@ -1719,26 +1723,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                           res.write(notFoundMsg);
                           fullContent += notFoundMsg;
                         }
-                      } catch (error) {
-                        console.error('Error processing YouTube music search:', error);
-                        const errorMsg = '\n\nSorry, I had trouble searching for that music. Please try again.';
+                      } catch (error: any) {
+                        console.error('YouTube music error:', error?.message || error);
+                        const errorMsg = `\n\nSorry, I couldn't play music right now. ${error?.message?.includes('API key') ? 'YouTube API is not configured.' : 'Please try again.'}`;
                         res.write(errorMsg);
                         fullContent += errorMsg;
                       }
                     } else if (toolCall.function?.name === 'memory') {
+                      // Memory saves silently - no output, AI continues talking normally
                       try {
                         const params: MemoryParams = JSON.parse(toolCall.function.arguments);
-
-                        if (!userId) {
-                          const errorMsg = '\n\n*Memory feature requires being logged in.*';
-                          res.write(errorMsg);
-                          fullContent += errorMsg;
-                        } else if (params.content) {
-                          const newMemory = await addUserMemory(userId, params.content, 'general', 5, persona);
-                          if (newMemory) {
-                            res.write('\n\n*Remembered.*');
-                            fullContent += '\n\n*Remembered.*';
-                          }
+                        if (userId && params.content) {
+                          await addUserMemory(userId, params.content, 'general', 5, persona);
                         }
                       } catch (error) {
                         console.error('Memory error:', error);
@@ -1890,15 +1886,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               fullContent += '\n\nSorry, I had trouble performing that web search. Please try again.';
             }
           } else if (toolCall.function?.name === 'memory') {
+            // Memory saves silently - no output, AI continues talking normally
             try {
               const params: MemoryParams = JSON.parse(toolCall.function.arguments);
-              if (!userId) {
-                fullContent += '\n\n*Memory feature requires being logged in.*';
-              } else if (params.content) {
-                const newMemory = await addUserMemory(userId, params.content, 'general', 5, persona);
-                if (newMemory) {
-                  fullContent += '\n\n*Remembered.*';
-                }
+              if (userId && params.content) {
+                await addUserMemory(userId, params.content, 'general', 5, persona);
               }
             } catch (error) {
               console.error('Memory error:', error);
