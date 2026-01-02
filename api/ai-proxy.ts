@@ -10,7 +10,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 const AI_PERSONAS = {
   default: {
     name: 'TimeMachine Air',
-    model: 'openai/gpt-oss-120b',
+    model: 'gpt-oss-120b',
     temperature: 0.9,
     maxTokens: 2000,
     systemPrompt: `## Core Identity
@@ -1040,26 +1040,25 @@ async function incrementRateLimit(userId: string | null, ip: string, persona: st
   }
 }
 
-// Streaming function for Air persona - GROQ API
-async function callGroqAirAPIStreaming(
+// Streaming function for Air persona - CEREBRAS API
+async function callCerebrasAirAPIStreaming(
   messages: any[],
   tools?: any[]
 ): Promise<ReadableStream> {
-  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+  const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY;
 
-  if (!GROQ_API_KEY) {
-    throw new Error('GROQ_API_KEY not configured');
+  if (!CEREBRAS_API_KEY) {
+    throw new Error('CEREBRAS_API_KEY not configured');
   }
 
   const requestBody: any = {
-    model: "openai/gpt-oss-120b",
+    model: "gpt-oss-120b",
     messages,
     temperature: 0.9,
     max_completion_tokens: 2000,
     top_p: 1,
     stream: true,
-    reasoning_effort: "low",
-    stop: null
+    reasoning_effort: "low"
  };
 
   if (tools) {
@@ -1067,10 +1066,10 @@ async function callGroqAirAPIStreaming(
     requestBody.tool_choice = "auto";
   }
 
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetch('https://api.cerebras.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      'Authorization': `Bearer ${CEREBRAS_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(requestBody)
@@ -1078,12 +1077,12 @@ async function callGroqAirAPIStreaming(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Groq API Error (Air):', errorText);
-    throw new Error(`Groq API error: ${response.status}`);
+    console.error('Cerebras API Error (Air):', errorText);
+    throw new Error(`Cerebras API error: ${response.status}`);
   }
 
   if (!response.body) {
-    throw new Error('No response body from Groq API');
+    throw new Error('No response body from Cerebras API');
   }
 
   return new ReadableStream({
@@ -1608,8 +1607,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           personaConfig.model
         );
       } else if (persona === 'default' && !imageData && !audioData) {
-        // Air persona uses gpt-oss-120b with different parameters
-        streamingResponse = await callGroqAirAPIStreaming(
+        // Air persona uses Cerebras gpt-oss-120b
+        streamingResponse = await callCerebrasAirAPIStreaming(
           apiMessages,
           toolsToUse
         );
@@ -1793,37 +1792,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           personaConfig.model
         );
       } else if (persona === 'default' && !imageData && !audioData) {
-        // Air persona uses gpt-oss-120b with different parameters
+        // Air persona uses Cerebras gpt-oss-120b
         const requestBody: any = {
-          model: "openai/gpt-oss-120b",
+          model: "gpt-oss-120b",
           messages: apiMessages,
-          temperature: 1,
-          max_completion_tokens: 8192,
+          temperature: 0.9,
+          max_completion_tokens: 2000,
           top_p: 1,
           stream: false,
-          reasoning_effort: "low",
-          stop: null
+          reasoning_effort: "low"
         };
 
         if (toolsToUse && toolsToUse.length > 0) {
-          requestBody.tools = [
-            {
-              type: "browser_search"
-            },
-            ...toolsToUse
-          ];
-        } else {
-          requestBody.tools = [
-            {
-              type: "browser_search"
-            }
-          ];
+          requestBody.tools = toolsToUse;
+          requestBody.tool_choice = "auto";
         }
 
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const response = await fetch('https://api.cerebras.ai/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+            'Authorization': `Bearer ${process.env.CEREBRAS_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(requestBody)
