@@ -534,6 +534,7 @@ const imageGenerationTool = {
   type: "function" as const,
   function: {
     name: "generate_image",
+    strict: true,
     description: "Generate or edit an image using this tool call.",
     parameters: {
       type: "object",
@@ -545,17 +546,16 @@ const imageGenerationTool = {
         orientation: {
           type: "string",
           description: "Orientation of the image. Only used when creating new images, ignored for editing.",
-          enum: ["portrait", "landscape"],
-          default: "portrait"
+          enum: ["portrait", "landscape"]
         },
         process: {
           type: "string",
           description: "The type of image process. Use 'create' to generate a new image from scratch. Use 'edit' when the user wants to modify, transform, or edit an existing image they have provided.",
-          enum: ["create", "edit"],
-          default: "create"
+          enum: ["create", "edit"]
         }
       },
-      required: ["prompt"]
+      required: ["prompt"],
+      additionalProperties: false
     }
   }
 };
@@ -565,6 +565,7 @@ const webSearchTool = {
   type: "function" as const,
   function: {
     name: "web_search",
+    strict: true,
     description: "Search the web for current information, news, facts, or any real-time data. Use this when you need up-to-date information that you don't have in your knowledge base.",
     parameters: {
       type: "object",
@@ -574,7 +575,8 @@ const webSearchTool = {
           description: "The search query to look up on the web. Be specific and clear about what information you're looking for."
         }
       },
-      required: ["query"]
+      required: ["query"],
+      additionalProperties: false
     }
   }
 };
@@ -584,6 +586,7 @@ const youtubeMusicTool = {
   type: "function" as const,
   function: {
     name: "play_youtube_music",
+    strict: true,
     description: "Search for and play a music track from YouTube Music. Use this when the user asks to play a song, music, artist, or wants to listen to something. This tool searches YouTube for music content and returns a playable video.",
     parameters: {
       type: "object",
@@ -593,7 +596,8 @@ const youtubeMusicTool = {
           description: "The name of the song, artist, or music to search for. Be specific with song titles and artist names for better results."
         }
       },
-      required: ["query"]
+      required: ["query"],
+      additionalProperties: false
     }
   }
 };
@@ -603,13 +607,18 @@ const memoryTool = {
   type: "function" as const,
   function: {
     name: "memory",
+    strict: true,
     description: "Remember something about the user.",
     parameters: {
       type: "object",
       properties: {
-        content: { type: "string" }
+        content: {
+          type: "string",
+          description: "Information to remember about the user"
+        }
       },
-      required: ["content"]
+      required: ["content"],
+      additionalProperties: false
     }
   }
 };
@@ -1064,7 +1073,15 @@ async function callCerebrasAirAPIStreaming(
   if (tools) {
     requestBody.tools = tools;
     requestBody.tool_choice = "auto";
+    console.log('Cerebras API Tools:', JSON.stringify(tools, null, 2));
   }
+
+  console.log('Cerebras API Request:', JSON.stringify({
+    model: requestBody.model,
+    messageCount: messages.length,
+    hasTools: !!tools,
+    toolCount: tools?.length || 0
+  }));
 
   const response = await fetch('https://api.cerebras.ai/v1/chat/completions', {
     method: 'POST',
@@ -1646,11 +1663,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 fullContent += data.content;
                 res.write(data.content);
               } else if (data.type === 'tool_calls') {
+                console.log('Received tool calls in stream:', JSON.stringify(data.tool_calls));
                 toolCallsBuffer.push(...data.tool_calls);
               } else if (data.type === 'finish') {
                 // Process any accumulated tool calls
+                console.log('Processing tool calls, buffer length:', toolCallsBuffer.length);
                 if (toolCallsBuffer.length > 0) {
                   for (const toolCall of toolCallsBuffer) {
+                    console.log('Processing tool call:', toolCall.function?.name);
                     if (toolCall.function?.name === 'generate_image') {
                       try {
                         const params: ImageGenerationParams = JSON.parse(toolCall.function.arguments);
@@ -1806,7 +1826,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (toolsToUse && toolsToUse.length > 0) {
           requestBody.tools = toolsToUse;
           requestBody.tool_choice = "auto";
+          console.log('Cerebras API (non-streaming) Tools:', JSON.stringify(toolsToUse, null, 2));
         }
+
+        console.log('Cerebras API (non-streaming) Request:', JSON.stringify({
+          model: requestBody.model,
+          messageCount: apiMessages.length,
+          hasTools: !!(toolsToUse && toolsToUse.length > 0),
+          toolCount: toolsToUse?.length || 0
+        }));
 
         const response = await fetch('https://api.cerebras.ai/v1/chat/completions', {
           method: 'POST',
@@ -1817,6 +1845,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           body: JSON.stringify(requestBody)
         });
         apiResponse = await response.json();
+        console.log('Cerebras API (non-streaming) Response:', JSON.stringify({
+          hasChoices: !!apiResponse.choices,
+          choiceCount: apiResponse.choices?.length || 0,
+          hasToolCalls: !!apiResponse.choices?.[0]?.message?.tool_calls,
+          toolCallCount: apiResponse.choices?.[0]?.message?.tool_calls?.length || 0
+        }));
       } else {
         // Girlie and Pro personas use standard Groq API
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
