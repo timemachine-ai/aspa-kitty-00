@@ -103,7 +103,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
 
       // Reset height to measure content
       textarea.style.height = 'auto';
-      const newHeight = Math.min(textarea.scrollHeight, 240);
+      const newHeight = Math.min(textarea.scrollHeight, 150);
       textarea.style.height = `${newHeight}px`;
 
       // Restore scroll position
@@ -343,7 +343,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                 onKeyDown={handleKeyDown}
                 placeholder="Explore future"
                 disabled={isLoading || isUploading}
-                className={`w-full px-6 py-4 pr-32 rounded-full
+                className={`w-full px-6 py-4 pr-32 rounded-[28px]
                   bg-gray-200/5 backdrop-blur-xl
                   ${theme.input.text} placeholder-gray-400
                   outline-none ${personaStyles.focusGlow[currentPersona]}
@@ -355,7 +355,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                   textShadow: '0 0 10px rgba(255,255,255,0.1)',
                   fontSize: '1rem',
                   minHeight: '56px',
-                  maxHeight: '240px'
+                  maxHeight: '150px'
                 }}
                 rows={1}
               />
