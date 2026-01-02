@@ -7,9 +7,8 @@ import { LoadingSpinner } from '../loading/LoadingSpinner';
 import { ImagePreview } from './ImagePreview';
 import { AI_PERSONAS } from '../../config/constants';
 import { useTheme } from '../../context/ThemeContext';
-import { useAuth } from '../../context/AuthContext';
 import { MentionCall } from './MentionCall';
-import { uploadImage } from '../../services/image/imageService';
+import { uploadToImageBB } from '../../services/imagebb/imageBBService';
 
 type Persona = keyof typeof AI_PERSONAS;
 
@@ -79,7 +78,6 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { theme } = useTheme();
-  const { user } = useAuth();
 
   useEffect(() => {
     const handleResize = () => {
@@ -153,15 +151,14 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
 
           const base64Images = await Promise.all(selectedImages.map(convertImageToBase64));
 
-          // Upload images using the new service (uses Supabase for logged in users, ImgBB for anonymous)
           const uploadResults = await Promise.all(
-            base64Images.map(base64Image => uploadImage(base64Image, user?.id))
+            base64Images.map(base64Image => uploadToImageBB(base64Image))
           );
 
           const successfulUploads = uploadResults.filter(result => result.success);
 
           if (successfulUploads.length === 0) {
-            alert('Failed to upload images. Please try again.');
+            alert('Failed to upload images to ImageBB. Please try again.');
             setIsUploading(false);
             return;
           }
@@ -276,14 +273,10 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     }
   };
 
-  // Get persona class for CSS
-  const personaClass = `persona-${currentPersona}`;
-
   return (
-    <form onSubmit={handleSubmit} className="max-w-4xl mx-auto sticky bottom-4 px-4">
-      {/* Image previews */}
-      {imagePreviewUrls.length > 0 && (
-        <div className="flex gap-3 mb-4 justify-start">
+    <form onSubmit={handleSubmit} className="max-w-4xl mx-auto sticky bottom-4">
+      {imagePreviewUrls.length > 0 && currentPersona === 'default' && (
+        <div className="flex gap-2 mb-4">
           {imagePreviewUrls.map((url, index) => (
             <ImagePreview
               key={index}
@@ -294,9 +287,20 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
           ))}
         </div>
       )}
-
+      {imagePreviewUrls.length > 0 && currentPersona !== 'default' && (
+        <div className="flex gap-2 mb-4">
+          {imagePreviewUrls.map((url, index) => (
+            <ImagePreview
+              key={index}
+              url={url}
+              onRemove={() => removeImage(index)}
+              isUploading={isUploading}
+            />
+          ))}
+        </div>
+      )}
       <div className="relative" onDragOver={handleDragOver} onDrop={handleDrop}>
-        <div className="relative flex items-end gap-3">
+        <div className="relative flex items-center gap-2">
           <input
             type="file"
             accept="image/jpeg,image/png,image/gif,image/webp"
@@ -305,49 +309,53 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
             ref={fileInputRef}
             multiple
           />
-
-          {/* Plus button - premium glass style */}
+          
           <motion.button
             type="button"
-            whileHover={{ scale: 1.08 }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading || isUploading || selectedImages.length >= 4}
-            className={`glass-action-button ${personaClass} p-3.5 ${theme.text}
-              disabled:opacity-40 disabled:cursor-not-allowed
-              flex-shrink-0 mb-1`}
+            className={`p-3 rounded-full
+              bg-gradient-to-r ${personaStyles.borderColors[currentPersona]}
+              backdrop-blur-xl ${theme.text}
+              disabled:opacity-50 relative group
+              border border-white/10
+              shadow-[0_0_15px_${personaStyles.glowColors[currentPersona]}]
+              ${personaStyles.hoverGlow[currentPersona]}
+              transition-all duration-300`}
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-5 h-5 relative z-10" />
           </motion.button>
 
-          {/* Main input container - liquid glass */}
-          <div className={`liquid-glass-input ${personaClass} flex-1 relative`}>
-            <div className="relative flex items-end">
-              <textarea
+          <div className="relative flex-1">
+            <div className="relative flex items-center">
+              <motion.textarea
                 ref={textareaRef}
                 value={message}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
                 placeholder="Explore future"
                 disabled={isLoading || isUploading}
-                className={`w-full bg-transparent border-none outline-none resize-none
-                  ${theme.input.text} placeholder-white/30
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  custom-scrollbar
-                  py-4 pl-6 pr-28`}
+                className={`w-full px-6 py-4 pr-32 rounded-full
+                  bg-gray-200/5 backdrop-blur-xl
+                  ${theme.input.text} placeholder-gray-400
+                  outline-none ${personaStyles.focusGlow[currentPersona]}
+                  disabled:opacity-50
+                  transition-shadow duration-300
+                  text-base sm:text-base resize-none
+                  [overflow-y:hidden] [&::-webkit-scrollbar]:hidden [&::-moz-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}
                 style={{
-                  fontSize: '15px',
-                  lineHeight: '1.5',
+                  textShadow: '0 0 10px rgba(255,255,255,0.1)',
+                  fontSize: '16px',
                   minHeight: '56px',
-                  maxHeight: '200px',
-                  overflowY: 'auto',
+                  maxHeight: '240px'
                 }}
                 rows={1}
               />
 
-              {/* Action buttons inside input */}
-              <div className="absolute right-3 bottom-3 flex items-center gap-2">
-                <VoiceRecorder
+              <div className="absolute right-2 flex items-center gap-2">
+                <VoiceRecorder 
                   onSendMessage={onSendMessage}
                   disabled={isLoading || isUploading || message.trim().length > 0}
                   currentPersona={currentPersona}
@@ -355,17 +363,23 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
 
                 <motion.button
                   type="submit"
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.92 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   disabled={isLoading || isUploading || (!message.trim() && selectedImages.length === 0)}
-                  className={`glass-action-button ${personaClass} p-2.5
+                  className={`p-3 rounded-full
+                    bg-gradient-to-r ${personaStyles.borderColors[currentPersona]}
+                    backdrop-blur-xl
                     ${theme.text}
-                    disabled:opacity-40 disabled:cursor-not-allowed`}
+                    disabled:opacity-50 relative group
+                    border border-white/10
+                    shadow-[0_0_15px_${personaStyles.glowColors[currentPersona]}]
+                    ${personaStyles.hoverGlow[currentPersona]}
+                    transition-all duration-300`}
                 >
                   {isLoading || isUploading ? (
                     <LoadingSpinner size="sm" />
                   ) : (
-                    <Send className="w-4 h-4" />
+                    <Send className="w-5 h-5 relative z-10" />
                   )}
                 </motion.button>
               </div>

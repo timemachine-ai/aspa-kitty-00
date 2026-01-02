@@ -39,50 +39,39 @@ export function MentionCall({ isVisible, onSelect, currentPersona }: MentionCall
       name: persona.name
     }));
 
-  const aiIconColors = {
-    chatgpt: 'bg-emerald-500/15 text-emerald-400',
-    gemini: 'bg-blue-500/15 text-blue-400',
-    claude: 'bg-orange-500/15 text-orange-400',
-    grok: 'bg-slate-500/15 text-slate-400'
-  } as const;
-
   return (
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          initial={{ opacity: 0, y: 10, scale: 0.96 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 10, scale: 0.96 }}
-          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="absolute bottom-full left-4 mb-3 z-50"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 10 }}
+          className="absolute bottom-full left-0 mb-2 z-50"
         >
-          <div className="liquid-glass-dropdown p-2">
-            {/* Header */}
-            <div className="px-3 py-2 text-[10px] uppercase tracking-widest text-white/30 font-medium">
-              Switch Model
-            </div>
+          <div className={`p-2 rounded-lg
+            bg-black/40 backdrop-blur-xl
+            border border-white/10
+            shadow-lg`}
+          >
             <div className="flex flex-col gap-1">
               {availablePersonas.map(({ key, command, name }) => (
                 <motion.button
                   key={key}
-                  whileHover={{ x: 4 }}
+                  whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={(e) => {
-                    e.preventDefault();
+                    e.preventDefault(); // Prevent form submission
                     onSelect(command);
                   }}
-                  className="liquid-glass-item px-3 py-2.5 rounded-xl text-left
-                    flex items-center gap-3 min-w-[220px]"
+                  className={`px-3 py-2 rounded-lg text-left
+                    bg-gradient-to-r ${personaColors[key as keyof typeof AI_PERSONAS]}
+                    hover:shadow-[0_0_15px_${personaGlowColors[key as keyof typeof AI_PERSONAS]}]
+                    transition-all duration-300
+                    flex items-center gap-2 min-w-[200px]
+                    group`}
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${aiIconColors[key as keyof typeof aiIconColors]}`}>
-                    <span className="text-xs font-bold">
-                      {key === 'chatgpt' ? 'G' : key === 'gemini' ? 'G' : key === 'claude' ? 'C' : 'X'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-white/80 text-sm font-medium">{name}</span>
-                    <span className="text-white/30 text-[11px] font-mono">{command}</span>
-                  </div>
+                  <span className="text-white/60 text-sm font-mono">{command}</span>
+                  <span className="text-white text-sm">{name}</span>
                 </motion.button>
               ))}
             </div>

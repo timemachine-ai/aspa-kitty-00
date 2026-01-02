@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { ChatInput } from './components/chat/ChatInput';
 import { BrandLogo } from './components/brand/BrandLogo';
 import { MusicPlayer } from './components/music/MusicPlayer';
@@ -6,21 +6,15 @@ import { YouTubePlayer } from './components/music/YouTubePlayer';
 import { Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from './hooks/useChat';
-import { useAnonymousRateLimit } from './hooks/useAnonymousRateLimit';
 import { AboutUsToast } from './components/about/AboutUsToast';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { AuthProvider, useAuth } from './context/AuthContext';
 import { ChatMode } from './components/chat/ChatMode';
 import { StageMode } from './components/chat/StageMode';
 import { RateLimitModal } from './components/modals/RateLimitModal';
 import { WelcomeModal } from './components/modals/WelcomeModal';
-import { AuthModal, OnboardingModal, AccountPage } from './components/auth';
 import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './config/constants';
 
 function AppContent() {
-  const { theme } = useTheme();
-  const { user, loading: authLoading, needsOnboarding } = useAuth();
-
   const {
     messages,
     isChatMode,
@@ -32,7 +26,9 @@ function AppContent() {
     showAboutUs,
     showRateLimitModal,
     streamingMessageId,
+    useStreaming,
     youtubeMusic,
+    setChatMode,
     handleSendMessage,
     handlePersonaChange,
     setCurrentProHeatLevel,
@@ -41,30 +37,19 @@ function AppContent() {
     dismissAboutUs,
     dismissRateLimitModal,
     loadChat,
+    setUseStreaming,
     clearYoutubeMusic
-  } = useChat(user?.id);
-  const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
-
+  } = useChat();
+  
+  const { theme } = useTheme();
   const [isCenterStage, setIsCenterStage] = useState(false);
   const [isHeatLevelExpanded, setIsHeatLevelExpanded] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(() => {
+    // Check if access token is required and if user has already been granted access
     if (!ACCESS_TOKEN_REQUIRED) return false;
     const accessGranted = localStorage.getItem('timeMachine_accessGranted');
     return accessGranted !== 'true';
   });
-
-  // Auth-related states
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showAccountPage, setShowAccountPage] = useState(false);
-  const [authModalMessage, setAuthModalMessage] = useState<string | undefined>();
-
-  // Check if user needs onboarding after auth
-  useEffect(() => {
-    if (!authLoading && needsOnboarding) {
-      setShowOnboarding(true);
-    }
-  }, [authLoading, needsOnboarding]);
 
   // Check for maintenance mode
   if (MAINTENANCE_MODE) {
@@ -83,30 +68,30 @@ function AppContent() {
     return () => window.removeEventListener('resize', updateVH);
   }, []);
 
-  const personaGlowColors: Record<string, string> = {
+  const personaGlowColors = {
     default: 'rgba(139,0,255,0.7)',
     girlie: 'rgba(199,21,133,0.7)',
     pro: 'rgba(30,144,255,0.7)'
   };
 
-  const personaBackgroundColors: Record<string, string> = {
+  const personaBackgroundColors = {
     default: 'rgba(139,0,255,0.2)',
     girlie: 'rgba(199,21,133,0.2)',
     pro: 'rgba(30,144,255,0.2)'
   };
 
   const getButtonStyles = (isCenterStage: boolean, persona: string, theme: any) => ({
-    border: isCenterStage
-      ? `1px solid ${persona === 'girlie' ? 'rgb(199,21,133)' : 'rgb(139,0,255)'}`
+    border: isCenterStage 
+      ? `1px solid ${persona === 'girlie' ? 'rgb(199,21,133)' : 'rgb(139,0,255)'}` 
       : 'none',
-    bg: isCenterStage
-      ? (persona === 'girlie' ? 'rgba(199,21,133,0.3)' : 'rgba(139,0,255,0.3)')
+    bg: isCenterStage 
+      ? (persona === 'girlie' ? 'rgba(199,21,133,0.3)' : 'rgba(139,0,255,0.3)') 
       : personaBackgroundColors[persona],
-    shadow: isCenterStage
-      ? `0 0 20px ${persona === 'girlie' ? 'rgba(199,21,133,0.8)' : 'rgba(139,0,255,0.8)'}`
+    shadow: isCenterStage 
+      ? `0 0 20px ${persona === 'girlie' ? 'rgba(199,21,133,0.8)' : 'rgba(139,0,255,0.8)'}` 
       : 'none',
-    text: isCenterStage
-      ? (persona === 'girlie' ? 'rgb(238,130,238)' : 'rgb(186,85,211)')
+    text: isCenterStage 
+      ? (persona === 'girlie' ? 'rgb(238,130,238)' : 'rgb(186,85,211)') 
       : theme.text,
   });
 
@@ -124,55 +109,6 @@ function AppContent() {
     setShowWelcomeModal(false);
   };
 
-  // Wrapped send message handler with rate limiting
-  const handleSendMessageWithRateLimit = async (
-    message: string,
-    imageUrl?: string,
-    audioData?: string,
-    imageUrls?: string[]
-  ) => {
-    // Check rate limit for anonymous users
-    if (isAnonymous && isRateLimited(currentPersona)) {
-      setAuthModalMessage(
-        currentPersona === 'pro'
-          ? "You've used your free PRO message! Sign up to continue chatting."
-          : "You've used your free messages! Sign up to continue chatting."
-      );
-      setShowAuthModal(true);
-      return;
-    }
-
-    // Increment count before sending (for anonymous users)
-    if (isAnonymous) {
-      incrementCount(currentPersona);
-    }
-
-    // Call the original handler
-    await handleSendMessage(message, imageUrl, audioData, imageUrls);
-  };
-
-  const handleOpenAuth = () => {
-    setAuthModalMessage(undefined);
-    setShowAuthModal(true);
-  };
-
-  const handleOpenAccount = () => {
-    setShowAccountPage(true);
-  };
-
-  const handleOnboardingComplete = () => {
-    setShowOnboarding(false);
-  };
-
-  // Show account page
-  if (showAccountPage) {
-    return (
-      <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
-        <AccountPage onBack={() => setShowAccountPage(false)} />
-      </div>
-    );
-  }
-
   // Don't render main app content if welcome modal is showing
   if (showWelcomeModal) {
     return (
@@ -185,39 +121,21 @@ function AppContent() {
     );
   }
 
-  // Show loading state while checking auth
-  if (authLoading) {
-    return (
-      <div className={`min-h-screen ${theme.background} ${theme.text} flex items-center justify-center`}>
-        <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
-    <div
+    <div 
       className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}
       style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}
     >
       <main className="relative h-screen flex flex-col" style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
         <header className="fixed top-0 left-0 right-0 z-50 px-4 py-3 bg-transparent">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <BrandLogo
+            <BrandLogo 
               currentPersona={currentPersona}
               onPersonaChange={handlePersonaChange}
               onLoadChat={loadChat}
               onStartNewChat={startNewChat}
-              onOpenAuth={handleOpenAuth}
-              onOpenAccount={handleOpenAccount}
             />
             <div className="flex items-center gap-2">
-              {/* Show remaining messages for anonymous users */}
-              {isAnonymous && (
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-white/50">
-                  <span>{getRemainingMessages(currentPersona)} free messages left</span>
-                </div>
-              )}
-
               {currentPersona === 'pro' ? (
                 <div className="relative">
                   <motion.button
@@ -262,7 +180,7 @@ function AppContent() {
                         {Object.entries(PRO_HEAT_LEVELS).map(([level, config]) => (
                           <motion.button
                             key={level}
-                            whileHover={{
+                            whileHover={{ 
                               scale: 1.03,
                               background: 'linear-gradient(90deg, rgba(30,144,255,0.2) 0%, transparent 100%)'
                             }}
@@ -276,8 +194,8 @@ function AppContent() {
                               ${currentProHeatLevel === parseInt(level) ? 'bg-gradient-to-r from-cyan-500/20 to-black/10' : 'bg-transparent'}
                               flex flex-col gap-1 border-b border-white/5 last:border-b-0`}
                             style={{
-                              background: currentProHeatLevel === parseInt(level) ?
-                                'linear-gradient(to right, rgba(30,144,255,0.2), rgba(0,0,0,0.1))' :
+                              background: currentProHeatLevel === parseInt(level) ? 
+                                'linear-gradient(to right, rgba(30,144,255,0.2), rgba(0,0,0,0.1))' : 
                                 'transparent'
                             }}
                           >
@@ -320,7 +238,7 @@ function AppContent() {
             </div>
           </div>
         </header>
-
+        
         <MusicPlayer
           currentPersona={currentPersona}
           currentEmotion={currentEmotion}
@@ -357,8 +275,8 @@ function AppContent() {
 
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-transparent">
           <div className="max-w-4xl mx-auto">
-            <ChatInput
-              onSendMessage={handleSendMessageWithRateLimit}
+            <ChatInput 
+              onSendMessage={handleSendMessage} 
               isLoading={isLoading}
               currentPersona={currentPersona}
             />
@@ -376,36 +294,15 @@ function AppContent() {
           isOpen={showRateLimitModal}
           onClose={dismissRateLimitModal}
         />
-
-        {/* Auth Modal */}
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          message={authModalMessage}
-        />
-
-        {/* Onboarding Modal */}
-        <OnboardingModal
-          isOpen={showOnboarding}
-          onComplete={handleOnboardingComplete}
-        />
       </main>
     </div>
-  );
-}
-
-function AppWithAuth() {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
   );
 }
 
 export default function App() {
   return (
     <ThemeProvider>
-      <AppWithAuth />
+      <AppContent />
     </ThemeProvider>
   );
 }

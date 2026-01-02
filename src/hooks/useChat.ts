@@ -2,23 +2,17 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Message, ImageDimensions } from '../types/chat';
 import { generateAIResponse, generateAIResponseStreaming, YouTubeMusicData } from '../services/ai/aiProxyService';
 import { INITIAL_MESSAGE, AI_PERSONAS } from '../config/constants';
-import { chatService, ChatSession } from '../services/chat/chatService';
 
-// Generate a proper UUID for session IDs
-function generateUUID(): string {
-  // Use crypto.randomUUID if available (modern browsers)
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  // Fallback for older browsers
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+interface ChatSession {
+  id: string;
+  name: string;
+  messages: Message[];
+  persona: keyof typeof AI_PERSONAS;
+  createdAt: string;
+  lastModified: string;
 }
 
-export function useChat(userId?: string | null) {
+export function useChat() {
   const [messages, setMessages] = useState<Message[]>([{ ...INITIAL_MESSAGE, hasAnimated: false }]);
   const [isChatMode, setChatMode] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -30,21 +24,13 @@ export function useChat(userId?: string | null) {
   const [showRateLimitModal, setShowRateLimitModal] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string>('');
   const [streamingMessageId, setStreamingMessageId] = useState<number | null>(null);
-  const [useStreaming, setUseStreaming] = useState(true);
+  const [useStreaming, setUseStreaming] = useState(true); // Toggle for streaming vs non-streaming
   const [youtubeMusic, setYoutubeMusic] = useState<YouTubeMusicData | null>(null);
-
-  // Track if save is pending to debounce
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Update chatService with userId when it changes
-  useEffect(() => {
-    chatService.setUserId(userId || null);
-  }, [userId]);
 
   // Set theme based on persona
   const setPersonaTheme = useCallback((persona: keyof typeof AI_PERSONAS) => {
     let themeToSet: string;
-
+    
     switch (persona) {
       case 'girlie':
         themeToSet = 'springDark';
@@ -55,27 +41,35 @@ export function useChat(userId?: string | null) {
       default:
         themeToSet = 'autumnDark';
     }
-
+    
     window.dispatchEvent(new CustomEvent('themeChange', { detail: themeToSet }));
   }, []);
 
-  // Save chat session function - uses chatService which handles both local and Supabase
+  // Save chat session function
   const saveChatSession = useCallback((sessionId: string, messagesToSave: Message[], persona: keyof typeof AI_PERSONAS) => {
-    // Clear any pending save
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
+    // Save all chat sessions, even short ones
 
-    // Debounce saves to avoid too many requests
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        const now = new Date().toISOString();
+    try {
+      const chatSessions = JSON.parse(localStorage.getItem('chatSessions') || '[]') as ChatSession[];
+      const now = new Date().toISOString();
+
+      const existingSessionIndex = chatSessions.findIndex(session => session.id === sessionId);
+
+      if (existingSessionIndex !== -1) {
+        // Update existing session
+        chatSessions[existingSessionIndex] = {
+          ...chatSessions[existingSessionIndex],
+          messages: messagesToSave,
+          lastModified: now
+        };
+      } else {
+        // Create new session
         const firstUserMessage = messagesToSave.find(msg => !msg.isAI);
         let sessionName = 'New Chat';
 
         if (firstUserMessage) {
-          if (firstUserMessage.content && firstUserMessage.content.trim() &&
-              firstUserMessage.content !== '[Image message]' && firstUserMessage.content !== '[Audio message]') {
+          // Use content if available, otherwise check for image or audio
+          if (firstUserMessage.content && firstUserMessage.content.trim() && firstUserMessage.content !== '[Image message]' && firstUserMessage.content !== '[Audio message]') {
             sessionName = firstUserMessage.content.slice(0, 50);
           } else if (firstUserMessage.imageData || (firstUserMessage.inputImageUrls && firstUserMessage.inputImageUrls.length > 0)) {
             sessionName = 'Image message';
@@ -84,22 +78,22 @@ export function useChat(userId?: string | null) {
           }
         }
 
-        const session: ChatSession = {
+        const newSession: ChatSession = {
           id: sessionId,
           name: sessionName,
           messages: messagesToSave,
           persona,
-          heat_level: persona === 'pro' ? currentProHeatLevel : undefined,
           createdAt: now,
           lastModified: now
         };
-
-        await chatService.saveSession(session);
-      } catch (error) {
-        console.error('Failed to save chat session:', error);
+        chatSessions.push(newSession);
       }
-    }, 500); // 500ms debounce
-  }, [currentProHeatLevel]);
+
+      localStorage.setItem('chatSessions', JSON.stringify(chatSessions));
+    } catch (error) {
+      console.error('Failed to save chat session:', error);
+    }
+  }, []);
 
   // Handle persona change
   const handlePersonaChange = useCallback((persona: keyof typeof AI_PERSONAS) => {
@@ -109,18 +103,18 @@ export function useChat(userId?: string | null) {
     }
 
     setCurrentPersona(persona);
-
+    
     // Reset heat level to 2 when switching to pro persona
     if (persona === 'pro') {
       setCurrentProHeatLevel(2);
     }
-
+    
     setError(null);
-
+    
     // Start new chat with new persona
-    const newSessionId = generateUUID();
+    const newSessionId = Date.now().toString();
     setCurrentSessionId(newSessionId);
-
+    
     const initialMessage = cleanContent(AI_PERSONAS[persona].initialMessage);
     setMessages([{
       id: Date.now(),
@@ -128,7 +122,7 @@ export function useChat(userId?: string | null) {
       isAI: true,
       hasAnimated: false
     }]);
-
+    
     // Set theme based on the new persona
     setPersonaTheme(persona);
   }, [currentSessionId, messages, currentPersona, saveChatSession, setPersonaTheme]);
@@ -141,9 +135,9 @@ export function useChat(userId?: string | null) {
     }
 
     // Start fresh chat with same persona
-    const newSessionId = generateUUID();
+    const newSessionId = Date.now().toString();
     setCurrentSessionId(newSessionId);
-
+    
     const initialMessage = cleanContent(AI_PERSONAS[currentPersona].initialMessage);
     setMessages([{
       id: Date.now(),
@@ -151,14 +145,14 @@ export function useChat(userId?: string | null) {
       isAI: true,
       hasAnimated: false
     }]);
-
+    
     setError(null);
   }, [currentSessionId, messages, currentPersona, saveChatSession]);
 
   // Handle streaming message updates
   const updateStreamingMessage = useCallback((messageId: number, content: string, append: boolean = true) => {
-    setMessages(prev => prev.map(msg =>
-      msg.id === messageId
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId 
         ? { ...msg, content: append ? msg.content + content : content }
         : msg
     ));
@@ -166,8 +160,8 @@ export function useChat(userId?: string | null) {
 
   // Complete streaming message
   const completeStreamingMessage = useCallback((messageId: number, finalContent: string, thinking?: string, audioUrl?: string) => {
-    setMessages(prev => prev.map(msg =>
-      msg.id === messageId
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId 
         ? { ...msg, content: finalContent, thinking, audioUrl, hasAnimated: false }
         : msg
     ));
@@ -178,13 +172,13 @@ export function useChat(userId?: string | null) {
   const extractEmotion = (content: string): string | null => {
     const match = content.match(/<emotion>([a-z]+)<\/emotion>/i);
     if (!match) return null;
-
+    
     const emotion = match[1].toLowerCase();
     const validEmotions = [
       'sadness', 'joy', 'love', 'excitement', 'anger',
       'motivation', 'jealousy', 'relaxation', 'anxiety', 'hope'
     ];
-
+    
     return validEmotions.includes(emotion) ? emotion : 'joy';
   };
 
@@ -216,18 +210,9 @@ export function useChat(userId?: string | null) {
   // Initialize session ID on first load
   useEffect(() => {
     if (!currentSessionId) {
-      setCurrentSessionId(generateUUID());
+      setCurrentSessionId(Date.now().toString());
     }
   }, [currentSessionId]);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleSendMessage = useCallback(async (content: string, imageData?: string | string[], audioData?: string, inputImageUrls?: string[], imageDimensions?: ImageDimensions) => {
     let messagePersona = currentPersona;
@@ -355,10 +340,10 @@ export function useChat(userId?: string | null) {
           inputImageUrls,
           imageDimensions
         );
-
+        
         const emotion = extractEmotion(aiResponse.content);
         const cleanedContent = cleanContent(aiResponse.content);
-
+        
         if (emotion) {
           setCurrentEmotion(emotion);
         }
@@ -366,14 +351,14 @@ export function useChat(userId?: string | null) {
         completeStreamingMessage(aiMessageId, cleanedContent, aiResponse.thinking, aiResponse.audioUrl);
       } catch (error) {
         console.error('Failed to generate response:', error);
-
+        
         // Check if it's a rate limit error
         if (error && typeof error === 'object' && 'type' in error && error.type === 'rateLimit') {
           setShowRateLimitModal(true);
         } else {
           setError('Failed to generate response. Please try again.');
         }
-
+        
         // Remove the placeholder message on error
         setMessages(prev => prev.filter(msg => msg.id !== aiMessageId));
         setStreamingMessageId(null);
@@ -383,7 +368,7 @@ export function useChat(userId?: string | null) {
   }, [messages, currentPersona, currentProHeatLevel]);
 
   const markMessageAsAnimated = useCallback((messageId: number) => {
-    setMessages(prev => prev.map(msg =>
+    setMessages(prev => prev.map(msg => 
       msg.id === messageId ? { ...msg, hasAnimated: true } : msg
     ));
   }, []);
@@ -403,11 +388,6 @@ export function useChat(userId?: string | null) {
     setChatMode(true);
     setCurrentSessionId(session.id);
     setPersonaTheme(session.persona);
-
-    // Set heat level if it's a pro session
-    if (session.heat_level) {
-      setCurrentProHeatLevel(session.heat_level);
-    }
   }, [currentSessionId, messages, currentPersona, saveChatSession, setPersonaTheme]);
 
   return {
