@@ -599,22 +599,18 @@ const youtubeMusicTool = {
 };
 
 // Memory tool configuration - allows AI to view and add memories
+// Memory tool - only "add" action since memories are already in the system prompt
 const memoryTool = {
   type: "function" as const,
   function: {
     name: "memory",
-    description: "Manage your memory about the user. Use 'view' to recall what you know about them, or 'add' to remember something new and important about them for future conversations.",
+    description: "Save something important about the user for future conversations. Only use this when the user shares significant personal info worth remembering long-term.",
     parameters: {
       type: "object",
       properties: {
-        action: {
-          type: "string",
-          description: "The action to perform: 'view' to see all memories, 'add' to save a new memory.",
-          enum: ["view", "add"]
-        },
         content: {
           type: "string",
-          description: "When action is 'add', this is the memory content to save. Should be a clear, concise statement about the user (e.g., 'User's favorite color is blue', 'User works as a software engineer')."
+          description: "The memory to save. Should be a clear statement about the user (e.g., 'User's favorite color is blue', 'User works as a software engineer', 'User prefers short responses')."
         },
         memory_type: {
           type: "string",
@@ -624,13 +620,13 @@ const memoryTool = {
         },
         importance: {
           type: "number",
-          description: "How important is this memory (1-10). Higher importance memories are prioritized.",
+          description: "How important is this memory (1-10). Use 7+ for key facts, 4-6 for nice-to-know info.",
           minimum: 1,
           maximum: 10,
           default: 5
         }
       },
-      required: ["action"]
+      required: ["content"]
     }
   }
 };
@@ -727,8 +723,7 @@ async function fetchWebSearchResults(params: WebSearchParams): Promise<string> {
 
 // Memory tool params and functions
 interface MemoryParams {
-  action: 'view' | 'add';
-  content?: string;
+  content: string;
   memory_type?: 'preference' | 'fact' | 'instruction' | 'general';
   importance?: number;
 }
@@ -923,8 +918,8 @@ async function searchYouTubeMusic(params: YouTubeMusicParams): Promise<YouTubeMu
   }
 }
 
-// Rate limiting configuration
-const PERSONA_LIMITS: Record<string, number> = {
+// Default rate limiting configuration (fallback when no custom limits set)
+const DEFAULT_PERSONA_LIMITS: Record<string, number> = {
   default: parseInt(process.env.VITE_DEFAULT_PERSONA_LIMIT || '50'),
   girlie: parseInt(process.env.VITE_GIRLIE_PERSONA_LIMIT || '50'),
   pro: parseInt(process.env.VITE_PRO_PERSONA_LIMIT || '30'),
@@ -934,6 +929,31 @@ const PERSONA_LIMITS: Record<string, number> = {
   claude: 1000,
   grok: 1000
 };
+
+// Get rate limit for a user - checks for custom overrides in profiles.rate_limit_overrides
+// You can set custom limits per user from Supabase Table Editor:
+// profiles.rate_limit_overrides = { "default": 100, "girlie": 100, "pro": 50 }
+async function getUserRateLimit(userId: string | null, persona: string): Promise<number> {
+  if (userId) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('rate_limit_overrides')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (profile?.rate_limit_overrides) {
+        const overrides = profile.rate_limit_overrides as Record<string, number>;
+        if (typeof overrides[persona] === 'number') {
+          return overrides[persona];
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user rate limits:', error);
+    }
+  }
+  return DEFAULT_PERSONA_LIMITS[persona] || 50;
+}
 
 // Supabase-based rate limiting functions
 async function checkRateLimit(userId: string | null, ip: string, persona: string): Promise<boolean> {
@@ -971,7 +991,8 @@ async function checkRateLimit(userId: string | null, ip: string, persona: string
       return true;
     }
 
-    const limit = PERSONA_LIMITS[persona] || 50;
+    // Get custom limit for this user (or fall back to default)
+    const limit = await getUserRateLimit(userId, persona);
     return data.message_count < limit;
   } catch (error) {
     console.error('Rate limit check exception:', error);
@@ -1731,22 +1752,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                           const errorMsg = '\n\n*Memory feature requires being logged in.*';
                           res.write(errorMsg);
                           fullContent += errorMsg;
-                        } else if (params.action === 'view') {
-                          // Fetch and display memories
-                          const memories = await fetchUserMemories(userId, persona);
-                          if (memories.length === 0) {
-                            const noMemMsg = '\n\n*No memories saved yet. I\'ll remember things about you as we chat!*';
-                            res.write(noMemMsg);
-                            fullContent += noMemMsg;
-                          } else {
-                            let memoryList = '\n\n**What I remember about you:**\n';
-                            memories.forEach((m, i) => {
-                              memoryList += `${i + 1}. ${m.content}\n`;
-                            });
-                            res.write(memoryList);
-                            fullContent += memoryList;
-                          }
-                        } else if (params.action === 'add' && params.content) {
+                        } else if (params.content) {
                           // Add new memory
                           const newMemory = await addUserMemory(
                             userId,
@@ -1923,19 +1929,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
               if (!userId) {
                 fullContent += '\n\n*Memory feature requires being logged in.*';
-              } else if (params.action === 'view') {
-                // Fetch and display memories
-                const memories = await fetchUserMemories(userId, persona);
-                if (memories.length === 0) {
-                  fullContent += '\n\n*No memories saved yet. I\'ll remember things about you as we chat!*';
-                } else {
-                  let memoryList = '\n\n**What I remember about you:**\n';
-                  memories.forEach((m, i) => {
-                    memoryList += `${i + 1}. ${m.content}\n`;
-                  });
-                  fullContent += memoryList;
-                }
-              } else if (params.action === 'add' && params.content) {
+              } else if (params.content) {
                 // Add new memory
                 const newMemory = await addUserMemory(
                   userId,

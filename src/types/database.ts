@@ -18,6 +18,7 @@ export interface Database {
           about_me: string | null;
           avatar_url: string | null;
           is_pro: boolean;
+          rate_limit_overrides: Json | null; // Custom rate limits per persona { "default": 100, "pro": 50 }
           created_at: string;
           updated_at: string;
         };
@@ -29,6 +30,7 @@ export interface Database {
           about_me?: string | null;
           avatar_url?: string | null;
           is_pro?: boolean;
+          rate_limit_overrides?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -40,6 +42,7 @@ export interface Database {
           about_me?: string | null;
           avatar_url?: string | null;
           is_pro?: boolean;
+          rate_limit_overrides?: Json | null;
           created_at?: string;
           updated_at?: string;
         };
