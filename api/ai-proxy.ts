@@ -1644,12 +1644,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const reader = streamingResponse.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
-      let toolCallsBuffer: any[] = [];
+      let toolCallsMap: Map<number, any> = new Map(); // Accumulate tool calls by index
 
       try {
         while (true) {
           const { done, value } = await reader.read();
-          
+
           if (done) break;
 
           const chunk = decoder.decode(value, { stream: true });
@@ -1658,19 +1658,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           for (const line of lines) {
             try {
               const data = JSON.parse(line);
-              
+
               if (data.type === 'content') {
                 fullContent += data.content;
                 res.write(data.content);
               } else if (data.type === 'tool_calls') {
                 console.log('Received tool calls in stream:', JSON.stringify(data.tool_calls));
-                toolCallsBuffer.push(...data.tool_calls);
+                // Accumulate tool calls by index
+                for (const delta of data.tool_calls) {
+                  const index = delta.index;
+                  if (!toolCallsMap.has(index)) {
+                    toolCallsMap.set(index, {
+                      id: delta.id || '',
+                      type: delta.type || 'function',
+                      function: {
+                        name: delta.function?.name || '',
+                        arguments: delta.function?.arguments || ''
+                      }
+                    });
+                  } else {
+                    const existing = toolCallsMap.get(index);
+                    if (delta.function?.name) {
+                      existing.function.name = delta.function.name;
+                    }
+                    if (delta.function?.arguments) {
+                      existing.function.arguments += delta.function.arguments;
+                    }
+                  }
+                }
               } else if (data.type === 'finish') {
                 // Process any accumulated tool calls
-                console.log('Processing tool calls, buffer length:', toolCallsBuffer.length);
-                if (toolCallsBuffer.length > 0) {
-                  for (const toolCall of toolCallsBuffer) {
-                    console.log('Processing tool call:', toolCall.function?.name);
+                console.log('Processing tool calls, map size:', toolCallsMap.size);
+                if (toolCallsMap.size > 0) {
+                  for (const [index, toolCall] of toolCallsMap.entries()) {
+                    console.log('Processing tool call:', toolCall.function?.name, 'args length:', toolCall.function?.arguments?.length);
+
+                    // Skip if arguments are empty or invalid
+                    if (!toolCall.function?.arguments || toolCall.function.arguments.trim() === '') {
+                      console.log('Skipping tool call with empty arguments');
+                      continue;
+                    }
+
                     if (toolCall.function?.name === 'generate_image') {
                       try {
                         const params: ImageGenerationParams = JSON.parse(toolCall.function.arguments);
@@ -1692,6 +1720,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         fullContent += `\n\n${imageMarkdown}`;
                       } catch (error) {
                         console.error('Error processing image generation:', error);
+                        console.error('Tool call arguments:', toolCall.function.arguments);
                         const errorMsg = '\n\nSorry, I had trouble generating that image. Please try again.';
                         res.write(errorMsg);
                         fullContent += errorMsg;
@@ -1713,6 +1742,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         fullContent += resultsMsg;
                       } catch (error) {
                         console.error('Error processing web search:', error);
+                        console.error('Tool call arguments:', toolCall.function.arguments);
                         const errorMsg = '\n\nSorry, I had trouble performing that web search. Please try again.';
                         res.write(errorMsg);
                         fullContent += errorMsg;
@@ -1740,6 +1770,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         }
                       } catch (error) {
                         console.error('Error processing YouTube music search:', error);
+                        console.error('Tool call arguments:', toolCall.function.arguments);
                         const errorMsg = '\n\nSorry, I had trouble searching for that music. Please try again.';
                         res.write(errorMsg);
                         fullContent += errorMsg;
