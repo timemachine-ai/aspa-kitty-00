@@ -19,7 +19,7 @@ import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './conf
 
 function AppContent() {
   const { theme } = useTheme();
-  const { user, loading: authLoading, needsOnboarding } = useAuth();
+  const { user, profile, loading: authLoading, needsOnboarding } = useAuth();
 
   const {
     messages,
@@ -42,7 +42,7 @@ function AppContent() {
     dismissRateLimitModal,
     loadChat,
     clearYoutubeMusic
-  } = useChat(user?.id);
+  } = useChat(user?.id, profile);
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
 
   const [isCenterStage, setIsCenterStage] = useState(false);

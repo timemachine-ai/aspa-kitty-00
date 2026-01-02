@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types/database';
+import { syncProfileToMemory } from '../services/memory/memoryService';
 
 interface AuthContextType {
   user: User | null;
@@ -220,6 +221,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Refresh profile after update
       await refreshProfile();
+
+      // Sync profile to AI memories (nickname, about_me)
+      if (updates.nickname || updates.about_me) {
+        syncProfileToMemory(user.id, {
+          nickname: updates.nickname,
+          about_me: updates.about_me
+        });
+      }
+
       return { error: null };
     } catch (error) {
       return { error: error as Error };

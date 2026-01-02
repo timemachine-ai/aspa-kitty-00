@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Message, ImageDimensions } from '../types/chat';
-import { generateAIResponse, generateAIResponseStreaming, YouTubeMusicData } from '../services/ai/aiProxyService';
+import { generateAIResponse, generateAIResponseStreaming, YouTubeMusicData, UserMemoryContext } from '../services/ai/aiProxyService';
 import { INITIAL_MESSAGE, AI_PERSONAS } from '../config/constants';
 import { chatService, ChatSession } from '../services/chat/chatService';
 
@@ -18,7 +18,7 @@ function generateUUID(): string {
   });
 }
 
-export function useChat(userId?: string | null) {
+export function useChat(userId?: string | null, userProfile?: { nickname?: string | null; about_me?: string | null }) {
   const [messages, setMessages] = useState<Message[]>([{ ...INITIAL_MESSAGE, hasAnimated: false }]);
   const [isChatMode, setChatMode] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -294,6 +294,12 @@ export function useChat(userId?: string | null) {
     // Filter out initial welcome message (ID: 1) - it's just for UI aesthetics
     const apiMessages = [...messages, apiUserMessage].filter(msg => msg.id !== 1);
 
+    // Prepare user memory context from profile
+    const userMemoryContext: UserMemoryContext | undefined = userProfile ? {
+      nickname: userProfile.nickname || undefined,
+      about_me: userProfile.about_me || undefined
+    } : undefined;
+
     if (useStreaming) {
       // Use streaming response - send API messages (without @mention in content and without initial message)
       generateAIResponseStreaming(
@@ -340,7 +346,9 @@ export function useChat(userId?: string | null) {
           setMessages(prev => prev.filter(msg => msg.id !== aiMessageId));
           setStreamingMessageId(null);
           setIsLoading(false);
-        }
+        },
+        userId || undefined,
+        userMemoryContext
       );
     } else {
       // Use non-streaming response (fallback) - send API messages (without @mention in content and without initial message)
@@ -353,7 +361,9 @@ export function useChat(userId?: string | null) {
           audioData,
           messagePersona === 'pro' ? currentProHeatLevel : undefined,
           inputImageUrls,
-          imageDimensions
+          imageDimensions,
+          userId || undefined,
+          userMemoryContext
         );
 
         const emotion = extractEmotion(aiResponse.content);
@@ -380,7 +390,7 @@ export function useChat(userId?: string | null) {
         setIsLoading(false);
       }
     }
-  }, [messages, currentPersona, currentProHeatLevel]);
+  }, [messages, currentPersona, currentProHeatLevel, userId, userProfile]);
 
   const markMessageAsAnimated = useCallback((messageId: number) => {
     setMessages(prev => prev.map(msg =>
