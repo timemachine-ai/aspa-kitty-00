@@ -1,20 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Tabs from '@radix-ui/react-tabs';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Upload } from 'lucide-react';
+import { X, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Upload, Cloud, CloudOff, RefreshCw } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { Message } from '../../types/chat';
 import { AI_PERSONAS } from '../../config/constants';
-
-interface ChatSession {
-  id: string;
-  name: string;
-  messages: Message[];
-  persona: keyof typeof AI_PERSONAS;
-  createdAt: string;
-  lastModified: string;
-}
+import {
+  ChatSession,
+  chatService,
+  getLocalSessions,
+  getSupabaseSessions,
+  deleteSupabaseSession,
+  deleteLocalSession,
+  renameSupabaseSession,
+  migrateLocalSessionsToSupabase,
+  saveSupabaseSession,
+} from '../../services/chat/chatService';
 
 interface ChatHistoryModalProps {
   isOpen: boolean;
@@ -24,17 +27,46 @@ interface ChatHistoryModalProps {
 
 export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryModalProps) {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [selectedPersona, setSelectedPersona] = useState<keyof typeof AI_PERSONAS>('default');
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const personaKeys = Object.keys(AI_PERSONAS) as (keyof typeof AI_PERSONAS)[];
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  const loadChatSessions = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      let sessions: ChatSession[];
+
+      if (user) {
+        // Load from Supabase for logged in users
+        sessions = await getSupabaseSessions(user.id);
+      } else {
+        // Load from localStorage for anonymous users
+        sessions = getLocalSessions();
+      }
+
+      setChatSessions(sessions.sort((a, b) =>
+        new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
+      ));
+    } catch (error) {
+      console.error('Failed to load chat sessions:', error);
+      setChatSessions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
   useEffect(() => {
-    loadChatSessions();
-  }, []);
+    if (isOpen) {
+      loadChatSessions();
+    }
+  }, [isOpen, loadChatSessions]);
 
   useEffect(() => {
     if (feedbackMessage) {
@@ -43,15 +75,23 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
     }
   }, [feedbackMessage]);
 
-  const loadChatSessions = () => {
+  // Migrate local sessions when user logs in
+  const handleMigrateToCloud = async () => {
+    if (!user) return;
+
+    setIsSyncing(true);
     try {
-      const sessions = JSON.parse(localStorage.getItem('chatSessions') || '[]');
-      setChatSessions(sessions.sort((a: ChatSession, b: ChatSession) => 
-        new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
-      ));
+      const count = await migrateLocalSessionsToSupabase(user.id);
+      if (count > 0) {
+        setFeedbackMessage({ type: 'success', text: `Migrated ${count} chat(s) to cloud!` });
+        await loadChatSessions();
+      } else {
+        setFeedbackMessage({ type: 'success', text: 'No local chats to migrate.' });
+      }
     } catch (error) {
-      console.error('Failed to load chat sessions:', error);
-      setChatSessions([]);
+      setFeedbackMessage({ type: 'error', text: 'Failed to migrate chats.' });
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -63,56 +103,71 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
     }
   };
 
-  const handleSaveRename = () => {
+  const handleSaveRename = async () => {
     if (!editingId || !editingName.trim()) return;
 
     try {
-      const updatedSessions = chatSessions.map(session =>
-        session.id === editingId
-          ? { ...session, name: editingName.trim(), lastModified: new Date().toISOString() }
-          : session
-      );
+      if (user) {
+        await renameSupabaseSession(editingId, editingName.trim());
+      } else {
+        const sessions = getLocalSessions();
+        const updated = sessions.map(s =>
+          s.id === editingId ? { ...s, name: editingName.trim(), lastModified: new Date().toISOString() } : s
+        );
+        localStorage.setItem('chatSessions', JSON.stringify(updated));
+      }
 
-      localStorage.setItem('chatSessions', JSON.stringify(updatedSessions));
-      setChatSessions(updatedSessions);
+      setChatSessions(prev =>
+        prev.map(session =>
+          session.id === editingId
+            ? { ...session, name: editingName.trim(), lastModified: new Date().toISOString() }
+            : session
+        )
+      );
       setEditingId(null);
       setEditingName('');
     } catch (error) {
       console.error('Failed to rename chat session:', error);
+      setFeedbackMessage({ type: 'error', text: 'Failed to rename chat.' });
     }
   };
 
-  const handleDelete = (sessionId: string) => {
+  const handleDelete = async (sessionId: string) => {
     if (!confirm('Are you sure you want to delete this chat session?')) return;
 
     try {
-      const updatedSessions = chatSessions.filter(session => session.id !== sessionId);
-      localStorage.setItem('chatSessions', JSON.stringify(updatedSessions));
-      setChatSessions(updatedSessions);
+      if (user) {
+        await deleteSupabaseSession(sessionId);
+      } else {
+        deleteLocalSession(sessionId);
+      }
+
+      setChatSessions(prev => prev.filter(session => session.id !== sessionId));
+      setFeedbackMessage({ type: 'success', text: 'Chat deleted.' });
     } catch (error) {
       console.error('Failed to delete chat session:', error);
+      setFeedbackMessage({ type: 'error', text: 'Failed to delete chat.' });
     }
   };
 
   const handleExportChats = () => {
     try {
-      const allSessions = JSON.parse(localStorage.getItem('chatSessions') || '[]');
       const exportData = {
         exportDate: new Date().toISOString(),
         version: '1.0',
-        sessions: allSessions
+        sessions: chatSessions
       };
-      
+
       const dataStr = JSON.stringify(exportData, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
-      
+
       const link = document.createElement('a');
       link.href = URL.createObjectURL(dataBlob);
       link.download = `timemachine_chat_history_${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       URL.revokeObjectURL(link.href);
       setFeedbackMessage({ type: 'success', text: 'Chat history exported successfully!' });
     } catch (error) {
@@ -125,24 +180,22 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
     fileInputRef.current?.click();
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const content = e.target?.result as string;
         const importData = JSON.parse(content);
-        
-        // Validate the structure
+
         if (!importData.sessions || !Array.isArray(importData.sessions)) {
           throw new Error('Invalid file format');
         }
 
-        // Validate each session
         const validSessions = importData.sessions.filter((session: any) => {
-          return session.id && session.name && session.messages && 
+          return session.id && session.name && session.messages &&
                  session.persona && session.createdAt && session.lastModified &&
                  Array.isArray(session.messages);
         });
@@ -151,42 +204,47 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
           throw new Error('No valid chat sessions found in file');
         }
 
-        // Merge with existing sessions
-        const existingSessions = JSON.parse(localStorage.getItem('chatSessions') || '[]');
-        const sessionMap = new Map();
-
-        // Add existing sessions to map
-        existingSessions.forEach((session: ChatSession) => {
-          sessionMap.set(session.id, session);
-        });
-
-        // Add/update with imported sessions (keep newer version based on lastModified)
-        validSessions.forEach((session: ChatSession) => {
-          const existing = sessionMap.get(session.id);
-          if (!existing || new Date(session.lastModified) > new Date(existing.lastModified)) {
-            sessionMap.set(session.id, session);
+        // For logged in users, save to Supabase
+        if (user) {
+          for (const session of validSessions) {
+            await saveSupabaseSession(session, user.id);
           }
-        });
+        } else {
+          // For anonymous users, merge with local storage
+          const existingSessions = getLocalSessions();
+          const sessionMap = new Map();
 
-        const mergedSessions = Array.from(sessionMap.values());
-        localStorage.setItem('chatSessions', JSON.stringify(mergedSessions));
-        loadChatSessions();
-        
-        setFeedbackMessage({ 
-          type: 'success', 
-          text: `Successfully imported ${validSessions.length} chat session(s)!` 
+          existingSessions.forEach((session) => {
+            sessionMap.set(session.id, session);
+          });
+
+          validSessions.forEach((session: ChatSession) => {
+            const existing = sessionMap.get(session.id);
+            if (!existing || new Date(session.lastModified) > new Date(existing.lastModified)) {
+              sessionMap.set(session.id, session);
+            }
+          });
+
+          const mergedSessions = Array.from(sessionMap.values());
+          localStorage.setItem('chatSessions', JSON.stringify(mergedSessions));
+        }
+
+        await loadChatSessions();
+
+        setFeedbackMessage({
+          type: 'success',
+          text: `Successfully imported ${validSessions.length} chat session(s)!`
         });
       } catch (error) {
         console.error('Failed to import chat history:', error);
-        setFeedbackMessage({ 
-          type: 'error', 
-          text: 'Failed to import chat history. Please check the file format.' 
+        setFeedbackMessage({
+          type: 'error',
+          text: 'Failed to import chat history. Please check the file format.'
         });
       }
     };
 
     reader.readAsText(file);
-    // Reset the input
     event.target.value = '';
   };
 
@@ -216,6 +274,9 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
 
   const filteredSessions = chatSessions.filter(session => session.persona === selectedPersona);
 
+  // Check if there are local sessions to migrate
+  const hasLocalSessions = user && getLocalSessions().length > 0;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -244,9 +305,26 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                     border border-white/10 shadow-[0_0_40px_rgba(139,92,246,0.1)] flex flex-col`}
                   style={{ fontFamily: '"Inter", system-ui, sans-serif' }}
                 >
-                  <Dialog.Title className={`text-2xl font-bold mb-6 text-white tracking-tight`}>
-                    Chat History
-                  </Dialog.Title>
+                  <div className="flex items-center justify-between mb-6">
+                    <Dialog.Title className={`text-2xl font-bold text-white tracking-tight`}>
+                      Chat History
+                    </Dialog.Title>
+
+                    {/* Cloud sync indicator */}
+                    <div className="flex items-center gap-2">
+                      {user ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-500/20 border border-green-500/30">
+                          <Cloud className="w-4 h-4 text-green-400" />
+                          <span className="text-xs text-green-400">Synced</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20">
+                          <CloudOff className="w-4 h-4 text-white/50" />
+                          <span className="text-xs text-white/50">Local only</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
 
                   {/* Feedback Message */}
                   <AnimatePresence>
@@ -256,8 +334,8 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         className={`mb-4 p-3 rounded-lg text-sm font-medium ${
-                          feedbackMessage.type === 'success' 
-                            ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                          feedbackMessage.type === 'success'
+                            ? 'bg-green-500/20 text-green-300 border border-green-500/30'
                             : 'bg-red-500/20 text-red-300 border border-red-500/30'
                         }`}
                       >
@@ -265,6 +343,35 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                       </motion.div>
                     )}
                   </AnimatePresence>
+
+                  {/* Migration prompt */}
+                  {hasLocalSessions && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mb-4 p-3 rounded-lg bg-purple-500/20 border border-purple-500/30"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-purple-200">
+                          You have local chats. Migrate them to the cloud?
+                        </p>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={handleMigrateToCloud}
+                          disabled={isSyncing}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-500 text-white text-sm font-medium disabled:opacity-50"
+                        >
+                          {isSyncing ? (
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Cloud className="w-4 h-4" />
+                          )}
+                          Migrate
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
 
                   {/* Export/Import Buttons */}
                   <div className="flex gap-2 mb-6">
@@ -279,7 +386,7 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                       <Download className="w-4 h-4" />
                       <span className="text-sm font-medium">Export All Chats</span>
                     </motion.button>
-                    
+
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -291,7 +398,19 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                       <Upload className="w-4 h-4" />
                       <span className="text-sm font-medium">Import Chats</span>
                     </motion.button>
-                    
+
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={loadChatSessions}
+                      disabled={isLoading}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg
+                        bg-white/10 hover:bg-white/20 text-white
+                        border border-white/20 transition-all duration-200 disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    </motion.button>
+
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -363,7 +482,11 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                       transition={{ duration: 0.2 }}
                       className="flex-1 min-h-0 overflow-y-auto space-y-3"
                     >
-                      {filteredSessions.length === 0 ? (
+                      {isLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+                        </div>
+                      ) : filteredSessions.length === 0 ? (
                         <div className={`text-center py-12 text-white opacity-70 text-lg font-light`}>
                           <div className="flex flex-col items-center gap-4">
                             <div className="text-6xl opacity-30">💭</div>
@@ -419,7 +542,7 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                                       {session.name || 'Untitled Chat'}
                                     </h3>
                                     <p className={`text-sm text-gray-300 opacity-70 font-light mt-1`}>
-                                      Last modified: {formatDate(session.lastModified)}
+                                      {session.messages?.length || 0} messages • {formatDate(session.lastModified)}
                                     </p>
                                   </>
                                 )}
