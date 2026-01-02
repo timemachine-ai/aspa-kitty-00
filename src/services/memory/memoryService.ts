@@ -335,4 +335,83 @@ export class MemoryService {
 }
 
 export const memoryService = new MemoryService();
+
+// ============================================
+// PROFILE TO MEMORY AUTO-SYNC
+// ============================================
+
+/**
+ * Sync user profile (nickname, about_me) to memories.
+ * Creates or updates profile-type memories when profile is updated.
+ */
+export async function syncProfileToMemory(
+  userId: string,
+  profile: { nickname?: string | null; about_me?: string | null }
+): Promise<void> {
+  try {
+    // Check for existing profile memory
+    const { data: existingMemories } = await supabase
+      .from('ai_memories')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('memory_type', 'fact')
+      .or('content.ilike.%User goes by%,content.ilike.%User described themselves%');
+
+    // Handle nickname
+    if (profile.nickname) {
+      const nicknameContent = `User goes by the name "${profile.nickname}"`;
+      const existingNickname = existingMemories?.find(m => m.content.includes('User goes by'));
+
+      if (existingNickname) {
+        // Update existing
+        await supabase
+          .from('ai_memories')
+          .update({ content: nicknameContent, importance: 10 })
+          .eq('id', existingNickname.id);
+      } else {
+        // Create new
+        await supabase
+          .from('ai_memories')
+          .insert({
+            user_id: userId,
+            persona: 'default',
+            memory_type: 'fact',
+            content: nicknameContent,
+            importance: 10 // Highest importance for profile info
+          });
+      }
+    }
+
+    // Handle about_me
+    if (profile.about_me) {
+      const aboutContent = `User described themselves: "${profile.about_me}"`;
+      const existingAbout = existingMemories?.find(m => m.content.includes('User described themselves'));
+
+      if (existingAbout) {
+        // Update existing
+        await supabase
+          .from('ai_memories')
+          .update({ content: aboutContent, importance: 10 })
+          .eq('id', existingAbout.id);
+      } else {
+        // Create new
+        await supabase
+          .from('ai_memories')
+          .insert({
+            user_id: userId,
+            persona: 'default',
+            memory_type: 'fact',
+            content: aboutContent,
+            importance: 10 // Highest importance for profile info
+          });
+      }
+    }
+
+    // Invalidate cache
+    memoryService.clearCache();
+  } catch (error) {
+    console.error('Error syncing profile to memory:', error);
+  }
+}
+
 export default memoryService;

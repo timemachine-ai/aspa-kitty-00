@@ -26,6 +26,12 @@ class RateLimitError extends Error {
   }
 }
 
+// User profile info for memory context
+export interface UserMemoryContext {
+  nickname?: string;
+  about_me?: string;
+}
+
 // Streaming response handler
 export async function generateAIResponseStreaming(
   messages: Message[],
@@ -38,7 +44,9 @@ export async function generateAIResponseStreaming(
   imageDimensions?: ImageDimensions,
   onChunk?: (chunk: string) => void,
   onComplete?: (response: AIResponse) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  userId?: string,
+  userMemories?: UserMemoryContext
 ): Promise<void> {
   try {
     // Call the Vercel API route with streaming enabled
@@ -58,7 +66,9 @@ export async function generateAIResponseStreaming(
         heatLevel,
         inputImageUrls,
         imageDimensions,
-        stream: true
+        stream: true,
+        userId,
+        userMemories
       })
     });
 
@@ -161,7 +171,9 @@ export async function generateAIResponse(
   audioData?: string,
   heatLevel?: number,
   inputImageUrls?: string[],
-  imageDimensions?: ImageDimensions
+  imageDimensions?: ImageDimensions,
+  userId?: string,
+  userMemories?: UserMemoryContext
 ): Promise<AIResponse> {
   try {
     // Call the Vercel API route without streaming
@@ -181,7 +193,9 @@ export async function generateAIResponse(
         heatLevel,
         inputImageUrls,
         imageDimensions,
-        stream: false
+        stream: false,
+        userId,
+        userMemories
       })
     });
 

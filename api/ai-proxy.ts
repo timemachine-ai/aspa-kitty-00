@@ -1,4 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+
+// Initialize Supabase client for server-side operations
+const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://etpehiyzlkhknzceizar.supabase.co';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // AI Personas configuration
 const AI_PERSONAS = {
@@ -592,6 +598,43 @@ const youtubeMusicTool = {
   }
 };
 
+// Memory tool configuration - allows AI to view and add memories
+const memoryTool = {
+  type: "function" as const,
+  function: {
+    name: "memory",
+    description: "Manage your memory about the user. Use 'view' to recall what you know about them, or 'add' to remember something new and important about them for future conversations.",
+    parameters: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          description: "The action to perform: 'view' to see all memories, 'add' to save a new memory.",
+          enum: ["view", "add"]
+        },
+        content: {
+          type: "string",
+          description: "When action is 'add', this is the memory content to save. Should be a clear, concise statement about the user (e.g., 'User's favorite color is blue', 'User works as a software engineer')."
+        },
+        memory_type: {
+          type: "string",
+          description: "Type of memory: 'preference' for likes/dislikes, 'fact' for personal info, 'instruction' for user requests about how to behave, 'general' for other notes.",
+          enum: ["preference", "fact", "instruction", "general"],
+          default: "general"
+        },
+        importance: {
+          type: "number",
+          description: "How important is this memory (1-10). Higher importance memories are prioritized.",
+          minimum: 1,
+          maximum: 10,
+          default: 5
+        }
+      },
+      required: ["action"]
+    }
+  }
+};
+
 // Audio-specific system prompt for voice message interactions
 const AUDIO_SYSTEM_PROMPT = `You are TimeMachine Voice Assistant, a specialized AI designed to process and respond to voice messages. Your primary goal is to understand the user's spoken intent, provide concise and helpful responses, and maintain a natural, conversational flow.
 
@@ -682,6 +725,141 @@ async function fetchWebSearchResults(params: WebSearchParams): Promise<string> {
   }
 }
 
+// Memory tool params and functions
+interface MemoryParams {
+  action: 'view' | 'add';
+  content?: string;
+  memory_type?: 'preference' | 'fact' | 'instruction' | 'general';
+  importance?: number;
+}
+
+interface AIMemory {
+  id: string;
+  user_id: string;
+  persona: string;
+  memory_type: string;
+  content: string;
+  importance: number;
+  last_accessed: string;
+  access_count: number;
+  created_at: string;
+}
+
+async function fetchUserMemories(userId: string, persona: string = 'default'): Promise<AIMemory[]> {
+  try {
+    const { data, error } = await supabase
+      .from('ai_memories')
+      .select('*')
+      .eq('user_id', userId)
+      .or(`persona.eq.${persona},persona.eq.default`)
+      .order('importance', { ascending: false })
+      .order('last_accessed', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error('Error fetching memories:', error);
+      return [];
+    }
+
+    return (data || []) as AIMemory[];
+  } catch (error) {
+    console.error('Exception fetching memories:', error);
+    return [];
+  }
+}
+
+async function addUserMemory(
+  userId: string,
+  content: string,
+  memoryType: string = 'general',
+  importance: number = 5,
+  persona: string = 'default'
+): Promise<AIMemory | null> {
+  try {
+    const { data, error } = await supabase
+      .from('ai_memories')
+      .insert({
+        user_id: userId,
+        persona,
+        memory_type: memoryType,
+        content,
+        importance: Math.min(10, Math.max(1, importance))
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding memory:', error);
+      return null;
+    }
+
+    return data as AIMemory;
+  } catch (error) {
+    console.error('Exception adding memory:', error);
+    return null;
+  }
+}
+
+function formatMemoriesForContext(memories: AIMemory[], userProfile?: { nickname?: string; about_me?: string }): string {
+  if (memories.length === 0 && !userProfile?.nickname && !userProfile?.about_me) {
+    return '';
+  }
+
+  let context = '\n\n[USER CONTEXT - Remember this about the user]\n';
+
+  // Add user profile info first (from their account settings)
+  if (userProfile?.nickname) {
+    context += `- User's name: ${userProfile.nickname}\n`;
+  }
+
+  if (userProfile?.about_me) {
+    context += `- About user: ${userProfile.about_me}\n`;
+  }
+
+  // Group memories by type
+  const grouped = memories.reduce((acc, mem) => {
+    if (!acc[mem.memory_type]) acc[mem.memory_type] = [];
+    acc[mem.memory_type].push(mem);
+    return acc;
+  }, {} as Record<string, AIMemory[]>);
+
+  // Add preferences
+  if (grouped.preference?.length) {
+    context += '\nUser preferences:\n';
+    grouped.preference.forEach(m => {
+      context += `- ${m.content}\n`;
+    });
+  }
+
+  // Add facts
+  if (grouped.fact?.length) {
+    context += '\nThings to remember about this user:\n';
+    grouped.fact.forEach(m => {
+      context += `- ${m.content}\n`;
+    });
+  }
+
+  // Add instructions
+  if (grouped.instruction?.length) {
+    context += '\nUser instructions:\n';
+    grouped.instruction.forEach(m => {
+      context += `- ${m.content}\n`;
+    });
+  }
+
+  // Add general memories
+  if (grouped.general?.length) {
+    context += '\nOther notes:\n';
+    grouped.general.forEach(m => {
+      context += `- ${m.content}\n`;
+    });
+  }
+
+  context += '[END USER CONTEXT]\n';
+
+  return context;
+}
+
 // YouTube Music search params
 interface YouTubeMusicParams {
   query: string;
@@ -746,7 +924,7 @@ async function searchYouTubeMusic(params: YouTubeMusicParams): Promise<YouTubeMu
 }
 
 // Rate limiting configuration
-const PERSONA_LIMITS = {
+const PERSONA_LIMITS: Record<string, number> = {
   default: parseInt(process.env.VITE_DEFAULT_PERSONA_LIMIT || '50'),
   girlie: parseInt(process.env.VITE_GIRLIE_PERSONA_LIMIT || '50'),
   pro: parseInt(process.env.VITE_PRO_PERSONA_LIMIT || '30'),
@@ -757,38 +935,106 @@ const PERSONA_LIMITS = {
   grok: 1000
 };
 
-// Rate limiting storage (in production, use a database)
-const rateLimitStore = new Map<string, { [persona: string]: { count: number; resetTime: number } }>();
+// Supabase-based rate limiting functions
+async function checkRateLimit(userId: string | null, ip: string, persona: string): Promise<boolean> {
+  try {
+    const now = new Date();
+    const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-function checkRateLimit(ip: string, persona: keyof typeof AI_PERSONAS): boolean {
-  const now = Date.now();
-  const dayInMs = 24 * 60 * 60 * 1000;
-  
-  if (!rateLimitStore.has(ip)) {
-    rateLimitStore.set(ip, {});
+    // Query by user_id if logged in, otherwise by ip_address
+    let query = supabase
+      .from('rate_limits')
+      .select('*')
+      .eq('persona', persona);
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      query = query.eq('ip_address', ip);
+    }
+
+    const { data, error } = await query.maybeSingle();
+
+    if (error) {
+      console.error('Rate limit check error:', error);
+      return true; // Allow on error to not block users
+    }
+
+    if (!data) {
+      return true; // No record = no usage yet
+    }
+
+    // Check if window has expired (24 hours)
+    const windowStart = new Date(data.window_start);
+    if (windowStart < dayAgo) {
+      // Window expired, will be reset on increment
+      return true;
+    }
+
+    const limit = PERSONA_LIMITS[persona] || 50;
+    return data.message_count < limit;
+  } catch (error) {
+    console.error('Rate limit check exception:', error);
+    return true; // Allow on error
   }
-  
-  const userLimits = rateLimitStore.get(ip)!;
-  
-  if (!userLimits[persona]) {
-    userLimits[persona] = { count: 0, resetTime: now + dayInMs };
-  }
-  
-  const limit = userLimits[persona];
-  
-  // Reset if 24 hours have passed
-  if (now > limit.resetTime) {
-    limit.count = 0;
-    limit.resetTime = now + dayInMs;
-  }
-  
-  return limit.count < PERSONA_LIMITS[persona];
 }
 
-function incrementRateLimit(ip: string, persona: keyof typeof AI_PERSONAS): void {
-  const userLimits = rateLimitStore.get(ip);
-  if (userLimits && userLimits[persona]) {
-    userLimits[persona].count++;
+async function incrementRateLimit(userId: string | null, ip: string, persona: string): Promise<void> {
+  try {
+    const now = new Date();
+    const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // Query existing record
+    let query = supabase
+      .from('rate_limits')
+      .select('*')
+      .eq('persona', persona);
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    } else {
+      query = query.eq('ip_address', ip);
+    }
+
+    const { data: existing } = await query.maybeSingle();
+
+    if (existing) {
+      const windowStart = new Date(existing.window_start);
+
+      if (windowStart < dayAgo) {
+        // Reset the window
+        await supabase
+          .from('rate_limits')
+          .update({
+            message_count: 1,
+            window_start: now.toISOString(),
+            updated_at: now.toISOString()
+          })
+          .eq('id', existing.id);
+      } else {
+        // Increment count
+        await supabase
+          .from('rate_limits')
+          .update({
+            message_count: existing.message_count + 1,
+            updated_at: now.toISOString()
+          })
+          .eq('id', existing.id);
+      }
+    } else {
+      // Create new record
+      await supabase
+        .from('rate_limits')
+        .insert({
+          user_id: userId,
+          ip_address: userId ? null : ip,
+          persona,
+          message_count: 1,
+          window_start: now.toISOString()
+        });
+    }
+  } catch (error) {
+    console.error('Rate limit increment error:', error);
   }
 }
 
@@ -1168,7 +1414,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { messages, persona = 'default', imageData, audioData, heatLevel = 2, stream = false, inputImageUrls, imageDimensions } = req.body;
+    const { messages, persona = 'default', imageData, audioData, heatLevel = 2, stream = false, inputImageUrls, imageDimensions, userId, userMemories } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Invalid messages format' });
@@ -1177,10 +1423,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Get client IP for rate limiting
     const clientIP = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.socket.remoteAddress || 'unknown';
     const ip = Array.isArray(clientIP) ? clientIP[0] : clientIP;
-    
-    // Check rate limit
-    if (!checkRateLimit(ip, persona)) {
-      return res.status(429).json({ 
+
+    // Check rate limit (using Supabase)
+    const withinLimit = await checkRateLimit(userId || null, ip, persona);
+    if (!withinLimit) {
+      return res.status(429).json({
         error: 'Rate limit exceeded',
         type: 'rateLimit'
       });
@@ -1201,15 +1448,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       systemPrompt = personaConfig.systemPrompt;
     }
 
-    // Enhanced system prompt with tool usage instructions
-    const enhancedSystemPrompt = `${systemPrompt}
+    // Fetch user memories and add to system prompt if user is logged in
+    let memoryContext = '';
+    if (userId) {
+      const memories = await fetchUserMemories(userId, persona);
+      // userMemories from request contains profile info (nickname, about_me)
+      const userProfile = userMemories as { nickname?: string; about_me?: string } | undefined;
+      memoryContext = formatMemoriesForContext(memories, userProfile);
+    }
+
+    // Enhanced system prompt with tool usage instructions and memory context
+    const enhancedSystemPrompt = `${systemPrompt}${memoryContext}
 
 .`;
 
     // Initialize model, system prompt, and tools with defaults
     let modelToUse = personaConfig.model;
     let systemPromptToUse = enhancedSystemPrompt;
-    let toolsToUse: any[] = [imageGenerationTool, webSearchTool, youtubeMusicTool];
+    // Include memory tool only for logged-in users
+    let toolsToUse: any[] = userId
+      ? [imageGenerationTool, webSearchTool, youtubeMusicTool, memoryTool]
+      : [imageGenerationTool, webSearchTool, youtubeMusicTool];
 
     // Handle audio transcription if audioData is provided
     let processedMessages = [...messages];
@@ -1464,6 +1723,54 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         res.write(errorMsg);
                         fullContent += errorMsg;
                       }
+                    } else if (toolCall.function?.name === 'memory') {
+                      try {
+                        const params: MemoryParams = JSON.parse(toolCall.function.arguments);
+
+                        if (!userId) {
+                          const errorMsg = '\n\n*Memory feature requires being logged in.*';
+                          res.write(errorMsg);
+                          fullContent += errorMsg;
+                        } else if (params.action === 'view') {
+                          // Fetch and display memories
+                          const memories = await fetchUserMemories(userId, persona);
+                          if (memories.length === 0) {
+                            const noMemMsg = '\n\n*No memories saved yet. I\'ll remember things about you as we chat!*';
+                            res.write(noMemMsg);
+                            fullContent += noMemMsg;
+                          } else {
+                            let memoryList = '\n\n**What I remember about you:**\n';
+                            memories.forEach((m, i) => {
+                              memoryList += `${i + 1}. ${m.content}\n`;
+                            });
+                            res.write(memoryList);
+                            fullContent += memoryList;
+                          }
+                        } else if (params.action === 'add' && params.content) {
+                          // Add new memory
+                          const newMemory = await addUserMemory(
+                            userId,
+                            params.content,
+                            params.memory_type || 'general',
+                            params.importance || 5,
+                            persona
+                          );
+                          if (newMemory) {
+                            const successMsg = `\n\n*Got it! I'll remember that.*`;
+                            res.write(successMsg);
+                            fullContent += successMsg;
+                          } else {
+                            const errorMsg = '\n\n*Oops, I had trouble saving that memory. Please try again.*';
+                            res.write(errorMsg);
+                            fullContent += errorMsg;
+                          }
+                        }
+                      } catch (error) {
+                        console.error('Error processing memory tool:', error);
+                        const errorMsg = '\n\n*Sorry, I had trouble with the memory operation.*';
+                        res.write(errorMsg);
+                        fullContent += errorMsg;
+                      }
                     }
                   }
                 }
@@ -1475,8 +1782,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
 
-        // Increment rate limit after successful response
-        incrementRateLimit(ip, persona);
+        // Increment rate limit after successful response (async, don't await)
+        incrementRateLimit(userId || null, ip, persona);
 
         // Generate audio response if needed
         if (isAudioInput && fullContent) {
@@ -1610,12 +1917,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               console.error('Error processing web search:', error);
               fullContent += '\n\nSorry, I had trouble performing that web search. Please try again.';
             }
+          } else if (toolCall.function?.name === 'memory') {
+            try {
+              const params: MemoryParams = JSON.parse(toolCall.function.arguments);
+
+              if (!userId) {
+                fullContent += '\n\n*Memory feature requires being logged in.*';
+              } else if (params.action === 'view') {
+                // Fetch and display memories
+                const memories = await fetchUserMemories(userId, persona);
+                if (memories.length === 0) {
+                  fullContent += '\n\n*No memories saved yet. I\'ll remember things about you as we chat!*';
+                } else {
+                  let memoryList = '\n\n**What I remember about you:**\n';
+                  memories.forEach((m, i) => {
+                    memoryList += `${i + 1}. ${m.content}\n`;
+                  });
+                  fullContent += memoryList;
+                }
+              } else if (params.action === 'add' && params.content) {
+                // Add new memory
+                const newMemory = await addUserMemory(
+                  userId,
+                  params.content,
+                  params.memory_type || 'general',
+                  params.importance || 5,
+                  persona
+                );
+                if (newMemory) {
+                  fullContent += `\n\n*Got it! I'll remember that.*`;
+                } else {
+                  fullContent += '\n\n*Oops, I had trouble saving that memory. Please try again.*';
+                }
+              }
+            } catch (error) {
+              console.error('Error processing memory tool:', error);
+              fullContent += '\n\n*Sorry, I had trouble with the memory operation.*';
+            }
           }
         }
       }
 
-      // Increment rate limit after successful response
-      incrementRateLimit(ip, persona);
+      // Increment rate limit after successful response (async, don't await)
+      incrementRateLimit(userId || null, ip, persona);
 
       // Extract reasoning content for all personas
       const result = extractReasoningAndContent(fullContent);
