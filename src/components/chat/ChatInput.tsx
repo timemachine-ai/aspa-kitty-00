@@ -98,13 +98,16 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
-      const resize = () => {
-        textarea.style.height = 'auto';
-        const newHeight = Math.min(textarea.scrollHeight, 240);
-        textarea.style.height = `${newHeight}px`;
-      };
-      const debounceResize = setTimeout(resize, 100);
-      return () => clearTimeout(debounceResize);
+      // Store scroll position before resize
+      const scrollTop = textarea.scrollTop;
+
+      // Reset height to measure content
+      textarea.style.height = 'auto';
+      const newHeight = Math.min(textarea.scrollHeight, 240);
+      textarea.style.height = `${newHeight}px`;
+
+      // Restore scroll position
+      textarea.scrollTop = scrollTop;
     }
   }, [message]);
 
@@ -346,11 +349,11 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                   outline-none ${personaStyles.focusGlow[currentPersona]}
                   disabled:opacity-50
                   transition-shadow duration-300
-                  text-base sm:text-base resize-none
-                  [overflow-y:hidden] [&::-webkit-scrollbar]:hidden [&::-moz-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}
+                  text-base resize-none
+                  overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}
                 style={{
                   textShadow: '0 0 10px rgba(255,255,255,0.1)',
-                  fontSize: '16px',
+                  fontSize: '1rem',
                   minHeight: '56px',
                   maxHeight: '240px'
                 }}
