@@ -598,33 +598,16 @@ const youtubeMusicTool = {
   }
 };
 
-// Memory tool configuration - allows AI to view and add memories
-// Memory tool - only "add" action since memories are already in the system prompt
+// Memory tool - saves info about the user for future chats
 const memoryTool = {
   type: "function" as const,
   function: {
     name: "memory",
-    description: "Save something important about the user for future conversations. Only use this when the user shares significant personal info worth remembering long-term.",
+    description: "Remember something about the user.",
     parameters: {
       type: "object",
       properties: {
-        content: {
-          type: "string",
-          description: "The memory to save. Should be a clear statement about the user (e.g., 'User's favorite color is blue', 'User works as a software engineer', 'User prefers short responses')."
-        },
-        memory_type: {
-          type: "string",
-          description: "Type of memory: 'preference' for likes/dislikes, 'fact' for personal info, 'instruction' for user requests about how to behave, 'general' for other notes.",
-          enum: ["preference", "fact", "instruction", "general"],
-          default: "general"
-        },
-        importance: {
-          type: "number",
-          description: "How important is this memory (1-10). Use 7+ for key facts, 4-6 for nice-to-know info.",
-          minimum: 1,
-          maximum: 10,
-          default: 5
-        }
+        content: { type: "string" }
       },
       required: ["content"]
     }
@@ -721,11 +704,9 @@ async function fetchWebSearchResults(params: WebSearchParams): Promise<string> {
   }
 }
 
-// Memory tool params and functions
+// Memory tool params
 interface MemoryParams {
   content: string;
-  memory_type?: 'preference' | 'fact' | 'instruction' | 'general';
-  importance?: number;
 }
 
 interface AIMemory {
@@ -1753,29 +1734,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                           res.write(errorMsg);
                           fullContent += errorMsg;
                         } else if (params.content) {
-                          // Add new memory
-                          const newMemory = await addUserMemory(
-                            userId,
-                            params.content,
-                            params.memory_type || 'general',
-                            params.importance || 5,
-                            persona
-                          );
+                          const newMemory = await addUserMemory(userId, params.content, 'general', 5, persona);
                           if (newMemory) {
-                            const successMsg = `\n\n*Got it! I'll remember that.*`;
-                            res.write(successMsg);
-                            fullContent += successMsg;
-                          } else {
-                            const errorMsg = '\n\n*Oops, I had trouble saving that memory. Please try again.*';
-                            res.write(errorMsg);
-                            fullContent += errorMsg;
+                            res.write('\n\n*Remembered.*');
+                            fullContent += '\n\n*Remembered.*';
                           }
                         }
                       } catch (error) {
-                        console.error('Error processing memory tool:', error);
-                        const errorMsg = '\n\n*Sorry, I had trouble with the memory operation.*';
-                        res.write(errorMsg);
-                        fullContent += errorMsg;
+                        console.error('Memory error:', error);
                       }
                     }
                   }
@@ -1926,27 +1892,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           } else if (toolCall.function?.name === 'memory') {
             try {
               const params: MemoryParams = JSON.parse(toolCall.function.arguments);
-
               if (!userId) {
                 fullContent += '\n\n*Memory feature requires being logged in.*';
               } else if (params.content) {
-                // Add new memory
-                const newMemory = await addUserMemory(
-                  userId,
-                  params.content,
-                  params.memory_type || 'general',
-                  params.importance || 5,
-                  persona
-                );
+                const newMemory = await addUserMemory(userId, params.content, 'general', 5, persona);
                 if (newMemory) {
-                  fullContent += `\n\n*Got it! I'll remember that.*`;
-                } else {
-                  fullContent += '\n\n*Oops, I had trouble saving that memory. Please try again.*';
+                  fullContent += '\n\n*Remembered.*';
                 }
               }
             } catch (error) {
-              console.error('Error processing memory tool:', error);
-              fullContent += '\n\n*Sorry, I had trouble with the memory operation.*';
+              console.error('Memory error:', error);
             }
           }
         }
