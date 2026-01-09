@@ -133,11 +133,15 @@ function AppContent() {
   ) => {
     // Check rate limit for anonymous users
     if (isAnonymous && isRateLimited(currentPersona)) {
-      setAuthModalMessage(
-        currentPersona === 'pro'
-          ? "You've used your free PRO message! Sign up to continue chatting."
-          : "You've used your free messages! Sign up to continue chatting."
-      );
+      let authMessage: string;
+      if (currentPersona === 'pro') {
+        authMessage = "PRO mode requires a TimeMachine ID. Create one to access advanced features!";
+      } else if (currentPersona === 'girlie') {
+        authMessage = "Girlie mode requires a TimeMachine ID. Create one to unlock this persona!";
+      } else {
+        authMessage = "You've used your 3 free messages! Create a TimeMachine ID to continue chatting.";
+      }
+      setAuthModalMessage(authMessage);
       setShowAuthModal(true);
       return;
     }
@@ -218,7 +222,36 @@ function AppContent() {
                 </div>
               )}
 
-              {currentPersona === 'pro' ? (
+              {/* Sign Up button for logged out users */}
+              {isAnonymous ? (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleOpenAuth}
+                  style={{
+                    background: buttonStyles.bg,
+                    color: buttonStyles.text,
+                    border: buttonStyles.border,
+                    boxShadow: buttonStyles.shadow,
+                    borderRadius: '9999px',
+                    backdropFilter: 'blur(10px)',
+                    outline: 'none',
+                    borderWidth: '0px',
+                    padding: '8px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.3s ease',
+                  }}
+                  aria-label="Sign Up"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3.00006 7.63576C4.6208 4.29965 8.04185 2 12 2C17.5229 2 22 6.47715 22 12C22 17.5228 17.5229 22 12 22C8.04185 22 4.6208 19.7004 3.00006 16.3642" />
+                    <path d="M11 8C11 8 15 10.946 15 12C15 13.0541 11 16 11 16M14.5 12H2" />
+                  </svg>
+                  <span style={{ fontSize: '14px', color: buttonStyles.text }}>Sign Up</span>
+                </motion.button>
+              ) : currentPersona === 'pro' ? (
                 <div className="relative">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
