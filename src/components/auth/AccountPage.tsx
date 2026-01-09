@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  User,
   Mail,
   Camera,
   ArrowLeft,
@@ -14,13 +13,14 @@ import {
   Check,
   X,
   ChevronRight,
-  Calendar,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, uploadImage } from '../../lib/supabase';
 import { ChatHistoryModal } from '../chat/ChatHistoryModal';
 import { MemoriesModal } from './MemoriesModal';
+import { ImagesModal } from './ImagesModal';
 
 interface AccountPageProps {
   onBack: () => void;
@@ -38,11 +38,11 @@ const TimeMachineLogo = () => (
 );
 
 export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
-  const { user, profile, updateProfile, signOut, refreshProfile } = useAuth();
+  const { user, profile, updateProfile, signOut } = useAuth();
   const [nickname, setNickname] = useState(profile?.nickname || '');
   const [aboutMe, setAboutMe] = useState(profile?.about_me || '');
-  const [gender, setGender] = useState(profile?.gender || '');
-  const [birthDate, setBirthDate] = useState(profile?.birth_date || '');
+  const [gender, setGender] = useState((profile as any)?.gender || '');
+  const [birthDate, setBirthDate] = useState((profile as any)?.birth_date || '');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -50,6 +50,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [showMemories, setShowMemories] = useState(false);
+  const [showImages, setShowImages] = useState(false);
   const [stats, setStats] = useState<{
     chatCount: number;
     messageCount: number;
@@ -100,7 +101,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
     const { error: updateError } = await updateProfile(updates);
 
     if (updateError) {
-      setError(updateError.message);
+      // Check if it's a column not found error
+      if (updateError.message?.includes('column') || updateError.message?.includes('schema')) {
+        setError('This feature requires a database update. Please contact support.');
+      } else {
+        setError(updateError.message);
+      }
     } else {
       setSuccess('Saved');
       setEditingField(null);
@@ -139,7 +145,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
   };
 
   const handleLoadChat = () => {
-    // This is just a stub - the real load happens in App.tsx
     setShowChatHistory(false);
   };
 
@@ -183,7 +188,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
+    <div className="h-screen bg-[#0a0a0f] overflow-hidden flex flex-col">
       {/* Ambient background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-500/20 rounded-full blur-[120px] animate-pulse" />
@@ -191,322 +196,326 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-500/10 rounded-full blur-[150px]" />
       </div>
 
-      <div className="relative z-10 max-w-lg mx-auto px-4 py-6 pb-24">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-8"
-        >
-          <motion.button
-            whileHover={{ scale: 1.05, x: -2 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onBack}
-            className="flex items-center gap-2 text-white/60 hover:text-white transition-colors"
+      {/* Scrollable content */}
+      <div className="relative z-10 flex-1 overflow-y-auto">
+        <div className="max-w-lg mx-auto px-4 py-6 pb-24">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between mb-8"
           >
-            <ArrowLeft size={20} />
-            <span className="text-sm font-medium">Back</span>
-          </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05, x: -2 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onBack}
+              className="flex items-center gap-2 text-white/60 hover:text-white transition-colors"
+            >
+              <ArrowLeft size={20} />
+              <span className="text-sm font-medium">Back</span>
+            </motion.button>
 
-          {profile?.is_pro && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
-              <Crown size={14} className="text-amber-400" />
-              <span className="text-amber-400 text-xs font-semibold">PRO</span>
-            </div>
-          )}
-        </motion.div>
+            {profile?.is_pro && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
+                <Crown size={14} className="text-amber-400" />
+                <span className="text-amber-400 text-xs font-semibold">PRO</span>
+              </div>
+            )}
+          </motion.div>
 
-        {/* Profile Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="relative overflow-hidden rounded-3xl mb-6"
-        >
-          {/* Glass background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-2xl" />
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/5" />
-          <div className="absolute inset-[1px] rounded-3xl border border-white/[0.08]" />
+          {/* Profile Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="relative overflow-hidden rounded-3xl mb-6"
+          >
+            {/* Glass background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-2xl" />
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/5" />
+            <div className="absolute inset-[1px] rounded-3xl border border-white/[0.08]" />
 
-          <div className="relative p-6">
-            {/* Avatar Section */}
-            <div className="flex flex-col items-center mb-8">
-              <div className="relative">
-                {/* Purple glass avatar container */}
-                <div className="w-28 h-28 rounded-full p-[2px] bg-gradient-to-br from-purple-500 to-pink-500">
-                  <div className="w-full h-full rounded-full bg-gradient-to-br from-purple-900/80 to-purple-950/80 backdrop-blur-xl flex items-center justify-center overflow-hidden border-2 border-purple-500/20">
-                    {profile?.avatar_url ? (
-                      <img
-                        src={profile.avatar_url}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
+            <div className="relative p-6">
+              {/* Avatar Section */}
+              <div className="flex flex-col items-center mb-8">
+                <div className="relative">
+                  {/* Purple glass avatar container */}
+                  <div className="w-28 h-28 rounded-full p-[2px] bg-gradient-to-br from-purple-500 to-pink-500">
+                    <div className="w-full h-full rounded-full bg-gradient-to-br from-purple-900/80 to-purple-950/80 backdrop-blur-xl flex items-center justify-center overflow-hidden border-2 border-purple-500/20">
+                      {profile?.avatar_url ? (
+                        <img
+                          src={profile.avatar_url}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <TimeMachineLogo />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Camera button */}
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingAvatar}
+                    className="absolute -bottom-1 -right-1 p-2.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30"
+                  >
+                    {uploadingAvatar ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
-                      <TimeMachineLogo />
+                      <Camera size={16} />
+                    )}
+                  </motion.button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
+                </div>
+
+                <div className="mt-5 text-center">
+                  <h2 className="text-xl font-bold text-white">
+                    {profile?.nickname || 'TimeMachine User'}
+                  </h2>
+                  <p className="text-white/40 text-sm mt-1">{user?.email}</p>
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              {stats && (
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <StatCard
+                    icon={<MessageSquare size={18} className="text-purple-300" />}
+                    label="Chats"
+                    value={stats.chatCount}
+                    gradient="from-purple-500/20 to-violet-500/20"
+                    onClick={() => setShowChatHistory(true)}
+                  />
+                  <StatCard
+                    icon={<Sparkles size={18} className="text-pink-300" />}
+                    label="Messages"
+                    value={stats.messageCount}
+                    gradient="from-pink-500/20 to-rose-500/20"
+                  />
+                  <StatCard
+                    icon={<ImageIcon size={18} className="text-cyan-300" />}
+                    label="Images"
+                    value={stats.imageCount}
+                    gradient="from-cyan-500/20 to-blue-500/20"
+                    onClick={() => setShowImages(true)}
+                  />
+                  <StatCard
+                    icon={<Brain size={18} className="text-amber-300" />}
+                    label="Memories"
+                    value={stats.memoryCount}
+                    gradient="from-amber-500/20 to-orange-500/20"
+                    onClick={() => setShowMemories(true)}
+                  />
+                </div>
+              )}
+
+              {/* Editable Fields */}
+              <div className="space-y-4">
+                {/* Nickname */}
+                <EditableField
+                  label="Nickname"
+                  value={nickname}
+                  onChange={setNickname}
+                  isEditing={editingField === 'nickname'}
+                  onEdit={() => setEditingField('nickname')}
+                  onSave={() => handleSaveField('nickname')}
+                  onCancel={() => {
+                    setNickname(profile?.nickname || '');
+                    setEditingField(null);
+                  }}
+                  placeholder="Enter your nickname"
+                />
+
+                {/* Bio */}
+                <EditableField
+                  label="Your Bio"
+                  value={aboutMe}
+                  onChange={setAboutMe}
+                  isEditing={editingField === 'aboutMe'}
+                  onEdit={() => setEditingField('aboutMe')}
+                  onSave={() => handleSaveField('aboutMe')}
+                  onCancel={() => {
+                    setAboutMe(profile?.about_me || '');
+                    setEditingField(null);
+                  }}
+                  placeholder="Tell TimeMachine about yourself..."
+                  multiline
+                />
+
+                {/* Gender */}
+                <div className="relative">
+                  <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
+                    Gender
+                  </label>
+                  <div className="relative">
+                    {editingField === 'gender' ? (
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={gender}
+                          onChange={(e) => setGender(e.target.value)}
+                          className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-purple-500/50 text-white focus:outline-none appearance-none cursor-pointer"
+                        >
+                          <option value="" className="bg-gray-900">Prefer not to say</option>
+                          <option value="male" className="bg-gray-900">Male</option>
+                          <option value="female" className="bg-gray-900">Female</option>
+                          <option value="non-binary" className="bg-gray-900">Non-binary</option>
+                          <option value="other" className="bg-gray-900">Other</option>
+                        </select>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleSaveField('gender')}
+                          className="p-2.5 rounded-xl bg-green-500/20 hover:bg-green-500/30 text-green-400 transition-all"
+                        >
+                          <Check size={16} />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            setGender((profile as any)?.gender || '');
+                            setEditingField(null);
+                          }}
+                          className="p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all"
+                        >
+                          <X size={16} />
+                        </motion.button>
+                      </div>
+                    ) : (
+                      <motion.button
+                        whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                        onClick={() => setEditingField('gender')}
+                        className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left flex items-center justify-between group transition-all"
+                      >
+                        <span className={gender ? 'text-white' : 'text-white/30'}>
+                          {gender ? gender.charAt(0).toUpperCase() + gender.slice(1) : 'Not set'}
+                        </span>
+                        <Edit3 size={16} className="text-white/30 group-hover:text-white/60 transition-colors" />
+                      </motion.button>
                     )}
                   </div>
                 </div>
 
-                {/* Camera button */}
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingAvatar}
-                  className="absolute -bottom-1 -right-1 p-2.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30"
-                >
-                  {uploadingAvatar ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Camera size={16} />
-                  )}
-                </motion.button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarUpload}
-                  className="hidden"
-                />
-              </div>
-
-              <div className="mt-5 text-center">
-                <h2 className="text-xl font-bold text-white">
-                  {profile?.nickname || 'TimeMachine User'}
-                </h2>
-                <p className="text-white/40 text-sm mt-1">{user?.email}</p>
-              </div>
-            </div>
-
-            {/* Stats Grid */}
-            {stats && (
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <StatCard
-                  icon={<MessageSquare size={18} className="text-purple-300" />}
-                  label="Chats"
-                  value={stats.chatCount}
-                  gradient="from-purple-500/20 to-violet-500/20"
-                  onClick={() => setShowChatHistory(true)}
-                />
-                <StatCard
-                  icon={<Sparkles size={18} className="text-pink-300" />}
-                  label="Messages"
-                  value={stats.messageCount}
-                  gradient="from-pink-500/20 to-rose-500/20"
-                />
-                <StatCard
-                  icon={<ImageIcon size={18} className="text-cyan-300" />}
-                  label="Images"
-                  value={stats.imageCount}
-                  gradient="from-cyan-500/20 to-blue-500/20"
-                />
-                <StatCard
-                  icon={<Brain size={18} className="text-amber-300" />}
-                  label="Memories"
-                  value={stats.memoryCount}
-                  gradient="from-amber-500/20 to-orange-500/20"
-                  onClick={() => setShowMemories(true)}
-                />
-              </div>
-            )}
-
-            {/* Editable Fields */}
-            <div className="space-y-4">
-              {/* Nickname */}
-              <EditableField
-                label="Nickname"
-                value={nickname}
-                onChange={setNickname}
-                isEditing={editingField === 'nickname'}
-                onEdit={() => setEditingField('nickname')}
-                onSave={() => handleSaveField('nickname')}
-                onCancel={() => {
-                  setNickname(profile?.nickname || '');
-                  setEditingField(null);
-                }}
-                placeholder="Enter your nickname"
-              />
-
-              {/* Bio (was "Things TimeMachine knows about you") */}
-              <EditableField
-                label="Your Bio"
-                value={aboutMe}
-                onChange={setAboutMe}
-                isEditing={editingField === 'aboutMe'}
-                onEdit={() => setEditingField('aboutMe')}
-                onSave={() => handleSaveField('aboutMe')}
-                onCancel={() => {
-                  setAboutMe(profile?.about_me || '');
-                  setEditingField(null);
-                }}
-                placeholder="Tell TimeMachine about yourself..."
-                multiline
-              />
-
-              {/* Gender */}
-              <div className="relative">
-                <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
-                  Gender
-                </label>
+                {/* Birth Date */}
                 <div className="relative">
-                  {editingField === 'gender' ? (
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={gender}
-                        onChange={(e) => setGender(e.target.value)}
-                        className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-purple-500/50 text-white focus:outline-none appearance-none cursor-pointer"
-                      >
-                        <option value="" className="bg-gray-900">Prefer not to say</option>
-                        <option value="male" className="bg-gray-900">Male</option>
-                        <option value="female" className="bg-gray-900">Female</option>
-                        <option value="non-binary" className="bg-gray-900">Non-binary</option>
-                        <option value="other" className="bg-gray-900">Other</option>
-                      </select>
+                  <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
+                    Birth Date
+                  </label>
+                  <div className="relative">
+                    {editingField === 'birthDate' ? (
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                          <input
+                            type="date"
+                            value={birthDate}
+                            onChange={(e) => setBirthDate(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-purple-500/50 text-white focus:outline-none [color-scheme:dark]"
+                          />
+                        </div>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleSaveField('birthDate')}
+                          className="p-2.5 rounded-xl bg-green-500/20 hover:bg-green-500/30 text-green-400 transition-all"
+                        >
+                          <Check size={16} />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            setBirthDate((profile as any)?.birth_date || '');
+                            setEditingField(null);
+                          }}
+                          className="p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all"
+                        >
+                          <X size={16} />
+                        </motion.button>
+                      </div>
+                    ) : (
                       <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleSaveField('gender')}
-                        className="p-2.5 rounded-xl bg-green-500/20 hover:bg-green-500/30 text-green-400 transition-all"
+                        whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                        onClick={() => setEditingField('birthDate')}
+                        className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left flex items-center justify-between group transition-all"
                       >
-                        <Check size={16} />
+                        <div className="flex items-center gap-3">
+                          <Calendar size={16} className="text-white/40" />
+                          <span className={birthDate ? 'text-white' : 'text-white/30'}>
+                            {birthDate ? new Date(birthDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not set'}
+                          </span>
+                        </div>
+                        <Edit3 size={16} className="text-white/30 group-hover:text-white/60 transition-colors" />
                       </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => {
-                          setGender(profile?.gender || '');
-                          setEditingField(null);
-                        }}
-                        className="p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all"
-                      >
-                        <X size={16} />
-                      </motion.button>
-                    </div>
-                  ) : (
-                    <motion.button
-                      whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
-                      onClick={() => setEditingField('gender')}
-                      className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left flex items-center justify-between group transition-all"
-                    >
-                      <span className={gender ? 'text-white' : 'text-white/30'}>
-                        {gender ? gender.charAt(0).toUpperCase() + gender.slice(1) : 'Not set'}
-                      </span>
-                      <Edit3 size={16} className="text-white/30 group-hover:text-white/60 transition-colors" />
-                    </motion.button>
-                  )}
+                    )}
+                  </div>
+                </div>
+
+                {/* Email (read-only) */}
+                <div>
+                  <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
+                    Email
+                  </label>
+                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                    <Mail size={16} className="text-white/40" />
+                    <span className="text-white/60">{user?.email || 'No email'}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Birth Date */}
-              <div className="relative">
-                <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
-                  Birth Date
-                </label>
-                <div className="relative">
-                  {editingField === 'birthDate' ? (
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                        <input
-                          type="date"
-                          value={birthDate}
-                          onChange={(e) => setBirthDate(e.target.value)}
-                          className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-purple-500/50 text-white focus:outline-none [color-scheme:dark]"
-                        />
-                      </div>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleSaveField('birthDate')}
-                        className="p-2.5 rounded-xl bg-green-500/20 hover:bg-green-500/30 text-green-400 transition-all"
-                      >
-                        <Check size={16} />
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => {
-                          setBirthDate(profile?.birth_date || '');
-                          setEditingField(null);
-                        }}
-                        className="p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all"
-                      >
-                        <X size={16} />
-                      </motion.button>
-                    </div>
-                  ) : (
-                    <motion.button
-                      whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
-                      onClick={() => setEditingField('birthDate')}
-                      className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left flex items-center justify-between group transition-all"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Calendar size={16} className="text-white/40" />
-                        <span className={birthDate ? 'text-white' : 'text-white/30'}>
-                          {birthDate ? new Date(birthDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not set'}
-                        </span>
-                      </div>
-                      <Edit3 size={16} className="text-white/30 group-hover:text-white/60 transition-colors" />
-                    </motion.button>
-                  )}
-                </div>
-              </div>
-
-              {/* Email (read-only) */}
-              <div>
-                <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
-                  Email
-                </label>
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                  <Mail size={16} className="text-white/40" />
-                  <span className="text-white/60">{user?.email || 'No email'}</span>
-                </div>
-              </div>
+              {/* Messages */}
+              <AnimatePresence>
+                {(error || success) && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className={`mt-4 p-3 rounded-xl text-sm font-medium ${
+                      error
+                        ? 'bg-red-500/20 border border-red-500/30 text-red-200'
+                        : 'bg-green-500/20 border border-green-500/30 text-green-200'
+                    }`}
+                  >
+                    {error || success}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
+          </motion.div>
 
-            {/* Messages */}
-            <AnimatePresence>
-              {(error || success) && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className={`mt-4 p-3 rounded-xl text-sm font-medium ${
-                    error
-                      ? 'bg-red-500/20 border border-red-500/30 text-red-200'
-                      : 'bg-green-500/20 border border-green-500/30 text-green-200'
-                  }`}
-                >
-                  {error || success}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
+          {/* Sign Out Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+            onClick={handleSignOut}
+            className="w-full py-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-red-400 font-medium flex items-center justify-center gap-2 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+          >
+            <LogOut size={18} />
+            Sign Out
+          </motion.button>
 
-        {/* Sign Out Button */}
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.99 }}
-          onClick={handleSignOut}
-          className="w-full py-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-red-400 font-medium flex items-center justify-center gap-2 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
-        >
-          <LogOut size={18} />
-          Sign Out
-        </motion.button>
-
-        {/* Account Info */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="text-center text-white/20 text-xs mt-6"
-        >
-          Member since {new Date(profile?.created_at || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-        </motion.p>
+          {/* Account Info */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-center text-white/20 text-xs mt-6"
+          >
+            Member since {new Date(profile?.created_at || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </motion.p>
+        </div>
       </div>
 
       {/* Modals */}
@@ -519,6 +528,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
       <MemoriesModal
         isOpen={showMemories}
         onClose={() => setShowMemories(false)}
+      />
+
+      <ImagesModal
+        isOpen={showImages}
+        onClose={() => setShowImages(false)}
       />
     </div>
   );

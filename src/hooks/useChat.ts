@@ -3,6 +3,7 @@ import { Message, ImageDimensions } from '../types/chat';
 import { generateAIResponse, generateAIResponseStreaming, YouTubeMusicData, UserMemoryContext } from '../services/ai/aiProxyService';
 import { INITIAL_MESSAGE, AI_PERSONAS } from '../config/constants';
 import { chatService, ChatSession } from '../services/chat/chatService';
+import { processGeneratedImages } from '../services/image/imageService';
 
 // Generate a proper UUID for session IDs
 function generateUUID(): string {
@@ -165,15 +166,26 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
   }, []);
 
   // Complete streaming message
-  const completeStreamingMessage = useCallback((messageId: number, finalContent: string, thinking?: string, audioUrl?: string) => {
+  const completeStreamingMessage = useCallback(async (messageId: number, finalContent: string, thinking?: string, audioUrl?: string) => {
+    let processedContent = finalContent;
+
+    // If user is logged in and content has generated images, upload them to Supabase
+    if (userId && finalContent.includes('![Generated Image](/api/image?')) {
+      try {
+        processedContent = await processGeneratedImages(finalContent, userId);
+      } catch (error) {
+        console.error('Failed to process generated images:', error);
+      }
+    }
+
     setMessages(prev => prev.map(msg =>
       msg.id === messageId
-        ? { ...msg, content: finalContent, thinking, audioUrl, hasAnimated: false }
+        ? { ...msg, content: processedContent, thinking, audioUrl, hasAnimated: false }
         : msg
     ));
     setStreamingMessageId(null);
     setIsLoading(false);
-  }, []);
+  }, [userId]);
 
   const extractEmotion = (content: string): string | null => {
     const match = content.match(/<emotion>([a-z]+)<\/emotion>/i);
