@@ -1,11 +1,19 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-// Rate limits for anonymous users
+// Rate limits for anonymous users - by model/persona
+// Only ChatGPT (default) gets 3 trial messages
+// All other models and personas require sign up
 const ANONYMOUS_RATE_LIMITS = {
-  default: 3,  // 3 messages for default persona (resets daily)
-  girlie: 0,   // No trial messages for girlie persona - requires sign up
-  pro: 0,      // No trial messages for pro persona - requires sign up
+  // Default persona models
+  default: 3,   // ChatGPT - 3 trial messages
+  chatgpt: 3,   // Explicit @chatgpt mention - 3 trial messages
+  gemini: 0,    // @gemini - requires sign up
+  claude: 0,    // @claude - requires sign up
+  grok: 0,      // @grok - requires sign up
+  // Other personas
+  girlie: 0,    // Girlie persona - requires sign up
+  pro: 0,       // Pro persona - requires sign up
 } as const;
 
 // Storage key for anonymous rate limits

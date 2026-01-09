@@ -3,37 +3,53 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
   Mail,
-  Phone,
   Camera,
-  Save,
   ArrowLeft,
   LogOut,
-  Sparkles,
   Crown,
   MessageSquare,
   Image as ImageIcon,
   Brain,
-  Trash2,
   Edit3,
   Check,
   X,
+  ChevronRight,
+  Calendar,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, uploadImage } from '../../lib/supabase';
+import { ChatHistoryModal } from '../chat/ChatHistoryModal';
+import { MemoriesModal } from './MemoriesModal';
 
 interface AccountPageProps {
   onBack: () => void;
 }
 
+// TimeMachine Logo for default avatar
+const TimeMachineLogo = () => (
+  <svg viewBox="0 0 100 100" className="w-12 h-12 text-purple-400">
+    <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.3" />
+    <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.5" />
+    <circle cx="50" cy="50" r="25" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.7" />
+    <path d="M50 20 L50 50 L70 60" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="50" cy="50" r="4" fill="currentColor" />
+  </svg>
+);
+
 export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
   const { user, profile, updateProfile, signOut, refreshProfile } = useAuth();
   const [nickname, setNickname] = useState(profile?.nickname || '');
   const [aboutMe, setAboutMe] = useState(profile?.about_me || '');
+  const [gender, setGender] = useState(profile?.gender || '');
+  const [birthDate, setBirthDate] = useState(profile?.birth_date || '');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [editingField, setEditingField] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showChatHistory, setShowChatHistory] = useState(false);
+  const [showMemories, setShowMemories] = useState(false);
   const [stats, setStats] = useState<{
     chatCount: number;
     messageCount: number;
@@ -70,22 +86,25 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
     fetchStats();
   }, [user]);
 
-  const handleSaveProfile = async () => {
+  const handleSaveField = async (field: string) => {
     setLoading(true);
     setError('');
     setSuccess('');
 
-    const { error: updateError } = await updateProfile({
-      nickname: nickname.trim() || null,
-      about_me: aboutMe.trim() || null,
-    });
+    const updates: Record<string, string | null> = {};
+    if (field === 'nickname') updates.nickname = nickname.trim() || null;
+    if (field === 'aboutMe') updates.about_me = aboutMe.trim() || null;
+    if (field === 'gender') updates.gender = gender || null;
+    if (field === 'birthDate') updates.birth_date = birthDate || null;
+
+    const { error: updateError } = await updateProfile(updates);
 
     if (updateError) {
       setError(updateError.message);
     } else {
-      setSuccess('Profile updated successfully!');
+      setSuccess('Saved');
       setEditingField(null);
-      setTimeout(() => setSuccess(''), 3000);
+      setTimeout(() => setSuccess(''), 2000);
     }
 
     setLoading(false);
@@ -102,8 +121,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
       const result = await uploadImage(file, user.id);
       if (result) {
         await updateProfile({ avatar_url: result.url });
-        setSuccess('Avatar updated!');
-        setTimeout(() => setSuccess(''), 3000);
+        setSuccess('Avatar updated');
+        setTimeout(() => setSuccess(''), 2000);
       } else {
         setError('Failed to upload avatar');
       }
@@ -119,52 +138,82 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
     onBack();
   };
 
+  const handleLoadChat = () => {
+    // This is just a stub - the real load happens in App.tsx
+    setShowChatHistory(false);
+  };
+
+  // Stat card component
   const StatCard: React.FC<{
     icon: React.ReactNode;
     label: string;
     value: number;
-    color: string;
-  }> = ({ icon, label, value, color }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-2xl p-4"
+    gradient: string;
+    onClick?: () => void;
+  }> = ({ icon, label, value, gradient, onClick }) => (
+    <motion.button
+      whileHover={{ scale: 1.02, y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onClick}
+      className="relative overflow-hidden rounded-2xl p-4 text-left w-full group"
     >
-      <div className="absolute inset-0 bg-white/5 backdrop-blur-sm border border-white/10" />
-      <div className="relative flex items-center gap-3">
-        <div className={`p-2 rounded-xl ${color}`}>{icon}</div>
-        <div>
-          <p className="text-2xl font-bold text-white">{value}</p>
-          <p className="text-white/50 text-sm">{label}</p>
+      {/* Glass background */}
+      <div className="absolute inset-0 bg-white/[0.03] backdrop-blur-xl" />
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-50`} />
+      <div className="absolute inset-[1px] rounded-2xl border border-white/[0.08]" />
+
+      {/* Hover glow */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-30 transition-opacity duration-300`} />
+
+      <div className="relative flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`p-2.5 rounded-xl bg-gradient-to-br ${gradient} border border-white/10`}>
+            {icon}
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-white">{value}</p>
+            <p className="text-white/50 text-sm font-medium">{label}</p>
+          </div>
         </div>
+        {onClick && (
+          <ChevronRight className="w-5 h-5 text-white/30 group-hover:text-white/60 transition-colors" />
+        )}
       </div>
-    </motion.div>
+    </motion.button>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
-      {/* Animated background */}
+    <div className="min-h-screen bg-[#0a0a0f]">
+      {/* Ambient background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-pink-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-500/20 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-pink-500/15 rounded-full blur-[100px] animate-pulse delay-1000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-500/10 rounded-full blur-[150px]" />
       </div>
 
-      <div className="relative z-10 max-w-2xl mx-auto px-4 py-8">
+      <div className="relative z-10 max-w-lg mx-auto px-4 py-6 pb-24">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center justify-between mb-8"
         >
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05, x: -2 }}
+            whileTap={{ scale: 0.95 }}
             onClick={onBack}
-            className="flex items-center gap-2 text-white/70 hover:text-white transition-colors"
+            className="flex items-center gap-2 text-white/60 hover:text-white transition-colors"
           >
             <ArrowLeft size={20} />
-            <span>Back</span>
-          </button>
-          <h1 className="text-xl font-bold text-white">My Account</h1>
-          <div className="w-20" />
+            <span className="text-sm font-medium">Back</span>
+          </motion.button>
+
+          {profile?.is_pro && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
+              <Crown size={14} className="text-amber-400" />
+              <span className="text-amber-400 text-xs font-semibold">PRO</span>
+            </div>
+          )}
         </motion.div>
 
         {/* Profile Card */}
@@ -174,14 +223,18 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
           transition={{ delay: 0.1 }}
           className="relative overflow-hidden rounded-3xl mb-6"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20" />
+          {/* Glass background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-2xl" />
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/5" />
+          <div className="absolute inset-[1px] rounded-3xl border border-white/[0.08]" />
 
           <div className="relative p-6">
             {/* Avatar Section */}
-            <div className="flex flex-col items-center mb-6">
+            <div className="flex flex-col items-center mb-8">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-0.5">
-                  <div className="w-full h-full rounded-full bg-gray-900 flex items-center justify-center overflow-hidden">
+                {/* Purple glass avatar container */}
+                <div className="w-28 h-28 rounded-full p-[2px] bg-gradient-to-br from-purple-500 to-pink-500">
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-purple-900/80 to-purple-950/80 backdrop-blur-xl flex items-center justify-center overflow-hidden border-2 border-purple-500/20">
                     {profile?.avatar_url ? (
                       <img
                         src={profile.avatar_url}
@@ -189,21 +242,25 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <User size={40} className="text-white/50" />
+                      <TimeMachineLogo />
                     )}
                   </div>
                 </div>
-                <button
+
+                {/* Camera button */}
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingAvatar}
-                  className="absolute bottom-0 right-0 p-2 rounded-full bg-purple-500 hover:bg-purple-600 transition-colors shadow-lg"
+                  className="absolute -bottom-1 -right-1 p-2.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30"
                 >
                   {uploadingAvatar ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <Camera size={16} className="text-white" />
+                    <Camera size={16} />
                   )}
-                </button>
+                </motion.button>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -213,47 +270,42 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
                 />
               </div>
 
-              <div className="mt-4 text-center">
+              <div className="mt-5 text-center">
                 <h2 className="text-xl font-bold text-white">
                   {profile?.nickname || 'TimeMachine User'}
                 </h2>
-                <p className="text-white/50 text-sm">{user?.email}</p>
+                <p className="text-white/40 text-sm mt-1">{user?.email}</p>
               </div>
-
-              {profile?.is_pro && (
-                <div className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
-                  <Crown size={14} className="text-amber-400" />
-                  <span className="text-amber-400 text-sm font-medium">PRO Member</span>
-                </div>
-              )}
             </div>
 
             {/* Stats Grid */}
             {stats && (
               <div className="grid grid-cols-2 gap-3 mb-6">
                 <StatCard
-                  icon={<MessageSquare size={20} className="text-purple-400" />}
+                  icon={<MessageSquare size={18} className="text-purple-300" />}
                   label="Chats"
                   value={stats.chatCount}
-                  color="bg-purple-500/20"
+                  gradient="from-purple-500/20 to-violet-500/20"
+                  onClick={() => setShowChatHistory(true)}
                 />
                 <StatCard
-                  icon={<Sparkles size={20} className="text-pink-400" />}
+                  icon={<Sparkles size={18} className="text-pink-300" />}
                   label="Messages"
                   value={stats.messageCount}
-                  color="bg-pink-500/20"
+                  gradient="from-pink-500/20 to-rose-500/20"
                 />
                 <StatCard
-                  icon={<ImageIcon size={20} className="text-cyan-400" />}
+                  icon={<ImageIcon size={18} className="text-cyan-300" />}
                   label="Images"
                   value={stats.imageCount}
-                  color="bg-cyan-500/20"
+                  gradient="from-cyan-500/20 to-blue-500/20"
                 />
                 <StatCard
-                  icon={<Brain size={20} className="text-amber-400" />}
+                  icon={<Brain size={18} className="text-amber-300" />}
                   label="Memories"
                   value={stats.memoryCount}
-                  color="bg-amber-500/20"
+                  gradient="from-amber-500/20 to-orange-500/20"
+                  onClick={() => setShowMemories(true)}
                 />
               </div>
             )}
@@ -261,119 +313,171 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
             {/* Editable Fields */}
             <div className="space-y-4">
               {/* Nickname */}
+              <EditableField
+                label="Nickname"
+                value={nickname}
+                onChange={setNickname}
+                isEditing={editingField === 'nickname'}
+                onEdit={() => setEditingField('nickname')}
+                onSave={() => handleSaveField('nickname')}
+                onCancel={() => {
+                  setNickname(profile?.nickname || '');
+                  setEditingField(null);
+                }}
+                placeholder="Enter your nickname"
+              />
+
+              {/* Bio (was "Things TimeMachine knows about you") */}
+              <EditableField
+                label="Your Bio"
+                value={aboutMe}
+                onChange={setAboutMe}
+                isEditing={editingField === 'aboutMe'}
+                onEdit={() => setEditingField('aboutMe')}
+                onSave={() => handleSaveField('aboutMe')}
+                onCancel={() => {
+                  setAboutMe(profile?.about_me || '');
+                  setEditingField(null);
+                }}
+                placeholder="Tell TimeMachine about yourself..."
+                multiline
+              />
+
+              {/* Gender */}
               <div className="relative">
-                <label className="text-white/60 text-sm mb-1.5 block">Nickname</label>
+                <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
+                  Gender
+                </label>
                 <div className="relative">
-                  <input
-                    type="text"
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    disabled={editingField !== 'nickname'}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50 disabled:opacity-60 transition-all"
-                    placeholder="Enter your nickname"
-                  />
-                  {editingField === 'nickname' ? (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-                      <button
-                        onClick={handleSaveProfile}
-                        className="p-2 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-400 transition-colors"
+                  {editingField === 'gender' ? (
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={gender}
+                        onChange={(e) => setGender(e.target.value)}
+                        className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-purple-500/50 text-white focus:outline-none appearance-none cursor-pointer"
+                      >
+                        <option value="" className="bg-gray-900">Prefer not to say</option>
+                        <option value="male" className="bg-gray-900">Male</option>
+                        <option value="female" className="bg-gray-900">Female</option>
+                        <option value="non-binary" className="bg-gray-900">Non-binary</option>
+                        <option value="other" className="bg-gray-900">Other</option>
+                      </select>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleSaveField('gender')}
+                        className="p-2.5 rounded-xl bg-green-500/20 hover:bg-green-500/30 text-green-400 transition-all"
                       >
                         <Check size={16} />
-                      </button>
-                      <button
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => {
-                          setNickname(profile?.nickname || '');
+                          setGender(profile?.gender || '');
                           setEditingField(null);
                         }}
-                        className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
+                        className="p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all"
                       >
                         <X size={16} />
-                      </button>
+                      </motion.button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => setEditingField('nickname')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                    <motion.button
+                      whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                      onClick={() => setEditingField('gender')}
+                      className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left flex items-center justify-between group transition-all"
                     >
-                      <Edit3 size={16} />
-                    </button>
+                      <span className={gender ? 'text-white' : 'text-white/30'}>
+                        {gender ? gender.charAt(0).toUpperCase() + gender.slice(1) : 'Not set'}
+                      </span>
+                      <Edit3 size={16} className="text-white/30 group-hover:text-white/60 transition-colors" />
+                    </motion.button>
                   )}
                 </div>
               </div>
 
-              {/* About Me */}
+              {/* Birth Date */}
               <div className="relative">
-                <label className="text-white/60 text-sm mb-1.5 block">
-                  Things TimeMachine knows about you
+                <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
+                  Birth Date
                 </label>
                 <div className="relative">
-                  <textarea
-                    value={aboutMe}
-                    onChange={(e) => setAboutMe(e.target.value)}
-                    disabled={editingField !== 'aboutMe'}
-                    rows={3}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50 disabled:opacity-60 transition-all resize-none"
-                    placeholder="Tell TimeMachine about yourself..."
-                  />
-                  {editingField === 'aboutMe' ? (
-                    <div className="absolute right-2 top-2 flex gap-1">
-                      <button
-                        onClick={handleSaveProfile}
-                        className="p-2 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-400 transition-colors"
+                  {editingField === 'birthDate' ? (
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                        <input
+                          type="date"
+                          value={birthDate}
+                          onChange={(e) => setBirthDate(e.target.value)}
+                          className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-purple-500/50 text-white focus:outline-none [color-scheme:dark]"
+                        />
+                      </div>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleSaveField('birthDate')}
+                        className="p-2.5 rounded-xl bg-green-500/20 hover:bg-green-500/30 text-green-400 transition-all"
                       >
                         <Check size={16} />
-                      </button>
-                      <button
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => {
-                          setAboutMe(profile?.about_me || '');
+                          setBirthDate(profile?.birth_date || '');
                           setEditingField(null);
                         }}
-                        className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors"
+                        className="p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all"
                       >
                         <X size={16} />
-                      </button>
+                      </motion.button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => setEditingField('aboutMe')}
-                      className="absolute right-2 top-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                    <motion.button
+                      whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                      onClick={() => setEditingField('birthDate')}
+                      className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left flex items-center justify-between group transition-all"
                     >
-                      <Edit3 size={16} />
-                    </button>
+                      <div className="flex items-center gap-3">
+                        <Calendar size={16} className="text-white/40" />
+                        <span className={birthDate ? 'text-white' : 'text-white/30'}>
+                          {birthDate ? new Date(birthDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not set'}
+                        </span>
+                      </div>
+                      <Edit3 size={16} className="text-white/30 group-hover:text-white/60 transition-colors" />
+                    </motion.button>
                   )}
                 </div>
               </div>
 
               {/* Email (read-only) */}
               <div>
-                <label className="text-white/60 text-sm mb-1.5 block">Email</label>
-                <div className="flex items-center gap-3 px-4 py-3 bg-white/5 border border-white/10 rounded-xl">
-                  <Mail size={18} className="text-white/40" />
-                  <span className="text-white/70">{user?.email || 'No email'}</span>
+                <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
+                  Email
+                </label>
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <Mail size={16} className="text-white/40" />
+                  <span className="text-white/60">{user?.email || 'No email'}</span>
                 </div>
               </div>
             </div>
 
             {/* Messages */}
             <AnimatePresence>
-              {error && (
+              {(error || success) && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="mt-4 p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-200 text-sm"
+                  className={`mt-4 p-3 rounded-xl text-sm font-medium ${
+                    error
+                      ? 'bg-red-500/20 border border-red-500/30 text-red-200'
+                      : 'bg-green-500/20 border border-green-500/30 text-green-200'
+                  }`}
                 >
-                  {error}
-                </motion.div>
-              )}
-              {success && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="mt-4 p-3 rounded-xl bg-green-500/20 border border-green-500/30 text-green-200 text-sm"
-                >
-                  {success}
+                  {error || success}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -385,10 +489,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
           onClick={handleSignOut}
-          className="w-full py-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 font-medium flex items-center justify-center gap-2 hover:bg-red-500/20 transition-colors"
+          className="w-full py-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-red-400 font-medium flex items-center justify-center gap-2 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
         >
-          <LogOut size={20} />
+          <LogOut size={18} />
           Sign Out
         </motion.button>
 
@@ -397,13 +503,108 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="text-center text-white/30 text-sm mt-6"
+          className="text-center text-white/20 text-xs mt-6"
         >
-          Member since {new Date(profile?.created_at || Date.now()).toLocaleDateString()}
+          Member since {new Date(profile?.created_at || Date.now()).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </motion.p>
       </div>
+
+      {/* Modals */}
+      <ChatHistoryModal
+        isOpen={showChatHistory}
+        onClose={() => setShowChatHistory(false)}
+        onLoadChat={handleLoadChat}
+      />
+
+      <MemoriesModal
+        isOpen={showMemories}
+        onClose={() => setShowMemories(false)}
+      />
     </div>
   );
 };
+
+// Editable field component
+interface EditableFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  isEditing: boolean;
+  onEdit: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+  placeholder?: string;
+  multiline?: boolean;
+}
+
+const EditableField: React.FC<EditableFieldProps> = ({
+  label,
+  value,
+  onChange,
+  isEditing,
+  onEdit,
+  onSave,
+  onCancel,
+  placeholder,
+  multiline,
+}) => (
+  <div className="relative">
+    <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
+      {label}
+    </label>
+    <div className="relative">
+      {isEditing ? (
+        <div className="flex gap-2">
+          {multiline ? (
+            <textarea
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={placeholder}
+              rows={3}
+              className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-purple-500/50 text-white placeholder-white/30 focus:outline-none resize-none transition-all"
+            />
+          ) : (
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={placeholder}
+              className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-purple-500/50 text-white placeholder-white/30 focus:outline-none transition-all"
+            />
+          )}
+          <div className={`flex ${multiline ? 'flex-col' : ''} gap-2`}>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onSave}
+              className="p-2.5 rounded-xl bg-green-500/20 hover:bg-green-500/30 text-green-400 transition-all"
+            >
+              <Check size={16} />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onCancel}
+              className="p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all"
+            >
+              <X size={16} />
+            </motion.button>
+          </div>
+        </div>
+      ) : (
+        <motion.button
+          whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+          onClick={onEdit}
+          className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left flex items-center justify-between group transition-all"
+        >
+          <span className={value ? 'text-white' : 'text-white/30'}>
+            {value || placeholder || 'Not set'}
+          </span>
+          <Edit3 size={16} className="text-white/30 group-hover:text-white/60 transition-colors" />
+        </motion.button>
+      )}
+    </div>
+  </div>
+);
 
 export default AccountPage;
