@@ -14,11 +14,13 @@ import {
   X,
   ChevronRight,
   Sparkles,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, uploadImage } from '../../lib/supabase';
 import { ChatHistoryModal } from '../chat/ChatHistoryModal';
 import { MemoriesModal } from './MemoriesModal';
+import { ImagesModal } from './ImagesModal';
 
 interface AccountPageProps {
   onBack: () => void;
@@ -39,6 +41,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
   const { user, profile, updateProfile, signOut } = useAuth();
   const [nickname, setNickname] = useState(profile?.nickname || '');
   const [aboutMe, setAboutMe] = useState(profile?.about_me || '');
+  const [gender, setGender] = useState((profile as any)?.gender || '');
+  const [birthDate, setBirthDate] = useState((profile as any)?.birth_date || '');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -46,6 +50,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [showMemories, setShowMemories] = useState(false);
+  const [showImages, setShowImages] = useState(false);
   const [stats, setStats] = useState<{
     chatCount: number;
     messageCount: number;
@@ -90,11 +95,18 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
     const updates: Record<string, string | null> = {};
     if (field === 'nickname') updates.nickname = nickname.trim() || null;
     if (field === 'aboutMe') updates.about_me = aboutMe.trim() || null;
+    if (field === 'gender') updates.gender = gender || null;
+    if (field === 'birthDate') updates.birth_date = birthDate || null;
 
     const { error: updateError } = await updateProfile(updates);
 
     if (updateError) {
-      setError(updateError.message);
+      // Check if it's a column not found error
+      if (updateError.message?.includes('column') || updateError.message?.includes('schema')) {
+        setError('This feature requires a database update. Please contact support.');
+      } else {
+        setError(updateError.message);
+      }
     } else {
       setSuccess('Saved');
       setEditingField(null);
@@ -294,6 +306,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
                     label="Images"
                     value={stats.imageCount}
                     gradient="from-cyan-500/20 to-blue-500/20"
+                    onClick={() => setShowImages(true)}
                   />
                   <StatCard
                     icon={<Brain size={18} className="text-amber-300" />}
@@ -337,6 +350,115 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
                   placeholder="Tell TimeMachine about yourself..."
                   multiline
                 />
+
+                {/* Gender */}
+                <div className="relative">
+                  <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
+                    Gender
+                  </label>
+                  <div className="relative">
+                    {editingField === 'gender' ? (
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={gender}
+                          onChange={(e) => setGender(e.target.value)}
+                          className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-purple-500/50 text-white focus:outline-none appearance-none cursor-pointer"
+                        >
+                          <option value="" className="bg-gray-900">Prefer not to say</option>
+                          <option value="male" className="bg-gray-900">Male</option>
+                          <option value="female" className="bg-gray-900">Female</option>
+                          <option value="non-binary" className="bg-gray-900">Non-binary</option>
+                          <option value="other" className="bg-gray-900">Other</option>
+                        </select>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleSaveField('gender')}
+                          className="p-2.5 rounded-xl bg-green-500/20 hover:bg-green-500/30 text-green-400 transition-all"
+                        >
+                          <Check size={16} />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            setGender((profile as any)?.gender || '');
+                            setEditingField(null);
+                          }}
+                          className="p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all"
+                        >
+                          <X size={16} />
+                        </motion.button>
+                      </div>
+                    ) : (
+                      <motion.button
+                        whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                        onClick={() => setEditingField('gender')}
+                        className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left flex items-center justify-between group transition-all"
+                      >
+                        <span className={gender ? 'text-white' : 'text-white/30'}>
+                          {gender ? gender.charAt(0).toUpperCase() + gender.slice(1) : 'Not set'}
+                        </span>
+                        <Edit3 size={16} className="text-white/30 group-hover:text-white/60 transition-colors" />
+                      </motion.button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Birth Date */}
+                <div className="relative">
+                  <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
+                    Birth Date
+                  </label>
+                  <div className="relative">
+                    {editingField === 'birthDate' ? (
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-1">
+                          <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                          <input
+                            type="date"
+                            value={birthDate}
+                            onChange={(e) => setBirthDate(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-purple-500/50 text-white focus:outline-none [color-scheme:dark]"
+                          />
+                        </div>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleSaveField('birthDate')}
+                          className="p-2.5 rounded-xl bg-green-500/20 hover:bg-green-500/30 text-green-400 transition-all"
+                        >
+                          <Check size={16} />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            setBirthDate((profile as any)?.birth_date || '');
+                            setEditingField(null);
+                          }}
+                          className="p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all"
+                        >
+                          <X size={16} />
+                        </motion.button>
+                      </div>
+                    ) : (
+                      <motion.button
+                        whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+                        onClick={() => setEditingField('birthDate')}
+                        className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left flex items-center justify-between group transition-all"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Calendar size={16} className="text-white/40" />
+                          <span className={birthDate ? 'text-white' : 'text-white/30'}>
+                            {birthDate ? new Date(birthDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not set'}
+                          </span>
+                        </div>
+                        <Edit3 size={16} className="text-white/30 group-hover:text-white/60 transition-colors" />
+                      </motion.button>
+                    )}
+                  </div>
+                </div>
 
                 {/* Email (read-only) */}
                 <div>
@@ -406,6 +528,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
       <MemoriesModal
         isOpen={showMemories}
         onClose={() => setShowMemories(false)}
+      />
+
+      <ImagesModal
+        isOpen={showImages}
+        onClose={() => setShowImages(false)}
       />
     </div>
   );
