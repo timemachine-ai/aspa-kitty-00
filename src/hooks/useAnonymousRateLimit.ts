@@ -3,9 +3,9 @@ import { useAuth } from '../context/AuthContext';
 
 // Rate limits for anonymous users
 const ANONYMOUS_RATE_LIMITS = {
-  default: 3,  // 3 messages for air persona
-  girlie: 3,   // 3 messages for girlie persona
-  pro: 1,      // 1 message for pro persona
+  default: 3,  // 3 messages for default persona (resets daily)
+  girlie: 0,   // No trial messages for girlie persona - requires sign up
+  pro: 0,      // No trial messages for pro persona - requires sign up
 } as const;
 
 // Storage key for anonymous rate limits
