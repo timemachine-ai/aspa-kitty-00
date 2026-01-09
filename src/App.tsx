@@ -131,13 +131,23 @@ function AppContent() {
     audioData?: string,
     imageUrls?: string[]
   ) => {
+    // Detect @ mentions to determine which model/persona to check rate limit for
+    const mentionMatch = message.match(/^@(chatgpt|gemini|claude|grok|girlie|pro)\s/i);
+    const targetModel = mentionMatch ? mentionMatch[1].toLowerCase() : currentPersona;
+
     // Check rate limit for anonymous users
-    if (isAnonymous && isRateLimited(currentPersona)) {
+    if (isAnonymous && isRateLimited(targetModel)) {
       let authMessage: string;
-      if (currentPersona === 'pro') {
+      if (targetModel === 'pro') {
         authMessage = "PRO mode requires a TimeMachine ID. Create one to access advanced features!";
-      } else if (currentPersona === 'girlie') {
+      } else if (targetModel === 'girlie') {
         authMessage = "Girlie mode requires a TimeMachine ID. Create one to unlock this persona!";
+      } else if (targetModel === 'gemini') {
+        authMessage = "@Gemini requires a TimeMachine ID. Create one to chat with Gemini!";
+      } else if (targetModel === 'claude') {
+        authMessage = "@Claude requires a TimeMachine ID. Create one to chat with Claude!";
+      } else if (targetModel === 'grok') {
+        authMessage = "@Grok requires a TimeMachine ID. Create one to chat with Grok!";
       } else {
         authMessage = "You've used your 3 free messages! Create a TimeMachine ID to continue chatting.";
       }
@@ -148,7 +158,7 @@ function AppContent() {
 
     // Increment count before sending (for anonymous users)
     if (isAnonymous) {
-      incrementCount(currentPersona);
+      incrementCount(targetModel);
     }
 
     // Call the original handler
