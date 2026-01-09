@@ -306,7 +306,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
         </div>
       )}
       <div className="relative" onDragOver={handleDragOver} onDrop={handleDrop}>
-        <div className="relative flex items-end gap-2">
+        <div className="relative flex items-center gap-2">
           <input
             type="file"
             accept="image/jpeg,image/png,image/gif,image/webp"
@@ -360,7 +360,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                 rows={1}
               />
 
-              <div className="absolute right-2 bottom-2 flex items-center gap-2">
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 <VoiceRecorder 
                   onSendMessage={onSendMessage}
                   disabled={isLoading || isUploading || message.trim().length > 0}
