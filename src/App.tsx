@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { ChatInput } from './components/chat/ChatInput';
 import { BrandLogo } from './components/brand/BrandLogo';
 import { MusicPlayer } from './components/music/MusicPlayer';
@@ -15,11 +16,15 @@ import { StageMode } from './components/chat/StageMode';
 import { RateLimitModal } from './components/modals/RateLimitModal';
 import { WelcomeModal } from './components/modals/WelcomeModal';
 import { AuthModal, OnboardingModal, AccountPage } from './components/auth';
+import { ChatHistoryPage } from './components/chat/ChatHistoryPage';
+import { SettingsPage } from './components/settings/SettingsPage';
 import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './config/constants';
 
 function AppContent() {
   const { theme } = useTheme();
   const { user, profile, loading: authLoading, needsOnboarding } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const {
     messages,
@@ -57,7 +62,6 @@ function AppContent() {
   // Auth-related states
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showAccountPage, setShowAccountPage] = useState(false);
   const [authModalMessage, setAuthModalMessage] = useState<string | undefined>();
 
   // Check if user needs onboarding after auth
@@ -172,21 +176,20 @@ function AppContent() {
   };
 
   const handleOpenAccount = () => {
-    setShowAccountPage(true);
+    navigate('/account');
+  };
+
+  const handleOpenHistory = () => {
+    navigate('/history');
+  };
+
+  const handleOpenSettings = () => {
+    navigate('/settings');
   };
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
   };
-
-  // Show account page
-  if (showAccountPage) {
-    return (
-      <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
-        <AccountPage onBack={() => setShowAccountPage(false)} />
-      </div>
-    );
-  }
 
   // Don't render main app content if welcome modal is showing
   if (showWelcomeModal) {
@@ -209,7 +212,8 @@ function AppContent() {
     );
   }
 
-  return (
+  // Main chat page component
+  const ChatPage = () => (
     <div
       className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}
       style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}
@@ -224,6 +228,8 @@ function AppContent() {
               onStartNewChat={startNewChat}
               onOpenAuth={handleOpenAuth}
               onOpenAccount={handleOpenAccount}
+              onOpenHistory={handleOpenHistory}
+              onOpenSettings={handleOpenSettings}
             />
             <div className="flex items-center gap-2">
               {/* Show remaining messages for anonymous users */}
@@ -437,6 +443,24 @@ function AppContent() {
         />
       </main>
     </div>
+  );
+
+  return (
+    <Routes>
+      <Route path="/" element={<ChatPage />} />
+      <Route path="/account" element={
+        <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
+          <AccountPage onBack={() => navigate('/')} />
+        </div>
+      } />
+      <Route path="/history" element={
+        <ChatHistoryPage onLoadChat={(session) => {
+          loadChat(session);
+          navigate('/');
+        }} />
+      } />
+      <Route path="/settings" element={<SettingsPage />} />
+    </Routes>
   );
 }
 

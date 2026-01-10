@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mail,
@@ -18,7 +19,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, uploadImage } from '../../lib/supabase';
-import { ChatHistoryModal } from '../chat/ChatHistoryModal';
 import { MemoriesModal } from './MemoriesModal';
 import { ImagesModal } from './ImagesModal';
 
@@ -38,6 +38,7 @@ const TimeMachineLogo = () => (
 );
 
 export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
+  const navigate = useNavigate();
   const { user, profile, updateProfile, signOut } = useAuth();
   const [nickname, setNickname] = useState(profile?.nickname || '');
   const [aboutMe, setAboutMe] = useState(profile?.about_me || '');
@@ -48,7 +49,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
   const [error, setError] = useState('');
   const [editingField, setEditingField] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [showChatHistory, setShowChatHistory] = useState(false);
   const [showMemories, setShowMemories] = useState(false);
   const [showImages, setShowImages] = useState(false);
   const [stats, setStats] = useState<{
@@ -144,8 +144,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
     onBack();
   };
 
-  const handleLoadChat = () => {
-    setShowChatHistory(false);
+  const handleOpenHistory = () => {
+    navigate('/history');
   };
 
   // Stat card component
@@ -293,7 +293,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
                     label="Chats"
                     value={stats.chatCount}
                     gradient="from-purple-500/20 to-violet-500/20"
-                    onClick={() => setShowChatHistory(true)}
+                    onClick={handleOpenHistory}
                   />
                   <StatCard
                     icon={<Sparkles size={18} className="text-pink-300" />}
@@ -519,12 +519,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
       </div>
 
       {/* Modals */}
-      <ChatHistoryModal
-        isOpen={showChatHistory}
-        onClose={() => setShowChatHistory(false)}
-        onLoadChat={handleLoadChat}
-      />
-
       <MemoriesModal
         isOpen={showMemories}
         onClose={() => setShowMemories(false)}
