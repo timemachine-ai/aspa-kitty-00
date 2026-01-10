@@ -28,7 +28,7 @@ export function ChatMode({
     if (container) {
       const lastMessage = messages[messages.length - 1];
       const isShortMessage = lastMessage.content.length < 350 && !lastMessage.content.includes('\n');
-      
+
       if (!lastMessage.isAI || isShortMessage) {
         const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
         if (isAtBottom) {
@@ -37,6 +37,14 @@ export function ChatMode({
       }
     }
   };
+
+  // Scroll to top when component mounts (new session loaded)
+  useEffect(() => {
+    const container = document.querySelector('.message-container');
+    if (container) {
+      container.scrollTop = 0;
+    }
+  }, []);
 
   useEffect(() => {
     if (messages.length > 0) {

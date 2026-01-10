@@ -7,12 +7,12 @@ import { useAuth } from '../../context/AuthContext';
 import { SettingsModal } from '../settings/SettingsModal';
 import { AgentsModal } from '../agents/AgentsModal';
 import { ChatHistoryModal } from '../chat/ChatHistoryModal';
-import { Message } from '../../types/chat';
+import { ChatSession } from '../../services/chat/chatService';
 
 interface BrandLogoProps {
   onPersonaChange: (persona: keyof typeof AI_PERSONAS) => void;
   currentPersona: keyof typeof AI_PERSONAS;
-  onLoadChat: (messages: Message[]) => void;
+  onLoadChat: (session: ChatSession) => void;
   onStartNewChat: () => void;
   onOpenAuth?: () => void;
   onOpenAccount?: () => void;
