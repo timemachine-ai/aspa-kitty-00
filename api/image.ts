@@ -17,7 +17,7 @@ interface ImageParams {
   height?: number; // Original image height for edit operations
 }
 
-function constructPollinationsUrl(params: ImageParams): string {
+function constructPollinationsUrl(params: ImageParams): URL {
   const {
     prompt,
     orientation = 'portrait',
@@ -27,8 +27,6 @@ function constructPollinationsUrl(params: ImageParams): string {
     width: originalWidth,
     height: originalHeight
   } = params;
-
-  const encodedPrompt = encodeURIComponent(prompt);
 
   // Select model based on process type and persona
   let model: string;
@@ -40,26 +38,34 @@ function constructPollinationsUrl(params: ImageParams): string {
     model = persona === 'girlie' ? 'zimage' : 'seedream-pro';
   }
 
-  let url: string;
+  // Use WHATWG URL API to avoid url.parse() deprecation warning
+  const url = new URL(`https://enter.pollinations.ai/api/generate/image/${encodeURIComponent(prompt)}`);
+
+  // Add common parameters
+  url.searchParams.set('enhance', 'false');
+  url.searchParams.set('private', 'true');
+  url.searchParams.set('nologo', 'true');
+  url.searchParams.set('model', model);
+  url.searchParams.set('key', POLLINATIONS_API_KEY);
+
   if (process === 'edit') {
     // For edit process: use original image dimensions if provided
     if (originalWidth && originalHeight) {
-      url = `https://enter.pollinations.ai/api/generate/image/${encodedPrompt}?width=${originalWidth}&height=${originalHeight}&enhance=false&private=true&nologo=true&model=${model}&key=${POLLINATIONS_API_KEY}`;
-    } else {
-      // Fallback: no dimensions for edit if not provided
-      url = `https://enter.pollinations.ai/api/generate/image/${encodedPrompt}?enhance=false&private=true&nologo=true&model=${model}&key=${POLLINATIONS_API_KEY}`;
+      url.searchParams.set('width', String(originalWidth));
+      url.searchParams.set('height', String(originalHeight));
     }
   } else {
     // For create process: include width/height based on orientation
     const width = orientation === 'landscape' ? 3840 : 2160;
     const height = orientation === 'landscape' ? 2160 : 3840;
-    url = `https://enter.pollinations.ai/api/generate/image/${encodedPrompt}?width=${width}&height=${height}&enhance=false&private=true&nologo=true&model=${model}&key=${POLLINATIONS_API_KEY}`;
+    url.searchParams.set('width', String(width));
+    url.searchParams.set('height', String(height));
   }
 
   // Handle multiple reference images (up to 4)
   if (inputImageUrls && inputImageUrls.length > 0) {
     const imageUrls = inputImageUrls.slice(0, 4).map(encodeURIComponent).join(',');
-    url += `&image=${imageUrls}`;
+    url.searchParams.set('image', imageUrls);
   }
 
   return url;

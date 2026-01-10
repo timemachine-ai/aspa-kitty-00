@@ -554,7 +554,7 @@ const imageGenerationTool = {
           enum: ["create", "edit"]
         }
       },
-      required: ["prompt"],
+      required: ["prompt", "orientation", "process"],
       additionalProperties: false
     }
   }
