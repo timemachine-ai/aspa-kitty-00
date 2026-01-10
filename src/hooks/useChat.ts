@@ -511,6 +511,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     streamingMessageId,
     useStreaming,
     youtubeMusic,
+    currentSessionId,
     setChatMode,
     handleSendMessage,
     handlePersonaChange,
