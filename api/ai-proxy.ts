@@ -640,7 +640,7 @@ Avoid:
 Your responses should be optimized for a quick, back-and-forth voice conversation experience.`;
 
 // Pollinations API configuration
-const POLLINATIONS_API_KEY = 'sk_vpBUJtPYIF06HER6NKDxIh2aF6RV8kmq';
+const POLLINATIONS_API_KEY = 'sk_Hdfia0UMfFw0d4bwhiyXTjJSry6u6tbU';
 const POLLINATIONS_API_URL = 'https://enter.pollinations.ai/api/generate/v1/chat/completions';
 
 interface ImageGenerationParams {
@@ -696,7 +696,7 @@ interface WebSearchParams {
 async function fetchWebSearchResults(params: WebSearchParams): Promise<string> {
   const { query } = params;
   const encodedQuery = encodeURIComponent(query);
-  const hardcodedToken = "sk_vpBUJtPYIF06HER6NKDxIh2aF6RV8kmq";
+  const hardcodedToken = "sk_Hdfia0UMfFw0d4bwhiyXTjJSry6u6tbU";
 
   const url = `https://enter.pollinations.ai/api/generate/text/${encodedQuery}?model=gemini-search&key=${hardcodedToken}`;
 
