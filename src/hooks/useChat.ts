@@ -37,6 +37,9 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
   // Track if save is pending to debounce
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Track if streaming is in progress - don't save during streaming (AI message is incomplete)
+  const isStreamingRef = useRef<boolean>(false);
+
   // Update chatService with userId when it changes
   useEffect(() => {
     chatService.setUserId(userId || null);
@@ -61,14 +64,18 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
   }, []);
 
   // Save chat session function - uses chatService which handles both local and Supabase
-  const saveChatSession = useCallback((sessionId: string, messagesToSave: Message[], persona: keyof typeof AI_PERSONAS) => {
+  const saveChatSession = useCallback((sessionId: string, messagesToSave: Message[], persona: keyof typeof AI_PERSONAS, forceImmediate: boolean = false) => {
+    // Don't save while streaming is in progress (AI message is incomplete/empty)
+    if (isStreamingRef.current && !forceImmediate) {
+      return;
+    }
+
     // Clear any pending save
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Debounce saves to avoid too many requests
-    saveTimeoutRef.current = setTimeout(async () => {
+    const doSave = async () => {
       try {
         const now = new Date().toISOString();
         const firstUserMessage = messagesToSave.find(msg => !msg.isAI);
@@ -99,15 +106,34 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       } catch (error) {
         console.error('Failed to save chat session:', error);
       }
-    }, 500); // 500ms debounce
+    };
+
+    if (forceImmediate) {
+      // Save immediately without debounce (used when switching sessions)
+      doSave();
+    } else {
+      // Debounce saves to avoid too many requests
+      saveTimeoutRef.current = setTimeout(doSave, 500);
+    }
   }, [currentProHeatLevel]);
 
   // Handle persona change
   const handlePersonaChange = useCallback((persona: keyof typeof AI_PERSONAS) => {
-    // Save current session before switching
-    if (currentSessionId && messages.length > 1) {
-      saveChatSession(currentSessionId, messages, currentPersona);
+    // Cancel any pending saves to avoid race conditions
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
     }
+
+    // Save current session immediately before switching (only if not streaming)
+    if (currentSessionId && messages.length > 1 && !isStreamingRef.current) {
+      saveChatSession(currentSessionId, messages, currentPersona, true); // Force immediate save
+    }
+
+    // Clear streaming state if somehow still set
+    isStreamingRef.current = false;
+    setStreamingMessageId(null);
+    setIsLoading(false);
 
     setCurrentPersona(persona);
 
@@ -136,10 +162,21 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
 
   // Start new chat function
   const startNewChat = useCallback(() => {
-    // Save current session before starting new one
-    if (currentSessionId && messages.length > 1) {
-      saveChatSession(currentSessionId, messages, currentPersona);
+    // Cancel any pending saves to avoid race conditions
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
     }
+
+    // Save current session immediately before starting new one (only if not streaming)
+    if (currentSessionId && messages.length > 1 && !isStreamingRef.current) {
+      saveChatSession(currentSessionId, messages, currentPersona, true); // Force immediate save
+    }
+
+    // Clear streaming state if somehow still set
+    isStreamingRef.current = false;
+    setStreamingMessageId(null);
+    setIsLoading(false);
 
     // Start fresh chat with same persona
     const newSessionId = generateUUID();
@@ -185,6 +222,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     ));
     setStreamingMessageId(null);
     setIsLoading(false);
+    isStreamingRef.current = false; // Mark streaming as complete - now it's safe to save
   }, [userId]);
 
   const extractEmotion = (content: string): string | null => {
@@ -218,9 +256,13 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     setYoutubeMusic(null);
   }, []);
 
-  // Save chat session when messages change (but not on initial load)
+  // Save chat session when messages change (but not on initial load, and not during streaming)
   useEffect(() => {
-    if (messages.length > 1 && currentSessionId) {
+    // Don't auto-save if:
+    // - Only 1 message (initial state)
+    // - No session ID
+    // - Currently streaming (AI message is incomplete)
+    if (messages.length > 1 && currentSessionId && !isStreamingRef.current) {
       saveChatSession(currentSessionId, messages, currentPersona);
     }
   }, [messages, currentSessionId, currentPersona, saveChatSession]);
@@ -302,6 +344,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
 
     setMessages(prev => [...prev, aiMessage]);
     setStreamingMessageId(aiMessageId);
+    isStreamingRef.current = true; // Mark streaming as started
 
     // Filter out initial welcome message (ID: 1) - it's just for UI aesthetics
     const apiMessages = [...messages, apiUserMessage].filter(msg => msg.id !== 1);
@@ -358,6 +401,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
           setMessages(prev => prev.filter(msg => msg.id !== aiMessageId));
           setStreamingMessageId(null);
           setIsLoading(false);
+          isStreamingRef.current = false; // Clear streaming flag on error
         },
         userId || undefined,
         userMemoryContext
@@ -400,6 +444,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
         setMessages(prev => prev.filter(msg => msg.id !== aiMessageId));
         setStreamingMessageId(null);
         setIsLoading(false);
+        isStreamingRef.current = false; // Clear streaming flag on error
       }
     }
   }, [messages, currentPersona, currentProHeatLevel, userId, userProfile]);
@@ -415,16 +460,37 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
   }, []);
 
   const loadChat = useCallback((session: ChatSession) => {
-    // Save current session before loading new one
-    if (currentSessionId && messages.length > 1) {
-      saveChatSession(currentSessionId, messages, currentPersona);
+    // Cancel any pending saves to avoid race conditions
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
     }
 
+    // Save current session immediately before loading new one (only if not streaming)
+    if (currentSessionId && messages.length > 1 && !isStreamingRef.current) {
+      saveChatSession(currentSessionId, messages, currentPersona, true); // Force immediate save
+    }
+
+    // Clear streaming state if somehow still set
+    isStreamingRef.current = false;
+    setStreamingMessageId(null);
+    setIsLoading(false);
+
+    // Filter out any empty messages from the loaded session
+    const validMessages = session.messages.filter(msg => msg.content && msg.content.trim() !== '');
+
+    // Ensure we have at least the initial message if all messages were empty
+    const messagesToLoad = validMessages.length > 0
+      ? validMessages
+      : [{ id: Date.now(), content: cleanContent(AI_PERSONAS[session.persona].initialMessage), isAI: true, hasAnimated: false }];
+
+    // Update all state together
     setCurrentPersona(session.persona);
-    setMessages(session.messages);
+    setMessages(messagesToLoad);
     setChatMode(true);
     setCurrentSessionId(session.id);
     setPersonaTheme(session.persona);
+    setError(null);
 
     // Set heat level if it's a pro session
     if (session.heat_level) {

@@ -75,10 +75,21 @@ export function saveLocalSession(session: ChatSession): void {
     const sessions = getLocalSessions();
     const existingIndex = sessions.findIndex(s => s.id === session.id);
 
+    // Filter out messages with empty content (streaming placeholders)
+    const sessionToSave: ChatSession = {
+      ...session,
+      messages: session.messages.filter(msg => msg.content && msg.content.trim() !== '')
+    };
+
+    // Don't save sessions with no valid messages
+    if (sessionToSave.messages.length === 0) {
+      return;
+    }
+
     if (existingIndex !== -1) {
-      sessions[existingIndex] = session;
+      sessions[existingIndex] = sessionToSave;
     } else {
-      sessions.push(session);
+      sessions.push(sessionToSave);
     }
 
     localStorage.setItem('chatSessions', JSON.stringify(sessions));
@@ -164,25 +175,49 @@ export async function saveSupabaseSession(
 
     const sessionId = savedSession?.id || session.id;
 
-    // Get existing message count to only insert new ones
-    const { count: existingCount } = await supabase
+    // Filter out messages with empty content (streaming placeholders)
+    const validMessages = session.messages.filter(msg => msg.content && msg.content.trim() !== '');
+
+    if (validMessages.length === 0) {
+      return sessionId;
+    }
+
+    // Get existing messages to compare
+    const { data: existingMessages, error: fetchError } = await supabase
       .from('chat_messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('session_id', sessionId);
+      .select('id, content, role, created_at')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true });
 
-    // Only insert messages that don't exist yet
-    const newMessages = session.messages.slice(existingCount || 0);
+    if (fetchError) {
+      console.error('Error fetching existing messages:', fetchError);
+    }
 
-    if (newMessages.length > 0) {
-      const messagesToInsert = newMessages.map(msg => messageToDbRow(msg, sessionId, userId));
+    const existingCount = existingMessages?.length || 0;
 
-      const { error: msgError } = await supabase
+    // Strategy: Delete all existing messages and re-insert all valid messages
+    // This ensures updates to message content (like streaming completion) are saved
+    // and avoids complex diff logic that could miss updates
+    if (existingCount > 0) {
+      const { error: deleteError } = await supabase
         .from('chat_messages')
-        .insert(messagesToInsert);
+        .delete()
+        .eq('session_id', sessionId);
 
-      if (msgError) {
-        console.error('Error saving messages:', msgError);
+      if (deleteError) {
+        console.error('Error deleting old messages:', deleteError);
       }
+    }
+
+    // Insert all valid messages
+    const messagesToInsert = validMessages.map(msg => messageToDbRow(msg, sessionId, userId));
+
+    const { error: msgError } = await supabase
+      .from('chat_messages')
+      .insert(messagesToInsert);
+
+    if (msgError) {
+      console.error('Error saving messages:', msgError);
     }
 
     return sessionId;
