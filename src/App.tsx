@@ -33,6 +33,7 @@ function AppContent() {
     showRateLimitModal,
     streamingMessageId,
     youtubeMusic,
+    currentSessionId,
     handleSendMessage,
     handlePersonaChange,
     setCurrentProHeatLevel,
@@ -382,6 +383,7 @@ function AppContent() {
         <div className="flex-1 overflow-y-auto custom-scrollbar message-container">
           {isChatMode ? (
             <ChatMode
+              key={currentSessionId}
               messages={messages}
               currentPersona={currentPersona}
               onMessageAnimated={markMessageAsAnimated}
@@ -390,6 +392,7 @@ function AppContent() {
             />
           ) : (
             <StageMode
+              key={currentSessionId}
               messages={messages}
               currentPersona={currentPersona}
               onMessageAnimated={markMessageAsAnimated}
