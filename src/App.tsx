@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ChatInput } from './components/chat/ChatInput';
 import { BrandLogo } from './components/brand/BrandLogo';
@@ -23,10 +23,11 @@ import { MemoriesPage } from './components/memories/MemoriesPage';
 import { HelpPage } from './components/help/HelpPage';
 import { GroupChatPage } from './components/groupchat/GroupChatPage';
 import { GroupChatModal } from './components/groupchat/GroupChatModal';
+import { GroupSettingsPage } from './components/groupchat/GroupSettingsPage';
 import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './config/constants';
 import { ChatSession, getSupabaseSessions, getLocalSessions } from './services/chat/chatService';
 
-// Chat by ID page component
+// Chat by ID page component - defined OUTSIDE to prevent re-renders
 function ChatByIdPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -86,17 +87,15 @@ function ChatByIdPage() {
     );
   }
 
-  // Redirect to main chat with this session loaded
-  // In a full implementation, you'd want to load this chat directly
   navigate('/');
   return null;
 }
 
-function AppContent() {
+// Main Chat Page component - defined OUTSIDE to prevent re-renders
+function MainChatPage() {
   const { theme } = useTheme();
   const { user, profile, loading: authLoading, needsOnboarding } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const {
     messages,
@@ -122,15 +121,16 @@ function AppContent() {
     clearYoutubeMusic
   } = useChat(user?.id, profile);
 
-  // Derive chat name from first user message
-  const currentChatName = React.useMemo(() => {
+  const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
+
+  // Derive chat name from first user message - memoized to prevent recalculation
+  const currentChatName = useMemo(() => {
     const firstUserMessage = messages.find(msg => !msg.isAI);
     if (firstUserMessage?.content && firstUserMessage.content.trim()) {
       return firstUserMessage.content.slice(0, 50);
     }
     return 'New Chat';
   }, [messages]);
-  const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
 
   const [showGroupChatModal, setShowGroupChatModal] = useState(false);
   const [isHeatLevelExpanded, setIsHeatLevelExpanded] = useState(false);
@@ -140,23 +140,15 @@ function AppContent() {
     return accessGranted !== 'true';
   });
 
-  // Auth-related states
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [authModalMessage, setAuthModalMessage] = useState<string | undefined>();
 
-  // Check if user needs onboarding after auth
   useEffect(() => {
     if (!authLoading && needsOnboarding) {
       setShowOnboarding(true);
     }
   }, [authLoading, needsOnboarding]);
-
-  // Check for maintenance mode
-  if (MAINTENANCE_MODE) {
-    window.location.href = '/maintenance.html';
-    return null;
-  }
 
   useEffect(() => {
     const updateVH = () => {
@@ -169,43 +161,39 @@ function AppContent() {
     return () => window.removeEventListener('resize', updateVH);
   }, []);
 
-  const personaBackgroundColors: Record<string, string> = {
+  // Memoize button styles to prevent recalculation
+  const personaBackgroundColors: Record<string, string> = useMemo(() => ({
     default: 'rgba(139,0,255,0.2)',
     girlie: 'rgba(199,21,133,0.2)',
     pro: 'rgba(30,144,255,0.2)'
-  };
+  }), []);
 
-  const getButtonStyles = (persona: string, theme: any) => ({
-    bg: personaBackgroundColors[persona],
+  const buttonStyles = useMemo(() => ({
+    bg: personaBackgroundColors[currentPersona] || personaBackgroundColors.default,
     text: theme.text,
-  });
+  }), [currentPersona, theme.text, personaBackgroundColors]);
 
-  const getHeatLevelButtonStyles = (isExpanded: boolean, theme: any) => ({
-    border: isExpanded ? '1px solid rgb(30,144,255)' : 'none',
-    bg: isExpanded ? 'rgba(30,144,255,0.3)' : 'rgba(30,144,255,0.2)',
-    shadow: isExpanded ? '0 0 20px rgba(30,144,255,0.8)' : 'none',
-    text: isExpanded ? 'rgb(135,206,250)' : theme.text,
-  });
+  const heatLevelButtonStyles = useMemo(() => ({
+    border: isHeatLevelExpanded ? '1px solid rgb(30,144,255)' : 'none',
+    bg: isHeatLevelExpanded ? 'rgba(30,144,255,0.3)' : 'rgba(30,144,255,0.2)',
+    shadow: isHeatLevelExpanded ? '0 0 20px rgba(30,144,255,0.8)' : 'none',
+    text: isHeatLevelExpanded ? 'rgb(135,206,250)' : theme.text,
+  }), [isHeatLevelExpanded, theme.text]);
 
-  const buttonStyles = getButtonStyles(currentPersona, theme);
-  const heatLevelButtonStyles = getHeatLevelButtonStyles(isHeatLevelExpanded, theme);
-
-  const handleAccessGranted = () => {
+  const handleAccessGranted = useCallback(() => {
     setShowWelcomeModal(false);
-  };
+  }, []);
 
-  // Wrapped send message handler with rate limiting
-  const handleSendMessageWithRateLimit = async (
+  // Memoized send message handler
+  const handleSendMessageWithRateLimit = useCallback(async (
     message: string,
     imageUrl?: string,
     audioData?: string,
     imageUrls?: string[]
   ) => {
-    // Detect @ mentions to determine which model/persona to check rate limit for
     const mentionMatch = message.match(/^@(chatgpt|gemini|claude|grok|girlie|pro)\s/i);
     const targetModel = mentionMatch ? mentionMatch[1].toLowerCase() : currentPersona;
 
-    // Check rate limit for anonymous users
     if (isAnonymous && isRateLimited(targetModel)) {
       let authMessage: string;
       if (targetModel === 'pro') {
@@ -226,42 +214,43 @@ function AppContent() {
       return;
     }
 
-    // Increment count before sending (for anonymous users)
     if (isAnonymous) {
       incrementCount(targetModel);
     }
 
-    // Call the original handler
     await handleSendMessage(message, imageUrl, audioData, imageUrls);
-  };
+  }, [currentPersona, isAnonymous, isRateLimited, incrementCount, handleSendMessage]);
 
-  const handleOpenAuth = () => {
+  const handleOpenAuth = useCallback(() => {
     setAuthModalMessage(undefined);
     setShowAuthModal(true);
-  };
+  }, []);
 
-  const handleOpenAccount = () => {
+  const handleOpenAccount = useCallback(() => {
     navigate('/account');
-  };
+  }, [navigate]);
 
-  const handleOpenHistory = () => {
+  const handleOpenHistory = useCallback(() => {
     navigate('/history');
-  };
+  }, [navigate]);
 
-  const handleOpenSettings = () => {
+  const handleOpenSettings = useCallback(() => {
     navigate('/settings');
-  };
+  }, [navigate]);
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = useCallback(() => {
     setShowOnboarding(false);
-  };
+  }, []);
 
-  const handleGroupChatCreated = (shareId: string) => {
+  const handleGroupChatCreated = useCallback((shareId: string) => {
     // Optionally navigate to the group chat
-    // navigate(`/groupchat/${shareId}`);
-  };
+  }, []);
 
-  // Don't render main app content if welcome modal is showing
+  if (MAINTENANCE_MODE) {
+    window.location.href = '/maintenance.html';
+    return null;
+  }
+
   if (showWelcomeModal) {
     return (
       <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
@@ -273,7 +262,6 @@ function AppContent() {
     );
   }
 
-  // Show loading state while checking auth
   if (authLoading) {
     return (
       <div className={`min-h-screen ${theme.background} ${theme.text} flex items-center justify-center`}>
@@ -282,8 +270,7 @@ function AppContent() {
     );
   }
 
-  // Main chat page component
-  const ChatPage = () => (
+  return (
     <div
       className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}
       style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}
@@ -302,14 +289,12 @@ function AppContent() {
               onOpenSettings={handleOpenSettings}
             />
             <div className="flex items-center gap-2">
-              {/* Show remaining messages for anonymous users */}
               {isAnonymous && (
                 <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-white/50">
                   <span>{getRemainingMessages(currentPersona)} free messages left</span>
                 </div>
               )}
 
-              {/* Sign Up button for logged out users */}
               {isAnonymous ? (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -441,7 +426,6 @@ function AppContent() {
           isCenterStage={false}
         />
 
-        {/* YouTube Music Player */}
         {youtubeMusic && (
           <YouTubePlayer
             musicData={youtubeMusic}
@@ -453,7 +437,6 @@ function AppContent() {
         <div className="flex-1 overflow-y-auto custom-scrollbar message-container">
           {isChatMode ? (
             <ChatMode
-              key={currentSessionId}
               messages={messages}
               currentPersona={currentPersona}
               onMessageAnimated={markMessageAsAnimated}
@@ -462,7 +445,6 @@ function AppContent() {
             />
           ) : (
             <StageMode
-              key={currentSessionId}
               messages={messages}
               currentPersona={currentPersona}
               onMessageAnimated={markMessageAsAnimated}
@@ -493,20 +475,17 @@ function AppContent() {
           onClose={dismissRateLimitModal}
         />
 
-        {/* Auth Modal */}
         <AuthModal
           isOpen={showAuthModal}
           onClose={() => setShowAuthModal(false)}
           message={authModalMessage}
         />
 
-        {/* Onboarding Modal */}
         <OnboardingModal
           isOpen={showOnboarding}
           onComplete={handleOnboardingComplete}
         />
 
-        {/* Group Chat Modal */}
         <GroupChatModal
           isOpen={showGroupChatModal}
           onClose={() => setShowGroupChatModal(false)}
@@ -518,10 +497,19 @@ function AppContent() {
       </main>
     </div>
   );
+}
+
+function AppContent() {
+  const { theme } = useTheme();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Get loadChat function for history page
+  const { loadChat } = useChat(user?.id);
 
   return (
     <Routes>
-      <Route path="/" element={<ChatPage />} />
+      <Route path="/" element={<MainChatPage />} />
       <Route path="/account" element={
         <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
           <AccountPage onBack={() => navigate('/')} />
@@ -539,6 +527,7 @@ function AppContent() {
       <Route path="/help" element={<HelpPage />} />
       <Route path="/chat/:id" element={<ChatByIdPage />} />
       <Route path="/groupchat/:id" element={<GroupChatPage />} />
+      <Route path="/groupchat/:id/settings" element={<GroupSettingsPage />} />
     </Routes>
   );
 }

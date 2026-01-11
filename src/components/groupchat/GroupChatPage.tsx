@@ -11,7 +11,11 @@ import {
   UserPlus,
   Copy,
   Check,
-  X
+  X,
+  Settings,
+  Reply,
+  Heart,
+  Smile
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -23,6 +27,8 @@ import {
   isGroupChatParticipant,
   subscribeToGroupChat
 } from '../../services/groupChat/groupChatService';
+import { generateAIResponseStreaming } from '../../services/ai/aiProxyService';
+import { Message } from '../../types/chat';
 import { GroupChat, GroupChatMessage, GroupChatParticipant, GroupChatInvite } from '../../types/groupChat';
 import { AI_PERSONAS } from '../../config/constants';
 import ReactMarkdown from 'react-markdown';
@@ -40,8 +46,13 @@ export function GroupChatPage() {
   const [isJoining, setIsJoining] = useState(false);
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isAIResponding, setIsAIResponding] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<GroupChatMessage | null>(null);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState('');
+  const [mentionPosition, setMentionPosition] = useState(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -139,13 +150,120 @@ export function GroupChatPage() {
     setIsJoining(false);
   };
 
+  // Check if message mentions TimeMachine or a persona
+  const checkForAIMention = (content: string): { shouldRespond: boolean; persona: keyof typeof AI_PERSONAS } => {
+    const lowerContent = content.toLowerCase();
+
+    // Check for @TimeMachine mention
+    if (lowerContent.includes('@timemachine')) {
+      return { shouldRespond: true, persona: groupChat?.persona || 'default' };
+    }
+
+    // Check for @Girlie mention
+    if (lowerContent.includes('@girlie')) {
+      return { shouldRespond: true, persona: 'girlie' };
+    }
+
+    // Check for @Pro mention
+    if (lowerContent.includes('@pro')) {
+      return { shouldRespond: true, persona: 'pro' };
+    }
+
+    return { shouldRespond: false, persona: groupChat?.persona || 'default' };
+  };
+
+  // Generate AI response for group chat
+  const generateGroupAIResponse = async (triggerMessage: string, persona: keyof typeof AI_PERSONAS) => {
+    if (!groupChat) return;
+
+    setIsAIResponding(true);
+
+    // Convert group chat messages to dialogue-structured format for API
+    // This gives the AI context about who said what in the group
+    const apiMessages: Message[] = groupChat.messages.map(msg => {
+      if (msg.isAI) {
+        return {
+          id: msg.id,
+          content: msg.content,
+          isAI: true,
+          hasAnimated: true
+        };
+      } else {
+        // Format user messages with sender attribution for group context
+        const senderName = msg.sender_nickname || 'User';
+        return {
+          id: msg.id,
+          content: `[${senderName}]: ${msg.content}`,
+          isAI: false,
+          hasAnimated: true
+        };
+      }
+    });
+
+    // Add the trigger message with sender attribution
+    const senderName = profile?.nickname || 'User';
+    apiMessages.push({
+      id: Date.now(),
+      content: `[${senderName}]: ${triggerMessage}`,
+      isAI: false,
+      hasAnimated: true
+    });
+
+    let aiResponse = '';
+
+    await generateAIResponseStreaming(
+      apiMessages,
+      undefined, // imageData
+      '', // systemPrompt
+      persona,
+      undefined, // audioData
+      undefined, // heatLevel
+      undefined, // inputImageUrls
+      undefined, // imageDimensions
+      // onChunk
+      (chunk: string) => {
+        aiResponse += chunk;
+      },
+      // onComplete
+      async (response) => {
+        // Clean up the response content
+        const cleanContent = response.content
+          .replace(/<emotion>[a-z]+<\/emotion>/gi, '')
+          .replace(/<reason>[\s\S]*?<\/reason>/gi, '')
+          .trim();
+
+        // Send AI message to group chat
+        await sendGroupChatMessage(
+          groupChat.id,
+          cleanContent,
+          'ai',
+          AI_PERSONAS[persona].name,
+          undefined,
+          true, // isAI
+          undefined,
+          response.audioUrl,
+          response.thinking
+        );
+
+        setIsAIResponding(false);
+      },
+      // onError
+      (error) => {
+        console.error('AI response error:', error);
+        setIsAIResponding(false);
+      }
+    );
+  };
+
   const handleSend = async () => {
     if (!message.trim() || !groupChat || !user || !profile || isSending) return;
 
     const content = message.trim();
     setMessage('');
     setIsSending(true);
+    setReplyingTo(null);
 
+    // Send user message first
     await sendGroupChatMessage(
       groupChat.id,
       content,
@@ -155,13 +273,106 @@ export function GroupChatPage() {
     );
 
     setIsSending(false);
+
+    // Check if this message should trigger an AI response
+    const { shouldRespond, persona } = checkForAIMention(content);
+
+    // Also respond if replying to an AI message
+    const isReplyingToAI = replyingTo?.isAI;
+
+    if (shouldRespond || isReplyingToAI) {
+      // Remove the @mention from the content for cleaner AI processing
+      const cleanedContent = content
+        .replace(/@timemachine/gi, '')
+        .replace(/@girlie/gi, '')
+        .replace(/@pro/gi, '')
+        .trim();
+
+      await generateGroupAIResponse(cleanedContent || content, persona);
+    }
+
     inputRef.current?.focus();
   };
 
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setMessage(value);
+
+    // Check for @ mention trigger
+    const cursorPos = e.target.selectionStart || 0;
+    const textBeforeCursor = value.slice(0, cursorPos);
+    const atMatch = textBeforeCursor.match(/@(\w*)$/);
+
+    if (atMatch) {
+      setShowMentions(true);
+      setMentionFilter(atMatch[1].toLowerCase());
+      setMentionPosition(cursorPos - atMatch[1].length - 1);
+    } else {
+      setShowMentions(false);
+      setMentionFilter('');
+    }
+  };
+
+  const insertMention = (nickname: string) => {
+    const beforeMention = message.slice(0, mentionPosition);
+    const afterMention = message.slice(mentionPosition + mentionFilter.length + 1);
+    const newMessage = `${beforeMention}@${nickname} ${afterMention}`;
+    setMessage(newMessage);
+    setShowMentions(false);
+    setMentionFilter('');
+    inputRef.current?.focus();
+  };
+
+  // Get filtered mentions (participants + AI)
+  const getMentionSuggestions = () => {
+    const suggestions: Array<{ id: string; nickname: string; type: 'user' | 'ai' }> = [];
+
+    // Add AI mentions
+    suggestions.push(
+      { id: 'timemachine', nickname: 'TimeMachine', type: 'ai' },
+      { id: 'girlie', nickname: 'Girlie', type: 'ai' },
+      { id: 'pro', nickname: 'Pro', type: 'ai' }
+    );
+
+    // Add participants
+    if (groupChat) {
+      groupChat.participants.forEach(p => {
+        if (p.user_id !== user?.id) { // Don't show self
+          suggestions.push({
+            id: p.user_id,
+            nickname: p.nickname,
+            type: 'user'
+          });
+        }
+      });
+    }
+
+    // Filter by search
+    if (mentionFilter) {
+      return suggestions.filter(s =>
+        s.nickname.toLowerCase().includes(mentionFilter)
+      );
+    }
+
+    return suggestions;
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (showMentions && (e.key === 'Escape')) {
+      setShowMentions(false);
+      return;
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      if (showMentions) {
+        const suggestions = getMentionSuggestions();
+        if (suggestions.length > 0) {
+          insertMention(suggestions[0].nickname);
+        }
+      } else {
+        handleSend();
+      }
     }
   };
 
@@ -368,6 +579,15 @@ export function GroupChatPage() {
             >
               <Users className="w-5 h-5 text-white/70" />
             </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate(`/groupchat/${id}/settings`)}
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10"
+            >
+              <Settings className="w-5 h-5 text-white/70" />
+            </motion.button>
           </div>
         </div>
       </header>
@@ -381,42 +601,130 @@ export function GroupChatPage() {
               message={msg}
               isOwnMessage={msg.sender_id === user?.id}
               persona={groupChat.persona}
+              onReply={() => setReplyingTo(msg)}
             />
           ))}
+
+          {/* AI is typing indicator */}
+          {isAIResponding && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-start"
+            >
+              <div className={`max-w-[80%] p-4 rounded-2xl bg-gradient-to-r ${personaColors[groupChat?.persona || 'default']} bg-opacity-20 border border-white/10`}>
+                <p className="text-purple-400 text-xs font-medium mb-2">
+                  {AI_PERSONAS[groupChat?.persona || 'default'].name}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-white/50" />
+                  <span className="text-white/50 text-sm">Typing...</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
       </div>
 
       {/* Input area */}
-      <div className="flex-shrink-0 p-4 border-t border-white/10 bg-black/20 backdrop-blur-xl">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-end gap-3">
-            <div className="flex-1 relative">
-              <textarea
-                ref={inputRef}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
-                rows={1}
-                className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50 resize-none"
-                style={{ maxHeight: '120px' }}
-              />
+      <div className="flex-shrink-0 border-t border-white/10 bg-black/20 backdrop-blur-xl">
+        {/* Reply indicator */}
+        {replyingTo && (
+          <div className="px-4 py-2 border-b border-white/5 flex items-center justify-between bg-white/5">
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-1 h-8 bg-purple-500 rounded-full" />
+              <div>
+                <p className="text-white/50 text-xs">
+                  Replying to {replyingTo.isAI ? AI_PERSONAS[groupChat?.persona || 'default'].name : replyingTo.sender_nickname}
+                </p>
+                <p className="text-white/70 truncate max-w-[250px]">{replyingTo.content}</p>
+              </div>
             </div>
-
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleSend}
-              disabled={!message.trim() || isSending}
-              className={`p-3 rounded-xl bg-gradient-to-r ${personaColors[groupChat?.persona || 'default']} text-white disabled:opacity-50`}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setReplyingTo(null)}
+              className="p-1 rounded-full hover:bg-white/10"
             >
-              {isSending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
+              <X className="w-4 h-4 text-white/50" />
             </motion.button>
+          </div>
+        )}
+
+        <div className="p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-end gap-3">
+              <div className="flex-1 relative">
+                {/* Mentions dropdown */}
+                <AnimatePresence>
+                  {showMentions && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute bottom-full left-0 right-0 mb-2 bg-[#1a1a1f] border border-white/10 rounded-xl overflow-hidden shadow-xl max-h-60 overflow-y-auto"
+                    >
+                      {getMentionSuggestions().map((suggestion) => (
+                        <motion.button
+                          key={suggestion.id}
+                          whileHover={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+                          onClick={() => insertMention(suggestion.nickname)}
+                          className="w-full px-4 py-3 flex items-center gap-3 text-left"
+                        >
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            suggestion.type === 'ai'
+                              ? 'bg-gradient-to-br from-purple-500 to-pink-500'
+                              : 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                          }`}>
+                            <span className="text-white text-sm font-medium">
+                              {suggestion.nickname.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-white font-medium">{suggestion.nickname}</p>
+                            <p className="text-white/40 text-xs">
+                              {suggestion.type === 'ai' ? 'AI Assistant' : 'Participant'}
+                            </p>
+                          </div>
+                        </motion.button>
+                      ))}
+                      {getMentionSuggestions().length === 0 && (
+                        <div className="px-4 py-3 text-white/40 text-sm">
+                          No matches found
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <textarea
+                  ref={inputRef}
+                  value={message}
+                  onChange={handleMessageChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder={replyingTo?.isAI ? "Reply to TimeMachine..." : "Type @ to mention someone..."}
+                  rows={1}
+                  className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-purple-500/50 resize-none"
+                  style={{ maxHeight: '120px' }}
+                />
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleSend}
+                disabled={!message.trim() || isSending}
+                className={`p-3 rounded-xl bg-gradient-to-r ${personaColors[groupChat?.persona || 'default']} text-white disabled:opacity-50`}
+              >
+                {isSending ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
+              </motion.button>
+            </div>
           </div>
         </div>
       </div>
@@ -495,10 +803,13 @@ interface GroupMessageProps {
   message: GroupChatMessage;
   isOwnMessage: boolean;
   persona: keyof typeof AI_PERSONAS;
+  onReply: () => void;
 }
 
-function GroupMessage({ message, isOwnMessage, persona }: GroupMessageProps) {
+function GroupMessage({ message, isOwnMessage, persona, onReply }: GroupMessageProps) {
   const isAI = message.isAI;
+  const [showActions, setShowActions] = useState(false);
+  const [liked, setLiked] = useState(false);
 
   const personaColors = {
     default: 'from-purple-500/20 to-violet-500/20 border-purple-500/30',
@@ -506,21 +817,68 @@ function GroupMessage({ message, isOwnMessage, persona }: GroupMessageProps) {
     pro: 'from-cyan-500/20 to-blue-500/20 border-cyan-500/30',
   };
 
+  // Message action buttons
+  const MessageActions = () => (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      className="flex items-center gap-1 p-1 rounded-lg bg-black/40 backdrop-blur-sm border border-white/10"
+    >
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => setLiked(!liked)}
+        className={`p-1.5 rounded-md hover:bg-white/10 ${liked ? 'text-red-400' : 'text-white/50'}`}
+      >
+        <Heart className={`w-3.5 h-3.5 ${liked ? 'fill-current' : ''}`} />
+      </motion.button>
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={onReply}
+        className="p-1.5 rounded-md hover:bg-white/10 text-white/50"
+      >
+        <Reply className="w-3.5 h-3.5" />
+      </motion.button>
+      <motion.button
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        className="p-1.5 rounded-md hover:bg-white/10 text-white/50"
+      >
+        <Smile className="w-3.5 h-3.5" />
+      </motion.button>
+    </motion.div>
+  );
+
   // AI messages
   if (isAI) {
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex justify-start"
+        className="flex justify-start group"
+        onMouseEnter={() => setShowActions(true)}
+        onMouseLeave={() => setShowActions(false)}
       >
-        <div className={`max-w-[80%] p-4 rounded-2xl bg-gradient-to-r ${personaColors[persona] || personaColors.default} border`}>
-          <p className="text-purple-400 text-xs font-medium mb-2">
-            {AI_PERSONAS[persona].name}
-          </p>
-          <div className="text-white/90 prose prose-invert prose-sm max-w-none">
-            <ReactMarkdown>{message.content}</ReactMarkdown>
+        <div className="relative">
+          <div className={`max-w-[80%] p-4 rounded-2xl bg-gradient-to-r ${personaColors[persona] || personaColors.default} border`}>
+            <p className="text-purple-400 text-xs font-medium mb-2">
+              {AI_PERSONAS[persona].name}
+            </p>
+            <div className="text-white/90 prose prose-invert prose-sm max-w-none">
+              <ReactMarkdown>{message.content}</ReactMarkdown>
+            </div>
           </div>
+
+          {/* Action buttons */}
+          <AnimatePresence>
+            {showActions && (
+              <div className="absolute -bottom-2 left-4">
+                <MessageActions />
+              </div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
     );
@@ -532,12 +890,25 @@ function GroupMessage({ message, isOwnMessage, persona }: GroupMessageProps) {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex justify-end"
+        className="flex justify-end group"
+        onMouseEnter={() => setShowActions(true)}
+        onMouseLeave={() => setShowActions(false)}
       >
-        <div className="max-w-[80%] p-4 rounded-2xl bg-white/10 border border-white/10">
-          <div className="text-white/90">
-            {message.content}
+        <div className="relative">
+          <div className="max-w-[80%] p-4 rounded-2xl bg-white/10 border border-white/10">
+            <div className="text-white/90">
+              {message.content}
+            </div>
           </div>
+
+          {/* Action buttons */}
+          <AnimatePresence>
+            {showActions && (
+              <div className="absolute -bottom-2 right-4">
+                <MessageActions />
+              </div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
     );
@@ -548,9 +919,11 @@ function GroupMessage({ message, isOwnMessage, persona }: GroupMessageProps) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex justify-end"
+      className="flex justify-end group"
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
     >
-      <div className="max-w-[80%]">
+      <div className="max-w-[80%] relative">
         {/* Sender info above message */}
         <div className="flex items-center gap-2 mb-1 justify-end">
           {message.sender_avatar && (
@@ -570,6 +943,15 @@ function GroupMessage({ message, isOwnMessage, persona }: GroupMessageProps) {
             {message.content}
           </div>
         </div>
+
+        {/* Action buttons */}
+        <AnimatePresence>
+          {showActions && (
+            <div className="absolute -bottom-2 right-4">
+              <MessageActions />
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );
