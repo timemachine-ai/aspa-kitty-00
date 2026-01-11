@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { ChatInput } from './components/chat/ChatInput';
 import { BrandLogo } from './components/brand/BrandLogo';
 import { MusicPlayer } from './components/music/MusicPlayer';
@@ -22,6 +22,7 @@ import { AlbumPage } from './components/album/AlbumPage';
 import { MemoriesPage } from './components/memories/MemoriesPage';
 import { HelpPage } from './components/help/HelpPage';
 import { GroupChatPage } from './components/groupchat/GroupChatPage';
+import { GroupChatJoinPage } from './components/groupchat/GroupChatJoinPage';
 import { GroupChatModal } from './components/groupchat/GroupChatModal';
 import { GroupSettingsPage } from './components/groupchat/GroupSettingsPage';
 import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './config/constants';
@@ -96,6 +97,7 @@ function MainChatPage() {
   const { theme } = useTheme();
   const { user, profile, loading: authLoading, needsOnboarding } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const {
     messages,
@@ -124,8 +126,9 @@ function MainChatPage() {
     dismissRateLimitModal,
     loadChat,
     clearYoutubeMusic,
-    enableCollaborativeMode
-  } = useChat(user?.id, profile);
+    enableCollaborativeMode,
+    joinCollaborativeChat
+  } = useChat(user?.id, profile || undefined);
 
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
 
@@ -155,6 +158,22 @@ function MainChatPage() {
       setShowOnboarding(true);
     }
   }, [authLoading, needsOnboarding]);
+
+  // Handle joining collaborative chat from URL param (e.g., /?collaborative=abc123)
+  useEffect(() => {
+    const collaborativeParam = searchParams.get('collaborative');
+    if (collaborativeParam && user && !authLoading && !isCollaborative) {
+      // Clear the URL param and join the session
+      searchParams.delete('collaborative');
+      setSearchParams(searchParams, { replace: true });
+
+      joinCollaborativeChat(collaborativeParam).then(success => {
+        if (!success) {
+          console.error('Failed to join collaborative chat:', collaborativeParam);
+        }
+      });
+    }
+  }, [searchParams, setSearchParams, user, authLoading, isCollaborative, joinCollaborativeChat]);
 
   useEffect(() => {
     const updateVH = () => {
@@ -538,7 +557,8 @@ function AppContent() {
       <Route path="/memories" element={<MemoriesPage />} />
       <Route path="/help" element={<HelpPage />} />
       <Route path="/chat/:id" element={<ChatByIdPage />} />
-      <Route path="/groupchat/:id" element={<GroupChatPage />} />
+      <Route path="/groupchat/:id" element={<GroupChatJoinPage />} />
+      <Route path="/groupchat/:id/old" element={<GroupChatPage />} />
       <Route path="/groupchat/:id/settings" element={<GroupSettingsPage />} />
     </Routes>
   );
