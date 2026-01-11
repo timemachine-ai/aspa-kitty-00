@@ -59,9 +59,12 @@ export function GroupChatModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Close modal - user continues in collaborative mode
+  // Close modal and navigate to group chat URL for persistence
   const handleContinue = () => {
     onClose();
+    if (shareId) {
+      window.location.href = `/groupchat/${shareId}`;
+    }
   };
 
   const personaColors = {
