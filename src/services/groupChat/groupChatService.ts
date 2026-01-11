@@ -247,6 +247,84 @@ export async function disableGroupChat(chatId: string, userId: string): Promise<
   }
 }
 
+// Kick a participant from group chat (admin only)
+export async function kickParticipant(chatId: string, adminId: string, targetUserId: string): Promise<boolean> {
+  try {
+    // Verify admin is owner
+    const { data: chat } = await supabase
+      .from('group_chats')
+      .select('owner_id')
+      .eq('id', chatId)
+      .single();
+
+    if (!chat || chat.owner_id !== adminId) {
+      console.error('Not authorized to kick participants');
+      return false;
+    }
+
+    // Cannot kick yourself (use leaveGroupChat instead)
+    if (targetUserId === adminId) {
+      console.error('Cannot kick yourself');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('group_chat_participants')
+      .delete()
+      .eq('group_chat_id', chatId)
+      .eq('user_id', targetUserId);
+
+    return !error;
+  } catch (error) {
+    console.error('Failed to kick participant:', error);
+    return false;
+  }
+}
+
+// Leave a group chat
+export async function leaveGroupChat(chatId: string, userId: string): Promise<boolean> {
+  try {
+    // Check if user is owner
+    const { data: chat } = await supabase
+      .from('group_chats')
+      .select('owner_id')
+      .eq('id', chatId)
+      .single();
+
+    if (chat?.owner_id === userId) {
+      // Owner leaving - disable the group chat
+      await disableGroupChat(chatId, userId);
+    }
+
+    const { error } = await supabase
+      .from('group_chat_participants')
+      .delete()
+      .eq('group_chat_id', chatId)
+      .eq('user_id', userId);
+
+    return !error;
+  } catch (error) {
+    console.error('Failed to leave group chat:', error);
+    return false;
+  }
+}
+
+// Update group chat name (admin only)
+export async function updateGroupName(chatId: string, userId: string, newName: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('group_chats')
+      .update({ name: newName })
+      .eq('id', chatId)
+      .eq('owner_id', userId);
+
+    return !error;
+  } catch (error) {
+    console.error('Failed to update group name:', error);
+    return false;
+  }
+}
+
 // Subscribe to group chat messages (real-time)
 export function subscribeToGroupChat(
   chatId: string,
