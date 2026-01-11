@@ -11,24 +11,33 @@ interface ChatMessageProps extends Message {
   previousMessage?: string | null;
   isStreaming?: boolean;
   streamingMessageId?: number | null;
+  isGroupMode?: boolean;
+  currentUserId?: string;
 }
 
-export function ChatMessage({ 
-  content, 
-  thinking, 
-  isAI, 
-  isChatMode, 
-  id, 
-  hasAnimated, 
-  onAnimationComplete, 
+export function ChatMessage({
+  content,
+  thinking,
+  isAI,
+  isChatMode,
+  id,
+  hasAnimated,
+  onAnimationComplete,
   currentPersona,
   previousMessage,
   imageData,
   audioData,
   audioUrl,
   isStreaming,
-  streamingMessageId
+  streamingMessageId,
+  isGroupMode,
+  currentUserId,
+  sender_id,
+  sender_nickname,
+  sender_avatar
 }: ChatMessageProps) {
+  // In group mode, check if this message is from another user
+  const isOtherUserMessage = isGroupMode && !isAI && sender_id && sender_id !== currentUserId;
   if (isAI) {
     return (
       <AIMessage 
@@ -47,10 +56,13 @@ export function ChatMessage({
     );
   }
   return (
-    <UserMessage 
-      content={content} 
+    <UserMessage
+      content={content}
       imageData={imageData}
       audioData={audioData}
+      sender_nickname={isOtherUserMessage ? sender_nickname : undefined}
+      sender_avatar={isOtherUserMessage ? sender_avatar : undefined}
+      isGroupMode={isGroupMode}
     />
   );
 }

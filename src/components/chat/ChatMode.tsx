@@ -10,14 +10,18 @@ interface ChatModeProps {
   onMessageAnimated: (messageId: number) => void;
   error?: string | null;
   streamingMessageId?: number | null;
+  isGroupMode?: boolean;
+  currentUserId?: string;
 }
 
-export function ChatMode({ 
-  messages, 
-  currentPersona, 
+export function ChatMode({
+  messages,
+  currentPersona,
   onMessageAnimated,
   error,
-  streamingMessageId
+  streamingMessageId,
+  isGroupMode,
+  currentUserId
 }: ChatModeProps) {
   const { theme } = useTheme();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -75,13 +79,15 @@ export function ChatMode({
                 ref={index === messages.length - 1 && !message.isAI ? lastUserMessageRef : null}
                 className={index === 0 ? 'h-[calc(100vh-16rem)] flex items-center justify-center' : ''}
               >
-                <ChatMessage 
+                <ChatMessage
                   {...message}
                   isChatMode={true}
                   onAnimationComplete={onMessageAnimated}
                   currentPersona={currentPersona}
                   previousMessage={previousMessage}
                   streamingMessageId={streamingMessageId}
+                  isGroupMode={isGroupMode}
+                  currentUserId={currentUserId}
                 />
               </div>
             );
