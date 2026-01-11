@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ChatInput } from './components/chat/ChatInput';
 import { BrandLogo } from './components/brand/BrandLogo';
 import { MusicPlayer } from './components/music/MusicPlayer';
 import { YouTubePlayer } from './components/music/YouTubePlayer';
-import { Star } from 'lucide-react';
+import { Star, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from './hooks/useChat';
 import { useAnonymousRateLimit } from './hooks/useAnonymousRateLimit';
@@ -15,11 +16,87 @@ import { StageMode } from './components/chat/StageMode';
 import { RateLimitModal } from './components/modals/RateLimitModal';
 import { WelcomeModal } from './components/modals/WelcomeModal';
 import { AuthModal, OnboardingModal, AccountPage } from './components/auth';
+import { ChatHistoryPage } from './components/chat/ChatHistoryPage';
+import { SettingsPage } from './components/settings/SettingsPage';
+import { AlbumPage } from './components/album/AlbumPage';
+import { MemoriesPage } from './components/memories/MemoriesPage';
+import { HelpPage } from './components/help/HelpPage';
+import { GroupChatPage } from './components/groupchat/GroupChatPage';
+import { GroupChatModal } from './components/groupchat/GroupChatModal';
 import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './config/constants';
+import { ChatSession, getSupabaseSessions, getLocalSessions } from './services/chat/chatService';
+
+// Chat by ID page component
+function ChatByIdPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { theme } = useTheme();
+  const { user } = useAuth();
+  const [session, setSession] = useState<ChatSession | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadChat() {
+      if (!id) return;
+      setIsLoading(true);
+
+      try {
+        let sessions: ChatSession[];
+        if (user) {
+          sessions = await getSupabaseSessions(user.id);
+        } else {
+          sessions = getLocalSessions();
+        }
+
+        const found = sessions.find(s => s.id === id);
+        setSession(found || null);
+      } catch (error) {
+        console.error('Failed to load chat:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadChat();
+  }, [id, user]);
+
+  if (isLoading) {
+    return (
+      <div className={`min-h-screen ${theme.background} flex items-center justify-center`}>
+        <div className="w-10 h-10 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className={`min-h-screen ${theme.background} flex items-center justify-center p-4`}>
+        <div className="text-center">
+          <p className="text-white/50 text-lg mb-4">Chat not found</p>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => navigate('/')}
+            className="px-6 py-3 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-200"
+          >
+            Go Home
+          </motion.button>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to main chat with this session loaded
+  // In a full implementation, you'd want to load this chat directly
+  navigate('/');
+  return null;
+}
 
 function AppContent() {
   const { theme } = useTheme();
   const { user, profile, loading: authLoading, needsOnboarding } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const {
     messages,
@@ -44,9 +121,18 @@ function AppContent() {
     loadChat,
     clearYoutubeMusic
   } = useChat(user?.id, profile);
+
+  // Derive chat name from first user message
+  const currentChatName = React.useMemo(() => {
+    const firstUserMessage = messages.find(msg => !msg.isAI);
+    if (firstUserMessage?.content && firstUserMessage.content.trim()) {
+      return firstUserMessage.content.slice(0, 50);
+    }
+    return 'New Chat';
+  }, [messages]);
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
 
-  const [isCenterStage, setIsCenterStage] = useState(false);
+  const [showGroupChatModal, setShowGroupChatModal] = useState(false);
   const [isHeatLevelExpanded, setIsHeatLevelExpanded] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(() => {
     if (!ACCESS_TOKEN_REQUIRED) return false;
@@ -57,7 +143,6 @@ function AppContent() {
   // Auth-related states
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showAccountPage, setShowAccountPage] = useState(false);
   const [authModalMessage, setAuthModalMessage] = useState<string | undefined>();
 
   // Check if user needs onboarding after auth
@@ -84,31 +169,15 @@ function AppContent() {
     return () => window.removeEventListener('resize', updateVH);
   }, []);
 
-  const personaGlowColors: Record<string, string> = {
-    default: 'rgba(139,0,255,0.7)',
-    girlie: 'rgba(199,21,133,0.7)',
-    pro: 'rgba(30,144,255,0.7)'
-  };
-
   const personaBackgroundColors: Record<string, string> = {
     default: 'rgba(139,0,255,0.2)',
     girlie: 'rgba(199,21,133,0.2)',
     pro: 'rgba(30,144,255,0.2)'
   };
 
-  const getButtonStyles = (isCenterStage: boolean, persona: string, theme: any) => ({
-    border: isCenterStage
-      ? `1px solid ${persona === 'girlie' ? 'rgb(199,21,133)' : 'rgb(139,0,255)'}`
-      : 'none',
-    bg: isCenterStage
-      ? (persona === 'girlie' ? 'rgba(199,21,133,0.3)' : 'rgba(139,0,255,0.3)')
-      : personaBackgroundColors[persona],
-    shadow: isCenterStage
-      ? `0 0 20px ${persona === 'girlie' ? 'rgba(199,21,133,0.8)' : 'rgba(139,0,255,0.8)'}`
-      : 'none',
-    text: isCenterStage
-      ? (persona === 'girlie' ? 'rgb(238,130,238)' : 'rgb(186,85,211)')
-      : theme.text,
+  const getButtonStyles = (persona: string, theme: any) => ({
+    bg: personaBackgroundColors[persona],
+    text: theme.text,
   });
 
   const getHeatLevelButtonStyles = (isExpanded: boolean, theme: any) => ({
@@ -118,7 +187,7 @@ function AppContent() {
     text: isExpanded ? 'rgb(135,206,250)' : theme.text,
   });
 
-  const buttonStyles = getButtonStyles(isCenterStage, currentPersona, theme);
+  const buttonStyles = getButtonStyles(currentPersona, theme);
   const heatLevelButtonStyles = getHeatLevelButtonStyles(isHeatLevelExpanded, theme);
 
   const handleAccessGranted = () => {
@@ -172,21 +241,25 @@ function AppContent() {
   };
 
   const handleOpenAccount = () => {
-    setShowAccountPage(true);
+    navigate('/account');
+  };
+
+  const handleOpenHistory = () => {
+    navigate('/history');
+  };
+
+  const handleOpenSettings = () => {
+    navigate('/settings');
   };
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
   };
 
-  // Show account page
-  if (showAccountPage) {
-    return (
-      <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
-        <AccountPage onBack={() => setShowAccountPage(false)} />
-      </div>
-    );
-  }
+  const handleGroupChatCreated = (shareId: string) => {
+    // Optionally navigate to the group chat
+    // navigate(`/groupchat/${shareId}`);
+  };
 
   // Don't render main app content if welcome modal is showing
   if (showWelcomeModal) {
@@ -209,7 +282,8 @@ function AppContent() {
     );
   }
 
-  return (
+  // Main chat page component
+  const ChatPage = () => (
     <div
       className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}
       style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}
@@ -224,6 +298,8 @@ function AppContent() {
               onStartNewChat={startNewChat}
               onOpenAuth={handleOpenAuth}
               onOpenAccount={handleOpenAccount}
+              onOpenHistory={handleOpenHistory}
+              onOpenSettings={handleOpenSettings}
             />
             <div className="flex items-center gap-2">
               {/* Show remaining messages for anonymous users */}
@@ -242,12 +318,9 @@ function AppContent() {
                   style={{
                     background: buttonStyles.bg,
                     color: buttonStyles.text,
-                    border: buttonStyles.border,
-                    boxShadow: buttonStyles.shadow,
                     borderRadius: '9999px',
                     backdropFilter: 'blur(10px)',
                     outline: 'none',
-                    borderWidth: '0px',
                     padding: '8px 16px',
                     display: 'flex',
                     alignItems: 'center',
@@ -339,26 +412,23 @@ function AppContent() {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setIsCenterStage(!isCenterStage)}
+                  onClick={() => setShowGroupChatModal(true)}
                   style={{
                     background: buttonStyles.bg,
                     color: buttonStyles.text,
-                    border: buttonStyles.border,
-                    boxShadow: buttonStyles.shadow,
                     borderRadius: '9999px',
                     backdropFilter: 'blur(10px)',
                     outline: 'none',
-                    borderWidth: '0px',
                     padding: '8px 16px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
                     transition: 'all 0.3s ease',
                   }}
-                  aria-label={isCenterStage ? "Disable Center Stage" : "Enable Center Stage"}
+                  aria-label="Open Group Chat"
                 >
-                  <Star style={{ width: '16px', height: '16px', color: buttonStyles.text }} />
-                  <span style={{ fontSize: '14px', color: buttonStyles.text }}>Center Stage</span>
+                  <Users style={{ width: '16px', height: '16px', color: buttonStyles.text }} />
+                  <span style={{ fontSize: '14px', color: buttonStyles.text }}>Group Chat</span>
                 </motion.button>
               )}
             </div>
@@ -368,7 +438,7 @@ function AppContent() {
         <MusicPlayer
           currentPersona={currentPersona}
           currentEmotion={currentEmotion}
-          isCenterStage={isCenterStage}
+          isCenterStage={false}
         />
 
         {/* YouTube Music Player */}
@@ -435,8 +505,41 @@ function AppContent() {
           isOpen={showOnboarding}
           onComplete={handleOnboardingComplete}
         />
+
+        {/* Group Chat Modal */}
+        <GroupChatModal
+          isOpen={showGroupChatModal}
+          onClose={() => setShowGroupChatModal(false)}
+          sessionId={currentSessionId}
+          chatName={currentChatName || 'Group Chat'}
+          persona={currentPersona}
+          onGroupChatCreated={handleGroupChatCreated}
+        />
       </main>
     </div>
+  );
+
+  return (
+    <Routes>
+      <Route path="/" element={<ChatPage />} />
+      <Route path="/account" element={
+        <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
+          <AccountPage onBack={() => navigate('/')} />
+        </div>
+      } />
+      <Route path="/history" element={
+        <ChatHistoryPage onLoadChat={(session) => {
+          loadChat(session);
+          navigate('/');
+        }} />
+      } />
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/album" element={<AlbumPage />} />
+      <Route path="/memories" element={<MemoriesPage />} />
+      <Route path="/help" element={<HelpPage />} />
+      <Route path="/chat/:id" element={<ChatByIdPage />} />
+      <Route path="/groupchat/:id" element={<GroupChatPage />} />
+    </Routes>
   );
 }
 
