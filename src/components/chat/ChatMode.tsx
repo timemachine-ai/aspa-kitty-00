@@ -4,6 +4,13 @@ import { Message } from '../../types/chat';
 import { AI_PERSONAS } from '../../config/constants';
 import { useTheme } from '../../context/ThemeContext';
 
+interface ReplyTo {
+  id: number;
+  content: string;
+  sender_nickname?: string;
+  isAI: boolean;
+}
+
 interface ChatModeProps {
   messages: Message[];
   currentPersona: keyof typeof AI_PERSONAS;
@@ -12,6 +19,8 @@ interface ChatModeProps {
   streamingMessageId?: number | null;
   isGroupMode?: boolean;
   currentUserId?: string;
+  onReply?: (message: ReplyTo) => void;
+  onReact?: (messageId: number, emoji: string) => void;
 }
 
 export function ChatMode({
@@ -21,7 +30,9 @@ export function ChatMode({
   error,
   streamingMessageId,
   isGroupMode,
-  currentUserId
+  currentUserId,
+  onReply,
+  onReact
 }: ChatModeProps) {
   const { theme } = useTheme();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -88,6 +99,8 @@ export function ChatMode({
                   streamingMessageId={streamingMessageId}
                   isGroupMode={isGroupMode}
                   currentUserId={currentUserId}
+                  onReply={onReply}
+                  onReact={onReact}
                 />
               </div>
             );

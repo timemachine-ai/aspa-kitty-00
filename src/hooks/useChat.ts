@@ -361,7 +361,14 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     };
   }, []);
 
-  const handleSendMessage = useCallback(async (content: string, imageData?: string | string[], audioData?: string, inputImageUrls?: string[], imageDimensions?: ImageDimensions) => {
+  const handleSendMessage = useCallback(async (
+    content: string,
+    imageData?: string | string[],
+    audioData?: string,
+    inputImageUrls?: string[],
+    imageDimensions?: ImageDimensions,
+    replyTo?: { id: number; content: string; sender_nickname?: string; isAI: boolean }
+  ) => {
     let messagePersona = currentPersona;
     let messageContent = content;
 
@@ -395,7 +402,9 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       imageDimensions: imageDimensions,
       // Add sender info for collaborative mode
       sender_id: isCollaborative ? userId || undefined : undefined,
-      sender_nickname: isCollaborative ? userProfile?.nickname || undefined : undefined
+      sender_nickname: isCollaborative ? userProfile?.nickname || undefined : undefined,
+      // Add reply info if replying
+      replyTo: replyTo
     };
 
     // Create API message with cleaned content (without @mention) for API call
@@ -428,9 +437,13 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
         undefined // reasoning
       );
 
-      // In collaborative mode, only trigger AI if @timemachine is mentioned
+      // In collaborative mode, trigger AI if:
+      // 1. @timemachine is mentioned, OR
+      // 2. User is replying to an AI message
       const mentionsTimeMachine = /(@timemachine|timemachine)/i.test(content);
-      if (!mentionsTimeMachine) {
+      const isReplyingToAI = replyTo?.isAI === true;
+
+      if (!mentionsTimeMachine && !isReplyingToAI) {
         // Just send the message, no AI response
         setIsLoading(false);
         return;

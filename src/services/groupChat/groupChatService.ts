@@ -331,9 +331,12 @@ export function subscribeToGroupChat(
   onMessage: (message: GroupChatMessage) => void,
   onParticipantJoin: (participant: GroupChatParticipant) => void
 ) {
+  // Generate unique channel names to prevent channel sharing issues
+  const subscriptionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
   // Subscribe to new messages
   const messagesChannel = supabase
-    .channel(`group_chat_messages:${chatId}`)
+    .channel(`group_messages_${chatId}_${subscriptionId}`)
     .on(
       'postgres_changes',
       {
@@ -358,11 +361,17 @@ export function subscribeToGroupChat(
         });
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`[GroupChat] Subscribed to messages for ${chatId}`);
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error(`[GroupChat] Error subscribing to messages for ${chatId}`);
+      }
+    });
 
   // Subscribe to new participants
   const participantsChannel = supabase
-    .channel(`group_chat_participants:${chatId}`)
+    .channel(`group_participants_${chatId}_${subscriptionId}`)
     .on(
       'postgres_changes',
       {
@@ -383,10 +392,15 @@ export function subscribeToGroupChat(
         });
       }
     )
-    .subscribe();
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`[GroupChat] Subscribed to participants for ${chatId}`);
+      }
+    });
 
   // Return unsubscribe function
   return () => {
+    console.log(`[GroupChat] Unsubscribing from ${chatId}`);
     messagesChannel.unsubscribe();
     participantsChannel.unsubscribe();
   };
