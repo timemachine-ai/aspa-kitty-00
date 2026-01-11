@@ -200,7 +200,7 @@ export async function sendGroupChatMessage(
         group_chat_id: chatId,
         content,
         role: isAI ? 'assistant' : 'user',
-        sender_id: isAI ? null : senderId,
+        sender_id: senderId, // Always store sender_id for filtering
         sender_nickname: isAI ? 'TimeMachine' : senderNickname,
         sender_avatar: senderAvatar,
         images,
