@@ -650,11 +650,25 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     collaborativeUnsubscribeRef.current = subscribeToGroupChat(
       shareId,
       (newMessage) => {
-        setMessages(prev => {
-          const exists = prev.some(m => m.id === newMessage.id);
-          if (exists) return prev;
-          return [...prev, newMessage];
-        });
+        // Only add messages NOT from current user (to avoid duplicates/id mismatch)
+        if (newMessage.sender_id !== userId) {
+          setMessages(prev => {
+            const exists = prev.some(m => m.id === newMessage.id);
+            if (exists) return prev;
+
+            return [...prev, {
+              id: newMessage.id,
+              content: newMessage.content,
+              isAI: newMessage.isAI,
+              hasAnimated: newMessage.hasAnimated,
+              thinking: newMessage.thinking,
+              audioUrl: newMessage.audioUrl,
+              inputImageUrls: newMessage.inputImageUrls,
+              senderId: newMessage.sender_id,
+              senderNickname: newMessage.sender_nickname
+            }];
+          });
+        }
       },
       (newParticipant) => {
         setParticipants(prev => {
@@ -666,7 +680,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     );
 
     return true;
-  }, [setPersonaTheme]);
+  }, [setPersonaTheme, userId]);
 
   // Leave collaborative mode
   const leaveCollaborativeMode = useCallback(() => {
