@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Users, Copy, Check, ExternalLink, Loader2 } from 'lucide-react';
+import { X, Users, Copy, Check, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { createGroupChat } from '../../services/groupChat/groupChatService';
 import { AI_PERSONAS } from '../../config/constants';
@@ -12,7 +12,7 @@ interface GroupChatModalProps {
   sessionId: string;
   chatName: string;
   persona: keyof typeof AI_PERSONAS;
-  onGroupChatCreated?: (shareId: string) => void;
+  onGroupChatCreated?: (chatName: string) => Promise<void>;
 }
 
 export function GroupChatModal({
@@ -40,6 +40,7 @@ export function GroupChatModal({
     setIsCreating(true);
     setError(null);
 
+    // Create the group chat in Supabase
     const id = await createGroupChat(
       sessionId,
       user.id,
@@ -50,7 +51,8 @@ export function GroupChatModal({
 
     if (id) {
       setShareId(id);
-      onGroupChatCreated?.(id);
+      // Notify parent to enable collaborative mode
+      await onGroupChatCreated?.(chatName || 'Group Chat');
     } else {
       setError('Failed to create group chat. Please try again.');
     }
@@ -64,10 +66,9 @@ export function GroupChatModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleOpenGroupChat = () => {
-    if (shareId) {
-      window.open(`/groupchat/${shareId}`, '_blank');
-    }
+  // Close modal - user continues in collaborative mode
+  const handleContinue = () => {
+    onClose();
   };
 
   const personaColors = {
@@ -222,11 +223,11 @@ export function GroupChatModal({
                           <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
-                            onClick={handleOpenGroupChat}
-                            className={`flex-1 py-3 rounded-xl bg-gradient-to-r ${personaColors[persona]} text-white font-medium flex items-center justify-center gap-2`}
+                            onClick={handleContinue}
+                            className={`flex-1 py-3 rounded-xl bg-gradient-to-r ${personaColors[persona] || personaColors.default} text-white font-medium flex items-center justify-center gap-2`}
                           >
-                            <ExternalLink className="w-4 h-4" />
-                            Open Chat
+                            <Check className="w-4 h-4" />
+                            Continue
                           </motion.button>
                         </div>
                       </div>

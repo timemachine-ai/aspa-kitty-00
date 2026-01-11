@@ -14,6 +14,9 @@ export interface Message {
   audioUrl?: string; // Add audioUrl field for AI audio responses
   inputImageUrls?: string[]; // Add inputImageUrls field for publicly accessible image URLs
   imageDimensions?: ImageDimensions; // Dimensions of the first uploaded image (for edit operations)
+  // Collaborative chat fields
+  senderId?: string; // User ID for collaborative messages
+  senderNickname?: string; // Display name for collaborative messages
 }
 
 export interface ChatState {

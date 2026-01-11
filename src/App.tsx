@@ -110,6 +110,11 @@ function MainChatPage() {
     streamingMessageId,
     youtubeMusic,
     currentSessionId,
+    // Collaborative mode
+    isCollaborative,
+    collaborativeId,
+    participants,
+    // Actions
     handleSendMessage,
     handlePersonaChange,
     setCurrentProHeatLevel,
@@ -118,7 +123,8 @@ function MainChatPage() {
     dismissAboutUs,
     dismissRateLimitModal,
     loadChat,
-    clearYoutubeMusic
+    clearYoutubeMusic,
+    enableCollaborativeMode
   } = useChat(user?.id, profile);
 
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
@@ -242,9 +248,13 @@ function MainChatPage() {
     setShowOnboarding(false);
   }, []);
 
-  const handleGroupChatCreated = useCallback((shareId: string) => {
-    // Optionally navigate to the group chat
-  }, []);
+  const handleGroupChatCreated = useCallback(async (chatName: string) => {
+    const shareId = await enableCollaborativeMode(chatName);
+    if (shareId) {
+      // Collaborative mode is now enabled - share link is available
+      console.log('Collaborative mode enabled:', shareId);
+    }
+  }, [enableCollaborativeMode]);
 
   if (MAINTENANCE_MODE) {
     window.location.href = '/maintenance.html';
@@ -442,6 +452,8 @@ function MainChatPage() {
               onMessageAnimated={markMessageAsAnimated}
               error={error}
               streamingMessageId={streamingMessageId}
+              isCollaborative={isCollaborative}
+              currentUserId={user?.id}
             />
           ) : (
             <StageMode

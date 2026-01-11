@@ -4,6 +4,13 @@ import { generateAIResponse, generateAIResponseStreaming, YouTubeMusicData, User
 import { INITIAL_MESSAGE, AI_PERSONAS } from '../config/constants';
 import { chatService, ChatSession } from '../services/chat/chatService';
 import { processGeneratedImages } from '../services/image/imageService';
+import {
+  subscribeToGroupChat,
+  sendGroupChatMessage,
+  getGroupChat,
+  createGroupChat
+} from '../services/groupChat/groupChatService';
+import { GroupChatParticipant } from '../types/groupChat';
 
 // Generate a proper UUID for session IDs
 function generateUUID(): string {
@@ -33,6 +40,12 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
   const [streamingMessageId, setStreamingMessageId] = useState<number | null>(null);
   const [useStreaming, setUseStreaming] = useState(true);
   const [youtubeMusic, setYoutubeMusic] = useState<YouTubeMusicData | null>(null);
+
+  // Collaborative mode state
+  const [isCollaborative, setIsCollaborative] = useState(false);
+  const [collaborativeId, setCollaborativeId] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<GroupChatParticipant[]>([]);
+  const collaborativeUnsubscribeRef = useRef<(() => void) | null>(null);
 
   // Track if save is pending to debounce
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -83,7 +96,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
 
         if (firstUserMessage) {
           if (firstUserMessage.content && firstUserMessage.content.trim() &&
-              firstUserMessage.content !== '[Image message]' && firstUserMessage.content !== '[Audio message]') {
+            firstUserMessage.content !== '[Image message]' && firstUserMessage.content !== '[Audio message]') {
             sessionName = firstUserMessage.content.slice(0, 50);
           } else if (firstUserMessage.imageData || (firstUserMessage.inputImageUrls && firstUserMessage.inputImageUrls.length > 0)) {
             sessionName = 'Image message';
@@ -498,6 +511,108 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     }
   }, [currentSessionId, messages, currentPersona, saveChatSession, setPersonaTheme]);
 
+  // Enable collaborative mode for current session
+  const enableCollaborativeMode = useCallback(async (chatName: string): Promise<string | null> => {
+    if (!userId || !userProfile?.nickname) return null;
+
+    const shareId = await createGroupChat(
+      currentSessionId,
+      userId,
+      userProfile.nickname,
+      chatName,
+      currentPersona
+    );
+
+    if (shareId) {
+      setCollaborativeId(shareId);
+      setIsCollaborative(true);
+      setParticipants([{
+        id: `${userId}-owner`,
+        user_id: userId,
+        nickname: userProfile.nickname,
+        joined_at: new Date().toISOString(),
+        is_owner: true
+      }]);
+
+      // Subscribe to real-time updates
+      collaborativeUnsubscribeRef.current = subscribeToGroupChat(
+        shareId,
+        (newMessage) => {
+          // Add message from other participants
+          setMessages(prev => {
+            const exists = prev.some(m => m.id === newMessage.id);
+            if (exists) return prev;
+            return [...prev, newMessage];
+          });
+        },
+        (newParticipant) => {
+          setParticipants(prev => {
+            const exists = prev.some(p => p.user_id === newParticipant.user_id);
+            if (exists) return prev;
+            return [...prev, newParticipant];
+          });
+        }
+      );
+    }
+
+    return shareId;
+  }, [userId, userProfile, currentSessionId, currentPersona]);
+
+  // Join an existing collaborative chat
+  const joinCollaborativeChat = useCallback(async (shareId: string) => {
+    const chat = await getGroupChat(shareId);
+    if (!chat) return false;
+
+    setCollaborativeId(shareId);
+    setIsCollaborative(true);
+    setCurrentPersona(chat.persona);
+    setPersonaTheme(chat.persona);
+    setParticipants(chat.participants);
+    setMessages(chat.messages.length > 0 ? chat.messages : [{ ...INITIAL_MESSAGE, hasAnimated: true }]);
+    setCurrentSessionId(shareId);
+
+    // Subscribe to real-time updates
+    collaborativeUnsubscribeRef.current = subscribeToGroupChat(
+      shareId,
+      (newMessage) => {
+        setMessages(prev => {
+          const exists = prev.some(m => m.id === newMessage.id);
+          if (exists) return prev;
+          return [...prev, newMessage];
+        });
+      },
+      (newParticipant) => {
+        setParticipants(prev => {
+          const exists = prev.some(p => p.user_id === newParticipant.user_id);
+          if (exists) return prev;
+          return [...prev, newParticipant];
+        });
+      }
+    );
+
+    return true;
+  }, [setPersonaTheme]);
+
+  // Leave collaborative mode
+  const leaveCollaborativeMode = useCallback(() => {
+    if (collaborativeUnsubscribeRef.current) {
+      collaborativeUnsubscribeRef.current();
+      collaborativeUnsubscribeRef.current = null;
+    }
+    setIsCollaborative(false);
+    setCollaborativeId(null);
+    setParticipants([]);
+  }, []);
+
+  // Cleanup collaborative subscription on unmount
+  useEffect(() => {
+    return () => {
+      if (collaborativeUnsubscribeRef.current) {
+        collaborativeUnsubscribeRef.current();
+      }
+    };
+  }, []);
+
   return {
     messages,
     isChatMode,
@@ -512,6 +627,11 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     useStreaming,
     youtubeMusic,
     currentSessionId,
+    // Collaborative mode
+    isCollaborative,
+    collaborativeId,
+    participants,
+    // Actions
     setChatMode,
     handleSendMessage,
     handlePersonaChange,
@@ -522,6 +642,10 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     dismissRateLimitModal,
     loadChat,
     setUseStreaming,
-    clearYoutubeMusic
+    clearYoutubeMusic,
+    // Collaborative actions
+    enableCollaborativeMode,
+    joinCollaborativeChat,
+    leaveCollaborativeMode
   };
 }
