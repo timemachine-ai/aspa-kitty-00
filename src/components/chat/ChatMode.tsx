@@ -77,7 +77,7 @@ export function ChatMode({
               <div
                 key={message.id}
                 ref={index === messages.length - 1 && !message.isAI ? lastUserMessageRef : null}
-                className={index === 0 ? 'h-[calc(100vh-16rem)] flex items-center justify-center' : ''}
+                className={index === 0 && !isGroupMode ? 'h-[calc(100vh-16rem)] flex items-center justify-center' : ''}
               >
                 <ChatMessage
                   {...message}

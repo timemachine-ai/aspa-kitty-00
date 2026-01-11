@@ -257,11 +257,18 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
 
     if (success) {
       setIsGroupParticipant(true);
-      const chat = await getGroupChat(groupChatId);
-      setGroupChat(chat);
+      // Initialize useChat collaborative mode
+      await joinCollaborativeChat(groupChatId);
     }
     setIsJoiningGroup(false);
-  }, [groupChatId, user, profile]);
+  }, [groupChatId, user, profile, joinCollaborativeChat]);
+
+  // When already a participant on /groupchat/:id, sync useChat to collaborative mode
+  useEffect(() => {
+    if (isGroupMode && groupChatId && isGroupParticipant && !isCollaborative) {
+      joinCollaborativeChat(groupChatId);
+    }
+  }, [isGroupMode, groupChatId, isGroupParticipant, isCollaborative, joinCollaborativeChat]);
 
   useEffect(() => {
     const updateVH = () => {
@@ -617,11 +624,8 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
             <>
               {isChatMode ? (
                 <ChatMode
-                  messages={isGroupMode && groupChat ? groupChat.messages.map(m => ({
-                    ...m,
-                    id: typeof m.id === 'string' ? parseInt(m.id, 16) || Date.now() : m.id
-                  })) : messages}
-                  currentPersona={isGroupMode && groupChat ? groupChat.persona : currentPersona}
+                  messages={messages}
+                  currentPersona={currentPersona}
                   onMessageAnimated={markMessageAsAnimated}
                   error={error}
                   streamingMessageId={streamingMessageId}
