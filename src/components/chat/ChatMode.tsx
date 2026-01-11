@@ -10,8 +10,7 @@ interface ChatModeProps {
   onMessageAnimated: (messageId: number) => void;
   error?: string | null;
   streamingMessageId?: number | null;
-  // Collaborative mode props
-  isCollaborative?: boolean;
+  isGroupMode?: boolean;
   currentUserId?: string;
 }
 
@@ -21,7 +20,7 @@ export function ChatMode({
   onMessageAnimated,
   error,
   streamingMessageId,
-  isCollaborative,
+  isGroupMode,
   currentUserId
 }: ChatModeProps) {
   const { theme } = useTheme();
@@ -87,7 +86,7 @@ export function ChatMode({
                   currentPersona={currentPersona}
                   previousMessage={previousMessage}
                   streamingMessageId={streamingMessageId}
-                  isCollaborative={isCollaborative}
+                  isGroupMode={isGroupMode}
                   currentUserId={currentUserId}
                 />
               </div>

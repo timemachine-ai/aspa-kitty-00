@@ -21,11 +21,17 @@ import { SettingsPage } from './components/settings/SettingsPage';
 import { AlbumPage } from './components/album/AlbumPage';
 import { MemoriesPage } from './components/memories/MemoriesPage';
 import { HelpPage } from './components/help/HelpPage';
-import { GroupChatPage } from './components/groupchat/GroupChatPage';
-import { GroupChatJoinPage } from './components/groupchat/GroupChatJoinPage';
-import { CollaborativeChatPage } from './components/groupchat/CollaborativeChatPage';
 import { GroupChatModal } from './components/groupchat/GroupChatModal';
 import { GroupSettingsPage } from './components/groupchat/GroupSettingsPage';
+import {
+  getGroupChat,
+  getGroupChatInvite,
+  joinGroupChat,
+  sendGroupChatMessage,
+  isGroupChatParticipant,
+  subscribeToGroupChat
+} from './services/groupChat/groupChatService';
+import { GroupChat, GroupChatMessage } from './types/groupChat';
 import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './config/constants';
 import { ChatSession, getSupabaseSessions, getLocalSessions } from './services/chat/chatService';
 
@@ -94,11 +100,25 @@ function ChatByIdPage() {
 }
 
 // Main Chat Page component - defined OUTSIDE to prevent re-renders
-function MainChatPage() {
+interface MainChatPageProps {
+  groupChatId?: string;
+}
+
+function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
   const { theme } = useTheme();
   const { user, profile, loading: authLoading, needsOnboarding } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // Group chat mode detection
+  const isGroupMode = !!groupChatId;
+
+  // Group chat state
+  const [groupChat, setGroupChat] = useState<GroupChat | null>(null);
+  const [isGroupChatLoading, setIsGroupChatLoading] = useState(false);
+  const [isGroupParticipant, setIsGroupParticipant] = useState(false);
+  const [isJoiningGroup, setIsJoiningGroup] = useState(false);
+  const [groupInviteInfo, setGroupInviteInfo] = useState<{ owner_nickname: string; chat_name: string; participant_count: number; persona: string } | null>(null);
 
   const {
     messages,
@@ -160,21 +180,88 @@ function MainChatPage() {
     }
   }, [authLoading, needsOnboarding]);
 
-  // Handle joining collaborative chat from URL param (e.g., /?collaborative=abc123)
+  // Group chat loading and subscription
   useEffect(() => {
-    const collaborativeParam = searchParams.get('collaborative');
-    if (collaborativeParam && user && !authLoading && !isCollaborative) {
-      // Clear the URL param and join the session
-      searchParams.delete('collaborative');
-      setSearchParams(searchParams, { replace: true });
+    if (!isGroupMode || !groupChatId) return;
 
-      joinCollaborativeChat(collaborativeParam).then(success => {
-        if (!success) {
-          console.error('Failed to join collaborative chat:', collaborativeParam);
+    async function loadGroupChat() {
+      setIsGroupChatLoading(true);
+
+      // Get invite info first
+      const invite = await getGroupChatInvite(groupChatId);
+      if (invite) {
+        setGroupInviteInfo(invite);
+      }
+
+      // Check if user is a participant
+      if (user) {
+        const participant = await isGroupChatParticipant(groupChatId, user.id);
+        setIsGroupParticipant(participant);
+
+        if (participant) {
+          const chat = await getGroupChat(groupChatId);
+          setGroupChat(chat);
         }
-      });
+      }
+
+      setIsGroupChatLoading(false);
     }
-  }, [searchParams, setSearchParams, user, authLoading, isCollaborative, joinCollaborativeChat]);
+
+    loadGroupChat();
+  }, [isGroupMode, groupChatId, user]);
+
+  // Subscribe to group chat real-time updates
+  useEffect(() => {
+    if (!isGroupMode || !groupChatId || !isGroupParticipant) return;
+
+    const unsubscribe = subscribeToGroupChat(
+      groupChatId,
+      (newMessage) => {
+        setGroupChat(prev => {
+          if (!prev) return prev;
+          const exists = prev.messages.some(m => m.id === newMessage.id);
+          if (exists) return prev;
+          return {
+            ...prev,
+            messages: [...prev.messages, newMessage],
+          };
+        });
+      },
+      (newParticipant) => {
+        setGroupChat(prev => {
+          if (!prev) return prev;
+          const exists = prev.participants.some(p => p.id === newParticipant.id);
+          if (exists) return prev;
+          return {
+            ...prev,
+            participants: [...prev.participants, newParticipant],
+          };
+        });
+      }
+    );
+
+    return unsubscribe;
+  }, [isGroupMode, groupChatId, isGroupParticipant]);
+
+  // Handle joining group chat
+  const handleJoinGroupChat = useCallback(async () => {
+    if (!groupChatId || !user || !profile) return;
+
+    setIsJoiningGroup(true);
+    const success = await joinGroupChat(
+      groupChatId,
+      user.id,
+      profile.nickname || 'User',
+      profile.avatar_url
+    );
+
+    if (success) {
+      setIsGroupParticipant(true);
+      const chat = await getGroupChat(groupChatId);
+      setGroupChat(chat);
+    }
+    setIsJoiningGroup(false);
+  }, [groupChatId, user, profile]);
 
   useEffect(() => {
     const updateVH = () => {
@@ -465,23 +552,91 @@ function MainChatPage() {
         )}
 
         <div className="flex-1 overflow-y-auto custom-scrollbar message-container">
-          {isChatMode ? (
-            <ChatMode
-              messages={messages}
-              currentPersona={currentPersona}
-              onMessageAnimated={markMessageAsAnimated}
-              error={error}
-              streamingMessageId={streamingMessageId}
-              isCollaborative={isCollaborative}
-              currentUserId={user?.id}
-            />
-          ) : (
-            <StageMode
-              messages={messages}
-              currentPersona={currentPersona}
-              onMessageAnimated={markMessageAsAnimated}
-              streamingMessageId={streamingMessageId}
-            />
+          {/* Group chat join UI */}
+          {isGroupMode && !isGroupParticipant && !isGroupChatLoading && (
+            <div className="min-h-full flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full max-w-md"
+              >
+                <div className="relative overflow-hidden rounded-3xl">
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-2xl" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-violet-500 opacity-20" />
+                  <div className="absolute inset-[1px] rounded-3xl border border-white/[0.08]" />
+
+                  <div className="relative p-8 text-center">
+                    <div className="inline-flex p-4 rounded-2xl bg-white/10 mb-6">
+                      <Users className="w-8 h-8 text-white" />
+                    </div>
+
+                    <h1 className="text-2xl font-bold text-white mb-2">
+                      {groupInviteInfo?.chat_name || 'Group Chat'}
+                    </h1>
+
+                    <p className="text-white/60 mb-6">
+                      {user ? (
+                        <>Hosted by <span className="text-white font-medium">{groupInviteInfo?.owner_nickname}</span></>
+                      ) : (
+                        'Sign in to join this group chat'
+                      )}
+                    </p>
+
+                    {user ? (
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleJoinGroupChat}
+                        disabled={isJoiningGroup}
+                        className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-violet-500 text-white font-semibold flex items-center justify-center gap-2"
+                      >
+                        {isJoiningGroup ? (
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          'Join Group Chat'
+                        )}
+                      </motion.button>
+                    ) : (
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleOpenAuth}
+                        className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-violet-500 text-white font-semibold"
+                      >
+                        Sign In to Join
+                      </motion.button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* Regular chat mode */}
+          {(!isGroupMode || isGroupParticipant) && (
+            <>
+              {isChatMode ? (
+                <ChatMode
+                  messages={isGroupMode && groupChat ? groupChat.messages.map(m => ({
+                    ...m,
+                    id: typeof m.id === 'string' ? parseInt(m.id, 16) || Date.now() : m.id
+                  })) : messages}
+                  currentPersona={isGroupMode && groupChat ? groupChat.persona : currentPersona}
+                  onMessageAnimated={markMessageAsAnimated}
+                  error={error}
+                  streamingMessageId={streamingMessageId}
+                  isGroupMode={isGroupMode}
+                  currentUserId={user?.id}
+                />
+              ) : (
+                <StageMode
+                  messages={messages}
+                  currentPersona={currentPersona}
+                  onMessageAnimated={markMessageAsAnimated}
+                  streamingMessageId={streamingMessageId}
+                />
+              )}
+            </>
           )}
         </div>
 
@@ -558,11 +713,16 @@ function AppContent() {
       <Route path="/memories" element={<MemoriesPage />} />
       <Route path="/help" element={<HelpPage />} />
       <Route path="/chat/:id" element={<ChatByIdPage />} />
-      <Route path="/groupchat/:id" element={<CollaborativeChatPage />} />
-      <Route path="/groupchat/:id/old" element={<GroupChatPage />} />
+      <Route path="/groupchat/:id" element={<GroupChatWrapper />} />
       <Route path="/groupchat/:id/settings" element={<GroupSettingsPage />} />
     </Routes>
   );
+}
+
+// Wrapper to pass group chat ID to MainChatPage
+function GroupChatWrapper() {
+  const { id } = useParams<{ id: string }>();
+  return <MainChatPage groupChatId={id} />;
 }
 
 function AppWithAuth() {

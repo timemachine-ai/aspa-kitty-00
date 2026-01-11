@@ -12,8 +12,7 @@ interface ChatMessageProps extends Message {
   previousMessage?: string | null;
   isStreaming?: boolean;
   streamingMessageId?: number | null;
-  // Collaborative mode props
-  isCollaborative?: boolean;
+  isGroupMode?: boolean;
   currentUserId?: string;
 }
 
@@ -32,13 +31,14 @@ export function ChatMessage({
   audioUrl,
   isStreaming,
   streamingMessageId,
-  // Collaborative props
-  isCollaborative,
+  isGroupMode,
   currentUserId,
-  senderId,
-  senderNickname,
+  sender_id,
+  sender_nickname,
+  sender_avatar
 }: ChatMessageProps) {
-  // AI messages - always render as AIMessage
+  // In group mode, check if this message is from another user
+  const isOtherUserMessage = isGroupMode && !isAI && sender_id && sender_id !== currentUserId;
   if (isAI) {
     return (
       <AIMessage
@@ -80,6 +80,9 @@ export function ChatMessage({
       content={content}
       imageData={imageData}
       audioData={audioData}
+      sender_nickname={isOtherUserMessage ? sender_nickname : undefined}
+      sender_avatar={isOtherUserMessage ? sender_avatar : undefined}
+      isGroupMode={isGroupMode}
     />
   );
 }
