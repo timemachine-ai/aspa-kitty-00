@@ -1,7 +1,6 @@
 import React from 'react';
 import { AIMessage } from './AIMessage';
 import { UserMessage } from './UserMessage';
-import { ParticipantMessage } from './ParticipantMessage';
 import { Message } from '../../types/chat';
 import { AI_PERSONAS } from '../../config/constants';
 
@@ -56,25 +55,6 @@ export function ChatMessage({
       />
     );
   }
-
-  // In collaborative mode, check if this is another participant's message
-  if (isCollaborative && senderId && currentUserId && senderId !== currentUserId) {
-    return (
-      <ParticipantMessage
-        content={content}
-        isChatMode={isChatMode}
-        messageId={id}
-        hasAnimated={hasAnimated}
-        onAnimationComplete={onAnimationComplete}
-        senderNickname={senderNickname || 'User'}
-        imageData={imageData}
-        audioData={audioData}
-        audioUrl={audioUrl}
-      />
-    );
-  }
-
-  // Own messages - right-aligned bubble
   return (
     <UserMessage
       content={content}
@@ -86,4 +66,3 @@ export function ChatMessage({
     />
   );
 }
-
