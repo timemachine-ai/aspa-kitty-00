@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Send, Plus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Send, Plus, X, CornerDownRight } from 'lucide-react';
 import { VoiceRecorder } from './VoiceRecorder';
 import { ChatInputProps, ImageDimensions } from '../../types/chat';
 import { LoadingSpinner } from '../loading/LoadingSpinner';
@@ -10,8 +10,16 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { MentionCall } from './MentionCall';
 import { uploadImage } from '../../services/image/imageService';
+import { GroupChatParticipant } from '../../types/groupChat';
 
 type Persona = keyof typeof AI_PERSONAS;
+
+export interface ReplyTo {
+  id: number;
+  content: string;
+  sender_nickname?: string;
+  isAI: boolean;
+}
 
 const personaStyles = {
   glowColors: {
@@ -68,7 +76,15 @@ const getImageDimensions = (file: File): Promise<ImageDimensions> => {
   });
 };
 
-export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default' as Persona }: ChatInputProps & { currentPersona?: Persona }) {
+interface ExtendedChatInputProps extends ChatInputProps {
+  currentPersona?: Persona;
+  isGroupMode?: boolean;
+  participants?: GroupChatParticipant[];
+  replyTo?: ReplyTo | null;
+  onClearReply?: () => void;
+}
+
+export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default' as Persona, isGroupMode, participants, replyTo, onClearReply }: ExtendedChatInputProps) {
   const [message, setMessage] = useState('');
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
@@ -281,6 +297,35 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
 
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl mx-auto sticky bottom-4">
+      {/* Reply preview */}
+      <AnimatePresence>
+        {replyTo && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="flex items-center gap-2 mb-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl"
+          >
+            <CornerDownRight className="w-4 h-4 text-purple-400 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-purple-400 text-xs font-medium">
+                Replying to {replyTo.isAI ? 'TimeMachine' : replyTo.sender_nickname || 'User'}
+              </span>
+              <p className="text-white/50 text-sm truncate">{replyTo.content}</p>
+            </div>
+            {onClearReply && (
+              <button
+                type="button"
+                onClick={onClearReply}
+                className="p-1 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {imagePreviewUrls.length > 0 && currentPersona === 'default' && (
         <div className="flex gap-2 mb-4">
           {imagePreviewUrls.map((url, index) => (
@@ -395,6 +440,9 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
               isVisible={showMentionCall}
               onSelect={handleMentionSelect}
               currentPersona={currentPersona}
+              isGroupMode={isGroupMode}
+              participants={participants}
+              currentUserId={user?.id}
             />
           </div>
         </div>

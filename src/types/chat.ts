@@ -18,6 +18,15 @@ export interface Message {
   sender_id?: string;
   sender_nickname?: string;
   sender_avatar?: string;
+  // Reply functionality
+  replyTo?: {
+    id: number;
+    content: string;
+    sender_nickname?: string;
+    isAI: boolean;
+  };
+  // Reactions (emoji -> user_ids)
+  reactions?: Record<string, string[]>;
 }
 
 export interface ChatState {
@@ -26,13 +35,20 @@ export interface ChatState {
   isChatMode: boolean;
 }
 
+export interface ReplyToData {
+  id: number;
+  content: string;
+  sender_nickname?: string;
+  isAI: boolean;
+}
+
 export interface ChatActions {
-  handleSendMessage: (message: string, imageData?: string | string[], audioData?: string, inputImageUrls?: string[], imageDimensions?: ImageDimensions) => Promise<void>;
+  handleSendMessage: (message: string, imageData?: string | string[], audioData?: string, inputImageUrls?: string[], imageDimensions?: ImageDimensions, replyTo?: ReplyToData) => Promise<void>;
   setChatMode: (isChatMode: boolean) => void;
 }
 
 export interface ChatInputProps {
-  onSendMessage: (message: string, imageData?: string | string[], audioData?: string, inputImageUrls?: string[], imageDimensions?: ImageDimensions) => Promise<void>;
+  onSendMessage: (message: string, imageData?: string | string[], audioData?: string, inputImageUrls?: string[], imageDimensions?: ImageDimensions, replyTo?: ReplyToData) => Promise<void>;
   isLoading?: boolean;
 }
 

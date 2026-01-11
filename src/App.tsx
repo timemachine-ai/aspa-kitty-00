@@ -4,7 +4,7 @@ import { ChatInput } from './components/chat/ChatInput';
 import { BrandLogo } from './components/brand/BrandLogo';
 import { MusicPlayer } from './components/music/MusicPlayer';
 import { YouTubePlayer } from './components/music/YouTubePlayer';
-import { Star, Users } from 'lucide-react';
+import { Star, Users, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from './hooks/useChat';
 import { useAnonymousRateLimit } from './hooks/useAnonymousRateLimit';
@@ -27,11 +27,9 @@ import {
   getGroupChat,
   getGroupChatInvite,
   joinGroupChat,
-  sendGroupChatMessage,
-  isGroupChatParticipant,
-  subscribeToGroupChat
+  isGroupChatParticipant
 } from './services/groupChat/groupChatService';
-import { GroupChat, GroupChatMessage } from './types/groupChat';
+import { GroupChat } from './types/groupChat';
 import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './config/constants';
 import { ChatSession, getSupabaseSessions, getLocalSessions } from './services/chat/chatService';
 
@@ -119,6 +117,9 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
   const [isGroupParticipant, setIsGroupParticipant] = useState(false);
   const [isJoiningGroup, setIsJoiningGroup] = useState(false);
   const [groupInviteInfo, setGroupInviteInfo] = useState<{ owner_nickname: string; chat_name: string; participant_count: number; persona: string } | null>(null);
+
+  // Reply state for group chat
+  const [replyTo, setReplyTo] = useState<{ id: number; content: string; sender_nickname?: string; isAI: boolean } | null>(null);
 
   const {
     messages,
@@ -210,38 +211,8 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     loadGroupChat();
   }, [isGroupMode, groupChatId, user]);
 
-  // Subscribe to group chat real-time updates
-  useEffect(() => {
-    if (!isGroupMode || !groupChatId || !isGroupParticipant) return;
-
-    const unsubscribe = subscribeToGroupChat(
-      groupChatId,
-      (newMessage) => {
-        setGroupChat(prev => {
-          if (!prev) return prev;
-          const exists = prev.messages.some(m => m.id === newMessage.id);
-          if (exists) return prev;
-          return {
-            ...prev,
-            messages: [...prev.messages, newMessage],
-          };
-        });
-      },
-      (newParticipant) => {
-        setGroupChat(prev => {
-          if (!prev) return prev;
-          const exists = prev.participants.some(p => p.id === newParticipant.id);
-          if (exists) return prev;
-          return {
-            ...prev,
-            participants: [...prev.participants, newParticipant],
-          };
-        });
-      }
-    );
-
-    return unsubscribe;
-  }, [isGroupMode, groupChatId, isGroupParticipant]);
+  // Real-time updates are handled by useChat's joinCollaborativeChat subscription
+  // which updates the messages state that ChatMode renders from
 
   // Handle joining group chat
   const handleJoinGroupChat = useCallback(async () => {
@@ -338,8 +309,19 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
       incrementCount(targetModel);
     }
 
-    await handleSendMessage(message, imageUrl, audioData, imageUrls);
-  }, [currentPersona, isAnonymous, isRateLimited, incrementCount, handleSendMessage]);
+    await handleSendMessage(message, imageUrl, audioData, imageUrls, undefined, replyTo || undefined);
+    // Clear reply after sending
+    setReplyTo(null);
+  }, [currentPersona, isAnonymous, isRateLimited, incrementCount, handleSendMessage, replyTo]);
+
+  // Reply handlers for group chat
+  const handleReply = useCallback((message: { id: number; content: string; sender_nickname?: string; isAI: boolean }) => {
+    setReplyTo(message);
+  }, []);
+
+  const handleClearReply = useCallback(() => {
+    setReplyTo(null);
+  }, []);
 
   const handleOpenAuth = useCallback(() => {
     setAuthModalMessage(undefined);
@@ -518,27 +500,53 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
                   </AnimatePresence>
                 </div>
               ) : (currentPersona === 'default' || currentPersona === 'girlie') && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowGroupChatModal(true)}
-                  style={{
-                    background: buttonStyles.bg,
-                    color: buttonStyles.text,
-                    borderRadius: '9999px',
-                    backdropFilter: 'blur(10px)',
-                    outline: 'none',
-                    padding: '8px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    transition: 'all 0.3s ease',
-                  }}
-                  aria-label="Open Group Chat"
-                >
-                  <Users style={{ width: '16px', height: '16px', color: buttonStyles.text }} />
-                  <span style={{ fontSize: '14px', color: buttonStyles.text }}>Group Chat</span>
-                </motion.button>
+                isCollaborative && collaborativeId ? (
+                  // Group Settings button when in collaborative mode
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => navigate(`/groupchat/${collaborativeId}/settings`)}
+                    style={{
+                      background: buttonStyles.bg,
+                      color: buttonStyles.text,
+                      borderRadius: '9999px',
+                      backdropFilter: 'blur(10px)',
+                      outline: 'none',
+                      padding: '8px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'all 0.3s ease',
+                    }}
+                    aria-label="Group Settings"
+                  >
+                    <Settings style={{ width: '16px', height: '16px', color: buttonStyles.text }} />
+                    <span style={{ fontSize: '14px', color: buttonStyles.text }}>Group Settings</span>
+                  </motion.button>
+                ) : (
+                  // Create Group Chat button
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowGroupChatModal(true)}
+                    style={{
+                      background: buttonStyles.bg,
+                      color: buttonStyles.text,
+                      borderRadius: '9999px',
+                      backdropFilter: 'blur(10px)',
+                      outline: 'none',
+                      padding: '8px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'all 0.3s ease',
+                    }}
+                    aria-label="Open Group Chat"
+                  >
+                    <Users style={{ width: '16px', height: '16px', color: buttonStyles.text }} />
+                    <span style={{ fontSize: '14px', color: buttonStyles.text }}>Group Chat</span>
+                  </motion.button>
+                )
               )}
             </div>
           </div>
@@ -631,6 +639,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
                   streamingMessageId={streamingMessageId}
                   isGroupMode={isGroupMode}
                   currentUserId={user?.id}
+                  onReply={isCollaborative ? handleReply : undefined}
                 />
               ) : (
                 <StageMode
@@ -650,6 +659,10 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
               onSendMessage={handleSendMessageWithRateLimit}
               isLoading={isLoading}
               currentPersona={currentPersona}
+              isGroupMode={isCollaborative}
+              participants={participants}
+              replyTo={replyTo}
+              onClearReply={handleClearReply}
             />
           </div>
         </div>
