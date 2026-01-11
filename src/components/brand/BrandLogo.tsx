@@ -4,9 +4,7 @@ import { ChevronDown, Settings, Wand2, History, Plus, User, LogIn } from 'lucide
 import { AI_PERSONAS } from '../../config/constants';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { SettingsModal } from '../settings/SettingsModal';
 import { AgentsModal } from '../agents/AgentsModal';
-import { ChatHistoryModal } from '../chat/ChatHistoryModal';
 import { ChatSession } from '../../services/chat/chatService';
 
 interface BrandLogoProps {
@@ -16,6 +14,8 @@ interface BrandLogoProps {
   onStartNewChat: () => void;
   onOpenAuth?: () => void;
   onOpenAccount?: () => void;
+  onOpenHistory?: () => void;
+  onOpenSettings?: () => void;
 }
 
 const personaColors = {
@@ -36,11 +36,18 @@ const personaGlowColors = {
   pro: 'rgba(34,211,238,0.6)'
 } as const;
 
-export function BrandLogo({ onPersonaChange, currentPersona, onLoadChat, onStartNewChat, onOpenAuth, onOpenAccount }: BrandLogoProps) {
+export function BrandLogo({
+  onPersonaChange,
+  currentPersona,
+  onLoadChat,
+  onStartNewChat,
+  onOpenAuth,
+  onOpenAccount,
+  onOpenHistory,
+  onOpenSettings
+}: BrandLogoProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [showAgents, setShowAgents] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const { theme } = useTheme();
   const { user, profile } = useAuth();
 
@@ -63,6 +70,16 @@ export function BrandLogo({ onPersonaChange, currentPersona, onLoadChat, onStart
     } else {
       onOpenAuth?.();
     }
+  };
+
+  const handleHistoryClick = () => {
+    setIsOpen(false);
+    onOpenHistory?.();
+  };
+
+  const handleSettingsClick = () => {
+    setIsOpen(false);
+    onOpenSettings?.();
   };
 
   return (
@@ -197,10 +214,7 @@ export function BrandLogo({ onPersonaChange, currentPersona, onLoadChat, onStart
                 background: 'linear-gradient(90deg, rgba(168,85,247,0.2) 0%, transparent 100%)'
               }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                setShowHistory(true);
-                setIsOpen(false);
-              }}
+              onClick={handleHistoryClick}
               className={`w-full px-4 py-3 text-left transition-all duration-300 ${theme.text} flex items-center gap-2 border-b border-white/5`}
             >
               <History className="w-4 h-4" />
@@ -227,10 +241,7 @@ export function BrandLogo({ onPersonaChange, currentPersona, onLoadChat, onStart
                 background: 'linear-gradient(90deg, rgba(168,85,247,0.2) 0%, transparent 100%)'
               }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                setShowSettings(true);
-                setIsOpen(false);
-              }}
+              onClick={handleSettingsClick}
               className={`w-full px-4 py-3 text-left transition-all duration-300 ${theme.text} flex items-center gap-2 last:rounded-b-3xl`}
             >
               <Settings className="w-4 h-4" />
@@ -240,13 +251,7 @@ export function BrandLogo({ onPersonaChange, currentPersona, onLoadChat, onStart
         )}
       </AnimatePresence>
 
-      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} />
       <AgentsModal isOpen={showAgents} onClose={() => setShowAgents(false)} />
-      <ChatHistoryModal
-        isOpen={showHistory}
-        onClose={() => setShowHistory(false)}
-        onLoadChat={onLoadChat}
-      />
     </div>
   );
 }
