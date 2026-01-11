@@ -12,7 +12,7 @@ interface GroupChatModalProps {
   sessionId: string;
   chatName: string;
   persona: keyof typeof AI_PERSONAS;
-  onGroupChatCreated?: (chatName: string) => Promise<void>;
+  onGroupChatCreated?: (chatName: string) => Promise<string | null>;
 }
 
 export function GroupChatModal({
@@ -40,19 +40,12 @@ export function GroupChatModal({
     setIsCreating(true);
     setError(null);
 
-    // Create the group chat in Supabase
-    const id = await createGroupChat(
-      sessionId,
-      user.id,
-      profile.nickname || 'User',
-      chatName || 'Group Chat',
-      persona
-    );
+    // Let parent enable collaborative mode and create the group chat
+    // enableCollaborativeMode returns the shareId
+    const id = await onGroupChatCreated?.(chatName || 'Group Chat');
 
     if (id) {
       setShareId(id);
-      // Notify parent to enable collaborative mode
-      await onGroupChatCreated?.(chatName || 'Group Chat');
     } else {
       setError('Failed to create group chat. Please try again.');
     }
