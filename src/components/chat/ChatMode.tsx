@@ -10,14 +10,19 @@ interface ChatModeProps {
   onMessageAnimated: (messageId: number) => void;
   error?: string | null;
   streamingMessageId?: number | null;
+  // Collaborative mode props
+  isCollaborative?: boolean;
+  currentUserId?: string;
 }
 
-export function ChatMode({ 
-  messages, 
-  currentPersona, 
+export function ChatMode({
+  messages,
+  currentPersona,
   onMessageAnimated,
   error,
-  streamingMessageId
+  streamingMessageId,
+  isCollaborative,
+  currentUserId
 }: ChatModeProps) {
   const { theme } = useTheme();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -67,7 +72,7 @@ export function ChatMode({
         )}
         <div className="space-y-6">
           {messages.map((message, index) => {
-                        // For AI messages, get the previous user message to detect @mentions
+            // For AI messages, get the previous user message to detect @mentions
             const previousMessage = message.isAI && index > 0 ? messages[index - 1].content : null;
             return (
               <div
@@ -75,13 +80,15 @@ export function ChatMode({
                 ref={index === messages.length - 1 && !message.isAI ? lastUserMessageRef : null}
                 className={index === 0 ? 'h-[calc(100vh-16rem)] flex items-center justify-center' : ''}
               >
-                <ChatMessage 
+                <ChatMessage
                   {...message}
                   isChatMode={true}
                   onAnimationComplete={onMessageAnimated}
                   currentPersona={currentPersona}
                   previousMessage={previousMessage}
                   streamingMessageId={streamingMessageId}
+                  isCollaborative={isCollaborative}
+                  currentUserId={currentUserId}
                 />
               </div>
             );
@@ -92,3 +99,4 @@ export function ChatMode({
     </div>
   );
 }
+
