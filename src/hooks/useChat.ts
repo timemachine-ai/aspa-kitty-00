@@ -26,6 +26,55 @@ function generateUUID(): string {
   });
 }
 
+// Format collaborative messages as dialogue for AI context
+// Bundles consecutive user messages between AI responses
+function formatMessagesAsDialogue(messages: Message[]): Message[] {
+  const formatted: Message[] = [];
+  let userMessagesBuffer: Message[] = [];
+
+  for (const msg of messages) {
+    if (msg.isAI) {
+      // If we have buffered user messages, bundle them
+      if (userMessagesBuffer.length > 0) {
+        const dialogueContent = userMessagesBuffer
+          .map(m => {
+            const sender = m.senderNickname || 'User';
+            return `[${sender}]: ${m.content}`;
+          })
+          .join('\n');
+
+        formatted.push({
+          ...userMessagesBuffer[userMessagesBuffer.length - 1],
+          content: dialogueContent,
+        });
+        userMessagesBuffer = [];
+      }
+      // Add AI message as-is
+      formatted.push(msg);
+    } else {
+      // Buffer user messages
+      userMessagesBuffer.push(msg);
+    }
+  }
+
+  // Handle remaining buffered user messages
+  if (userMessagesBuffer.length > 0) {
+    const dialogueContent = userMessagesBuffer
+      .map(m => {
+        const sender = m.senderNickname || 'User';
+        return `[${sender}]: ${m.content}`;
+      })
+      .join('\n');
+
+    formatted.push({
+      ...userMessagesBuffer[userMessagesBuffer.length - 1],
+      content: dialogueContent,
+    });
+  }
+
+  return formatted;
+}
+
 export function useChat(userId?: string | null, userProfile?: { nickname?: string | null; about_me?: string | null }) {
   const [messages, setMessages] = useState<Message[]>([{ ...INITIAL_MESSAGE, hasAnimated: false }]);
   const [isChatMode, setChatMode] = useState(true);
@@ -398,7 +447,12 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     isStreamingRef.current = true; // Mark streaming as started
 
     // Filter out initial welcome message (ID: 1) - it's just for UI aesthetics
-    const apiMessages = [...messages, apiUserMessage].filter(msg => msg.id !== 1);
+    let apiMessages = [...messages, apiUserMessage].filter(msg => msg.id !== 1);
+
+    // In collaborative mode, format user messages as dialogue for AI context
+    if (isCollaborative) {
+      apiMessages = formatMessagesAsDialogue(apiMessages);
+    }
 
     // Prepare user memory context from profile
     const userMemoryContext: UserMemoryContext | undefined = userProfile ? {
