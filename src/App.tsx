@@ -267,12 +267,12 @@ function MainChatPage() {
     setShowOnboarding(false);
   }, []);
 
-  const handleGroupChatCreated = useCallback(async (chatName: string) => {
+  const handleGroupChatCreated = useCallback(async (chatName: string): Promise<string | null> => {
     const shareId = await enableCollaborativeMode(chatName);
     if (shareId) {
-      // Collaborative mode is now enabled - share link is available
       console.log('Collaborative mode enabled:', shareId);
     }
+    return shareId;
   }, [enableCollaborativeMode]);
 
   if (MAINTENANCE_MODE) {
