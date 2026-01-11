@@ -236,7 +236,22 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     setStreamingMessageId(null);
     setIsLoading(false);
     isStreamingRef.current = false; // Mark streaming as complete - now it's safe to save
-  }, [userId]);
+
+    // If in collaborative mode, sync AI message to group_chat_messages table
+    if (isCollaborative && collaborativeId && userId && userProfile?.nickname) {
+      sendGroupChatMessage(
+        collaborativeId,
+        processedContent,
+        userId, // owner sends on behalf of AI
+        userProfile.nickname,
+        undefined, // avatar
+        true, // isAI
+        undefined, // images
+        audioUrl,
+        thinking
+      );
+    }
+  }, [userId, isCollaborative, collaborativeId, userProfile]);
 
   const extractEmotion = (content: string): string | null => {
     const match = content.match(/<emotion>([a-z]+)<\/emotion>/i);
@@ -345,6 +360,21 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     setError(null);
+
+    // If in collaborative mode, sync user message to group_chat_messages table
+    if (isCollaborative && collaborativeId && userId && userProfile?.nickname) {
+      sendGroupChatMessage(
+        collaborativeId,
+        displayContent,
+        userId,
+        userProfile.nickname,
+        undefined, // avatar
+        false, // isAI
+        inputImageUrls,
+        undefined, // audioUrl
+        undefined // reasoning
+      );
+    }
 
     // Create placeholder AI message for streaming
     const aiMessageId = Date.now() + 1;
@@ -460,7 +490,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
         isStreamingRef.current = false; // Clear streaming flag on error
       }
     }
-  }, [messages, currentPersona, currentProHeatLevel, userId, userProfile]);
+  }, [messages, currentPersona, currentProHeatLevel, userId, userProfile, isCollaborative, collaborativeId]);
 
   const markMessageAsAnimated = useCallback((messageId: number) => {
     setMessages(prev => prev.map(msg =>
@@ -534,16 +564,45 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
         is_owner: true
       }]);
 
+      // Push existing messages to group_chat_messages table
+      // Skip the initial welcome message (id: 1)
+      const messagesToSync = messages.filter(m => m.id !== 1);
+      for (const msg of messagesToSync) {
+        await sendGroupChatMessage(
+          shareId,
+          msg.content,
+          userId,
+          msg.isAI ? 'TimeMachine' : userProfile.nickname,
+          undefined, // avatar
+          msg.isAI,
+          msg.inputImageUrls,
+          msg.audioUrl,
+          msg.thinking
+        );
+      }
+
       // Subscribe to real-time updates
       collaborativeUnsubscribeRef.current = subscribeToGroupChat(
         shareId,
         (newMessage) => {
-          // Add message from other participants
-          setMessages(prev => {
-            const exists = prev.some(m => m.id === newMessage.id);
-            if (exists) return prev;
-            return [...prev, newMessage];
-          });
+          // Only add messages NOT from current user (to avoid duplicates)
+          if (newMessage.sender_id !== userId) {
+            setMessages(prev => {
+              const exists = prev.some(m => m.id === newMessage.id);
+              if (exists) return prev;
+              return [...prev, {
+                id: newMessage.id,
+                content: newMessage.content,
+                isAI: newMessage.isAI,
+                hasAnimated: newMessage.hasAnimated,
+                thinking: newMessage.thinking,
+                audioUrl: newMessage.audioUrl,
+                inputImageUrls: newMessage.inputImageUrls,
+                senderId: newMessage.sender_id,
+                senderNickname: newMessage.sender_nickname
+              }];
+            });
+          }
         },
         (newParticipant) => {
           setParticipants(prev => {
@@ -556,7 +615,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     }
 
     return shareId;
-  }, [userId, userProfile, currentSessionId, currentPersona]);
+  }, [userId, userProfile, currentSessionId, currentPersona, messages]);
 
   // Join an existing collaborative chat
   const joinCollaborativeChat = useCallback(async (shareId: string) => {
@@ -568,7 +627,23 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     setCurrentPersona(chat.persona);
     setPersonaTheme(chat.persona);
     setParticipants(chat.participants);
-    setMessages(chat.messages.length > 0 ? chat.messages : [{ ...INITIAL_MESSAGE, hasAnimated: true }]);
+
+    // Map messages with sender info
+    const loadedMessages = chat.messages.length > 0
+      ? chat.messages.map(m => ({
+        id: m.id,
+        content: m.content,
+        isAI: m.isAI,
+        hasAnimated: m.hasAnimated ?? true,
+        thinking: m.thinking,
+        audioUrl: m.audioUrl,
+        inputImageUrls: m.inputImageUrls,
+        senderId: m.sender_id,
+        senderNickname: m.sender_nickname
+      }))
+      : [{ ...INITIAL_MESSAGE, hasAnimated: true }];
+
+    setMessages(loadedMessages);
     setCurrentSessionId(shareId);
 
     // Subscribe to real-time updates
