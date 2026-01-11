@@ -23,6 +23,7 @@ import { MemoriesPage } from './components/memories/MemoriesPage';
 import { HelpPage } from './components/help/HelpPage';
 import { GroupChatPage } from './components/groupchat/GroupChatPage';
 import { GroupChatJoinPage } from './components/groupchat/GroupChatJoinPage';
+import { CollaborativeChatPage } from './components/groupchat/CollaborativeChatPage';
 import { GroupChatModal } from './components/groupchat/GroupChatModal';
 import { GroupSettingsPage } from './components/groupchat/GroupSettingsPage';
 import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './config/constants';
@@ -557,7 +558,7 @@ function AppContent() {
       <Route path="/memories" element={<MemoriesPage />} />
       <Route path="/help" element={<HelpPage />} />
       <Route path="/chat/:id" element={<ChatByIdPage />} />
-      <Route path="/groupchat/:id" element={<GroupChatJoinPage />} />
+      <Route path="/groupchat/:id" element={<CollaborativeChatPage />} />
       <Route path="/groupchat/:id/old" element={<GroupChatPage />} />
       <Route path="/groupchat/:id/settings" element={<GroupSettingsPage />} />
     </Routes>

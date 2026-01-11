@@ -4,11 +4,15 @@ import { motion } from 'framer-motion';
 import { Users, MessageCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { getGroupChat, joinGroupChat } from '../../services/groupChat/groupChatService';
+import { getGroupChat, joinGroupChat, isGroupChatParticipant } from '../../services/groupChat/groupChatService';
 import { GroupChat } from '../../types/groupChat';
 import { AI_PERSONAS } from '../../config/constants';
 
-export function GroupChatJoinPage() {
+interface GroupChatJoinPageProps {
+    onJoinComplete?: (shareId: string) => void;
+}
+
+export function GroupChatJoinPage({ onJoinComplete }: GroupChatJoinPageProps) {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { user, profile, loading: authLoading } = useAuth();
@@ -18,6 +22,7 @@ export function GroupChatJoinPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isJoining, setIsJoining] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isParticipant, setIsParticipant] = useState(false);
 
     useEffect(() => {
         async function loadGroupChat() {
@@ -31,10 +36,10 @@ export function GroupChatJoinPage() {
             if (chat) {
                 setGroupChat(chat);
 
-                // If user is already a participant, redirect directly
+                // If user is already a participant, trigger join callback
                 if (user && chat.participants.some(p => p.user_id === user.id)) {
-                    navigate(`/?collaborative=${id}`, { replace: true });
-                    return;
+                    setIsParticipant(true);
+                    onJoinComplete?.(id);
                 }
             } else {
                 setError('Group chat not found or expired');
@@ -45,7 +50,7 @@ export function GroupChatJoinPage() {
         if (!authLoading) {
             loadGroupChat();
         }
-    }, [id, authLoading, user, navigate]);
+    }, [id, authLoading, user, onJoinComplete]);
 
     const handleJoin = async () => {
         if (!id || !user || !profile) {
@@ -58,8 +63,8 @@ export function GroupChatJoinPage() {
         const success = await joinGroupChat(id, user.id, profile.nickname || 'User');
 
         if (success) {
-            // Navigate to main chat with collaborative mode
-            navigate(`/?collaborative=${id}`, { replace: true });
+            // Trigger callback to load collaborative chat
+            onJoinComplete?.(id);
         } else {
             setError('Failed to join. Please try again.');
             setIsJoining(false);
@@ -75,6 +80,15 @@ export function GroupChatJoinPage() {
         claude: 'from-orange-500 to-amber-500',
         grok: 'from-red-500 to-pink-500',
     };
+
+    // If already a participant, show loading while parent handles join
+    if (isParticipant) {
+        return (
+            <div className={`min-h-screen ${theme.background} flex items-center justify-center`}>
+                <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+            </div>
+        );
+    }
 
     if (isLoading || authLoading) {
         return (

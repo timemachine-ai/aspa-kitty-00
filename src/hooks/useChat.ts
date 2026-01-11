@@ -374,6 +374,14 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
         undefined, // audioUrl
         undefined // reasoning
       );
+
+      // In collaborative mode, only trigger AI if @timemachine is mentioned
+      const mentionsTimeMachine = /(@timemachine|timemachine)/i.test(content);
+      if (!mentionsTimeMachine) {
+        // Just send the message, no AI response
+        setIsLoading(false);
+        return;
+      }
     }
 
     // Create placeholder AI message for streaming
