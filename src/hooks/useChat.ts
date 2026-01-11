@@ -339,10 +339,11 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     // - Only 1 message (initial state)
     // - No session ID
     // - Currently streaming (AI message is incomplete)
-    if (messages.length > 1 && currentSessionId && !isStreamingRef.current) {
+    // - In collaborative mode (messages are stored in group_chat_messages table)
+    if (messages.length > 1 && currentSessionId && !isStreamingRef.current && !isCollaborative) {
       saveChatSession(currentSessionId, messages, currentPersona);
     }
-  }, [messages, currentSessionId, currentPersona, saveChatSession]);
+  }, [messages, currentSessionId, currentPersona, saveChatSession, isCollaborative]);
 
   // Initialize session ID on first load
   useEffect(() => {
@@ -391,7 +392,10 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       imageData: imageData,
       audioData: audioData,
       inputImageUrls: inputImageUrls,
-      imageDimensions: imageDimensions
+      imageDimensions: imageDimensions,
+      // Add sender info for collaborative mode
+      sender_id: isCollaborative ? userId || undefined : undefined,
+      sender_nickname: isCollaborative ? userProfile?.nickname || undefined : undefined
     };
 
     // Create API message with cleaned content (without @mention) for API call
@@ -660,8 +664,9 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
                 thinking: newMessage.thinking,
                 audioUrl: newMessage.audioUrl,
                 inputImageUrls: newMessage.inputImageUrls,
-                senderId: newMessage.sender_id,
-                senderNickname: newMessage.sender_nickname
+                sender_id: newMessage.sender_id,
+                sender_nickname: newMessage.sender_nickname,
+                sender_avatar: newMessage.sender_avatar
               }];
             });
           }
@@ -690,7 +695,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     setPersonaTheme(chat.persona);
     setParticipants(chat.participants);
 
-    // Map messages with sender info
+    // Map messages with sender info - use snake_case to match Message type
     const loadedMessages = chat.messages.length > 0
       ? chat.messages.map(m => ({
         id: m.id,
@@ -700,13 +705,15 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
         thinking: m.thinking,
         audioUrl: m.audioUrl,
         inputImageUrls: m.inputImageUrls,
-        senderId: m.sender_id,
-        senderNickname: m.sender_nickname
+        sender_id: m.sender_id,
+        sender_nickname: m.sender_nickname,
+        sender_avatar: m.sender_avatar
       }))
       : [{ ...INITIAL_MESSAGE, hasAnimated: true }];
 
     setMessages(loadedMessages);
-    setCurrentSessionId(shareId);
+    // Don't set currentSessionId to shareId - it's not a UUID and will break chat_sessions table
+    // setCurrentSessionId(shareId);
 
     // Subscribe to real-time updates
     collaborativeUnsubscribeRef.current = subscribeToGroupChat(
@@ -726,8 +733,9 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
               thinking: newMessage.thinking,
               audioUrl: newMessage.audioUrl,
               inputImageUrls: newMessage.inputImageUrls,
-              senderId: newMessage.sender_id,
-              senderNickname: newMessage.sender_nickname
+              sender_id: newMessage.sender_id,
+              sender_nickname: newMessage.sender_nickname,
+              sender_avatar: newMessage.sender_avatar
             }];
           });
         }
