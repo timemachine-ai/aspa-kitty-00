@@ -71,7 +71,7 @@ export function ChatMode({
         )}
         <div className="space-y-6">
           {messages.map((message, index) => {
-                        // For AI messages, get the previous user message to detect @mentions
+            // For AI messages, get the previous user message to detect @mentions
             const previousMessage = message.isAI && index > 0 ? messages[index - 1].content : null;
             return (
               <div
@@ -98,3 +98,4 @@ export function ChatMode({
     </div>
   );
 }
+

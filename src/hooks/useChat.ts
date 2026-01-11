@@ -4,6 +4,13 @@ import { generateAIResponse, generateAIResponseStreaming, YouTubeMusicData, User
 import { INITIAL_MESSAGE, AI_PERSONAS } from '../config/constants';
 import { chatService, ChatSession } from '../services/chat/chatService';
 import { processGeneratedImages } from '../services/image/imageService';
+import {
+  subscribeToGroupChat,
+  sendGroupChatMessage,
+  getGroupChat,
+  createGroupChat
+} from '../services/groupChat/groupChatService';
+import { GroupChatParticipant } from '../types/groupChat';
 
 // Generate a proper UUID for session IDs
 function generateUUID(): string {
@@ -17,6 +24,55 @@ function generateUUID(): string {
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
+}
+
+// Format collaborative messages as dialogue for AI context
+// Bundles consecutive user messages between AI responses
+function formatMessagesAsDialogue(messages: Message[]): Message[] {
+  const formatted: Message[] = [];
+  let userMessagesBuffer: Message[] = [];
+
+  for (const msg of messages) {
+    if (msg.isAI) {
+      // If we have buffered user messages, bundle them
+      if (userMessagesBuffer.length > 0) {
+        const dialogueContent = userMessagesBuffer
+          .map(m => {
+            const sender = m.senderNickname || 'User';
+            return `[${sender}]: ${m.content}`;
+          })
+          .join('\n');
+
+        formatted.push({
+          ...userMessagesBuffer[userMessagesBuffer.length - 1],
+          content: dialogueContent,
+        });
+        userMessagesBuffer = [];
+      }
+      // Add AI message as-is
+      formatted.push(msg);
+    } else {
+      // Buffer user messages
+      userMessagesBuffer.push(msg);
+    }
+  }
+
+  // Handle remaining buffered user messages
+  if (userMessagesBuffer.length > 0) {
+    const dialogueContent = userMessagesBuffer
+      .map(m => {
+        const sender = m.senderNickname || 'User';
+        return `[${sender}]: ${m.content}`;
+      })
+      .join('\n');
+
+    formatted.push({
+      ...userMessagesBuffer[userMessagesBuffer.length - 1],
+      content: dialogueContent,
+    });
+  }
+
+  return formatted;
 }
 
 export function useChat(userId?: string | null, userProfile?: { nickname?: string | null; about_me?: string | null }) {
@@ -33,6 +89,12 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
   const [streamingMessageId, setStreamingMessageId] = useState<number | null>(null);
   const [useStreaming, setUseStreaming] = useState(true);
   const [youtubeMusic, setYoutubeMusic] = useState<YouTubeMusicData | null>(null);
+
+  // Collaborative mode state
+  const [isCollaborative, setIsCollaborative] = useState(false);
+  const [collaborativeId, setCollaborativeId] = useState<string | null>(null);
+  const [participants, setParticipants] = useState<GroupChatParticipant[]>([]);
+  const collaborativeUnsubscribeRef = useRef<(() => void) | null>(null);
 
   // Track if save is pending to debounce
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -83,7 +145,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
 
         if (firstUserMessage) {
           if (firstUserMessage.content && firstUserMessage.content.trim() &&
-              firstUserMessage.content !== '[Image message]' && firstUserMessage.content !== '[Audio message]') {
+            firstUserMessage.content !== '[Image message]' && firstUserMessage.content !== '[Audio message]') {
             sessionName = firstUserMessage.content.slice(0, 50);
           } else if (firstUserMessage.imageData || (firstUserMessage.inputImageUrls && firstUserMessage.inputImageUrls.length > 0)) {
             sessionName = 'Image message';
@@ -223,7 +285,22 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     setStreamingMessageId(null);
     setIsLoading(false);
     isStreamingRef.current = false; // Mark streaming as complete - now it's safe to save
-  }, [userId]);
+
+    // If in collaborative mode, sync AI message to group_chat_messages table
+    if (isCollaborative && collaborativeId && userId && userProfile?.nickname) {
+      sendGroupChatMessage(
+        collaborativeId,
+        processedContent,
+        userId, // owner sends on behalf of AI
+        userProfile.nickname,
+        undefined, // avatar
+        true, // isAI
+        undefined, // images
+        audioUrl,
+        thinking
+      );
+    }
+  }, [userId, isCollaborative, collaborativeId, userProfile]);
 
   const extractEmotion = (content: string): string | null => {
     const match = content.match(/<emotion>([a-z]+)<\/emotion>/i);
@@ -333,6 +410,29 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     setIsLoading(true);
     setError(null);
 
+    // If in collaborative mode, sync user message to group_chat_messages table
+    if (isCollaborative && collaborativeId && userId && userProfile?.nickname) {
+      sendGroupChatMessage(
+        collaborativeId,
+        displayContent,
+        userId,
+        userProfile.nickname,
+        undefined, // avatar
+        false, // isAI
+        inputImageUrls,
+        undefined, // audioUrl
+        undefined // reasoning
+      );
+
+      // In collaborative mode, only trigger AI if @timemachine is mentioned
+      const mentionsTimeMachine = /(@timemachine|timemachine)/i.test(content);
+      if (!mentionsTimeMachine) {
+        // Just send the message, no AI response
+        setIsLoading(false);
+        return;
+      }
+    }
+
     // Create placeholder AI message for streaming
     const aiMessageId = Date.now() + 1;
     const aiMessage: Message = {
@@ -347,7 +447,12 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     isStreamingRef.current = true; // Mark streaming as started
 
     // Filter out initial welcome message (ID: 1) - it's just for UI aesthetics
-    const apiMessages = [...messages, apiUserMessage].filter(msg => msg.id !== 1);
+    let apiMessages = [...messages, apiUserMessage].filter(msg => msg.id !== 1);
+
+    // In collaborative mode, format user messages as dialogue for AI context
+    if (isCollaborative) {
+      apiMessages = formatMessagesAsDialogue(apiMessages);
+    }
 
     // Prepare user memory context from profile
     const userMemoryContext: UserMemoryContext | undefined = userProfile ? {
@@ -447,7 +552,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
         isStreamingRef.current = false; // Clear streaming flag on error
       }
     }
-  }, [messages, currentPersona, currentProHeatLevel, userId, userProfile]);
+  }, [messages, currentPersona, currentProHeatLevel, userId, userProfile, isCollaborative, collaborativeId]);
 
   const markMessageAsAnimated = useCallback((messageId: number) => {
     setMessages(prev => prev.map(msg =>
@@ -498,6 +603,167 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     }
   }, [currentSessionId, messages, currentPersona, saveChatSession, setPersonaTheme]);
 
+  // Enable collaborative mode for current session
+  const enableCollaborativeMode = useCallback(async (chatName: string): Promise<string | null> => {
+    if (!userId || !userProfile?.nickname) return null;
+
+    const shareId = await createGroupChat(
+      currentSessionId,
+      userId,
+      userProfile.nickname,
+      chatName,
+      currentPersona
+    );
+
+    if (shareId) {
+      setCollaborativeId(shareId);
+      setIsCollaborative(true);
+      setParticipants([{
+        id: `${userId}-owner`,
+        user_id: userId,
+        nickname: userProfile.nickname,
+        joined_at: new Date().toISOString(),
+        is_owner: true
+      }]);
+
+      // Push existing messages to group_chat_messages table
+      // Skip the initial welcome message (id: 1)
+      const messagesToSync = messages.filter(m => m.id !== 1);
+      for (const msg of messagesToSync) {
+        await sendGroupChatMessage(
+          shareId,
+          msg.content,
+          userId,
+          msg.isAI ? 'TimeMachine' : userProfile.nickname,
+          undefined, // avatar
+          msg.isAI,
+          msg.inputImageUrls,
+          msg.audioUrl,
+          msg.thinking
+        );
+      }
+
+      // Subscribe to real-time updates
+      collaborativeUnsubscribeRef.current = subscribeToGroupChat(
+        shareId,
+        (newMessage) => {
+          // Only add messages NOT from current user (to avoid duplicates)
+          if (newMessage.sender_id !== userId) {
+            setMessages(prev => {
+              const exists = prev.some(m => m.id === newMessage.id);
+              if (exists) return prev;
+              return [...prev, {
+                id: newMessage.id,
+                content: newMessage.content,
+                isAI: newMessage.isAI,
+                hasAnimated: newMessage.hasAnimated,
+                thinking: newMessage.thinking,
+                audioUrl: newMessage.audioUrl,
+                inputImageUrls: newMessage.inputImageUrls,
+                senderId: newMessage.sender_id,
+                senderNickname: newMessage.sender_nickname
+              }];
+            });
+          }
+        },
+        (newParticipant) => {
+          setParticipants(prev => {
+            const exists = prev.some(p => p.user_id === newParticipant.user_id);
+            if (exists) return prev;
+            return [...prev, newParticipant];
+          });
+        }
+      );
+    }
+
+    return shareId;
+  }, [userId, userProfile, currentSessionId, currentPersona, messages]);
+
+  // Join an existing collaborative chat
+  const joinCollaborativeChat = useCallback(async (shareId: string) => {
+    const chat = await getGroupChat(shareId);
+    if (!chat) return false;
+
+    setCollaborativeId(shareId);
+    setIsCollaborative(true);
+    setCurrentPersona(chat.persona);
+    setPersonaTheme(chat.persona);
+    setParticipants(chat.participants);
+
+    // Map messages with sender info
+    const loadedMessages = chat.messages.length > 0
+      ? chat.messages.map(m => ({
+        id: m.id,
+        content: m.content,
+        isAI: m.isAI,
+        hasAnimated: m.hasAnimated ?? true,
+        thinking: m.thinking,
+        audioUrl: m.audioUrl,
+        inputImageUrls: m.inputImageUrls,
+        senderId: m.sender_id,
+        senderNickname: m.sender_nickname
+      }))
+      : [{ ...INITIAL_MESSAGE, hasAnimated: true }];
+
+    setMessages(loadedMessages);
+    setCurrentSessionId(shareId);
+
+    // Subscribe to real-time updates
+    collaborativeUnsubscribeRef.current = subscribeToGroupChat(
+      shareId,
+      (newMessage) => {
+        // Only add messages NOT from current user (to avoid duplicates/id mismatch)
+        if (newMessage.sender_id !== userId) {
+          setMessages(prev => {
+            const exists = prev.some(m => m.id === newMessage.id);
+            if (exists) return prev;
+
+            return [...prev, {
+              id: newMessage.id,
+              content: newMessage.content,
+              isAI: newMessage.isAI,
+              hasAnimated: newMessage.hasAnimated,
+              thinking: newMessage.thinking,
+              audioUrl: newMessage.audioUrl,
+              inputImageUrls: newMessage.inputImageUrls,
+              senderId: newMessage.sender_id,
+              senderNickname: newMessage.sender_nickname
+            }];
+          });
+        }
+      },
+      (newParticipant) => {
+        setParticipants(prev => {
+          const exists = prev.some(p => p.user_id === newParticipant.user_id);
+          if (exists) return prev;
+          return [...prev, newParticipant];
+        });
+      }
+    );
+
+    return true;
+  }, [setPersonaTheme, userId]);
+
+  // Leave collaborative mode
+  const leaveCollaborativeMode = useCallback(() => {
+    if (collaborativeUnsubscribeRef.current) {
+      collaborativeUnsubscribeRef.current();
+      collaborativeUnsubscribeRef.current = null;
+    }
+    setIsCollaborative(false);
+    setCollaborativeId(null);
+    setParticipants([]);
+  }, []);
+
+  // Cleanup collaborative subscription on unmount
+  useEffect(() => {
+    return () => {
+      if (collaborativeUnsubscribeRef.current) {
+        collaborativeUnsubscribeRef.current();
+      }
+    };
+  }, []);
+
   return {
     messages,
     isChatMode,
@@ -512,6 +778,11 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     useStreaming,
     youtubeMusic,
     currentSessionId,
+    // Collaborative mode
+    isCollaborative,
+    collaborativeId,
+    participants,
+    // Actions
     setChatMode,
     handleSendMessage,
     handlePersonaChange,
@@ -522,6 +793,10 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     dismissRateLimitModal,
     loadChat,
     setUseStreaming,
-    clearYoutubeMusic
+    clearYoutubeMusic,
+    // Collaborative actions
+    enableCollaborativeMode,
+    joinCollaborativeChat,
+    leaveCollaborativeMode
   };
 }

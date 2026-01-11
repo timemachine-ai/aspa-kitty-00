@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { ChatInput } from './components/chat/ChatInput';
 import { BrandLogo } from './components/brand/BrandLogo';
 import { MusicPlayer } from './components/music/MusicPlayer';
@@ -108,6 +108,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
   const { theme } = useTheme();
   const { user, profile, loading: authLoading, needsOnboarding } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Group chat mode detection
   const isGroupMode = !!groupChatId;
@@ -132,6 +133,11 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     streamingMessageId,
     youtubeMusic,
     currentSessionId,
+    // Collaborative mode
+    isCollaborative,
+    collaborativeId,
+    participants,
+    // Actions
     handleSendMessage,
     handlePersonaChange,
     setCurrentProHeatLevel,
@@ -140,8 +146,10 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     dismissAboutUs,
     dismissRateLimitModal,
     loadChat,
-    clearYoutubeMusic
-  } = useChat(user?.id, profile);
+    clearYoutubeMusic,
+    enableCollaborativeMode,
+    joinCollaborativeChat
+  } = useChat(user?.id, profile || undefined);
 
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
 
@@ -347,9 +355,13 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     setShowOnboarding(false);
   }, []);
 
-  const handleGroupChatCreated = useCallback((shareId: string) => {
-    // Optionally navigate to the group chat
-  }, []);
+  const handleGroupChatCreated = useCallback(async (chatName: string): Promise<string | null> => {
+    const shareId = await enableCollaborativeMode(chatName);
+    if (shareId) {
+      console.log('Collaborative mode enabled:', shareId);
+    }
+    return shareId;
+  }, [enableCollaborativeMode]);
 
   if (MAINTENANCE_MODE) {
     window.location.href = '/maintenance.html';
