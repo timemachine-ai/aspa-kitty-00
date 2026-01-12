@@ -719,8 +719,10 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       musicUnsubscribeRef.current = subscribeToGroupChatMusic(
         shareId,
         (music) => {
+          console.log('[useChat] Music subscription callback - received:', music);
           // Set as pending remote music - user needs to click "Play for me too"
           if (music) {
+            console.log('[useChat] Setting pending remote music');
             setPendingRemoteMusic({
               videoId: music.videoId,
               title: music.title,
@@ -728,6 +730,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
               thumbnail: ''
             });
           } else {
+            console.log('[useChat] Clearing pending remote music');
             setPendingRemoteMusic(null);
             setYoutubeMusic(null);
           }
@@ -819,8 +822,10 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     musicUnsubscribeRef.current = subscribeToGroupChatMusic(
       shareId,
       (music) => {
+        console.log('[useChat] joinCollaborativeChat - music subscription callback:', music);
         // Set as pending remote music - user needs to click "Play for me too"
         if (music) {
+          console.log('[useChat] Setting pending remote music from join');
           setPendingRemoteMusic({
             videoId: music.videoId,
             title: music.title,
@@ -828,6 +833,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
             thumbnail: ''
           });
         } else {
+          console.log('[useChat] Clearing pending remote music from join');
           setPendingRemoteMusic(null);
           setYoutubeMusic(null);
         }
