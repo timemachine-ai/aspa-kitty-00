@@ -309,16 +309,16 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 50 }}
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-          className="fixed bottom-24 right-4 z-50"
+          className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto z-50"
         >
           <div
-            className={`p-4 rounded-xl bg-gradient-to-br ${colors.primary} backdrop-blur-xl border ${colors.border} shadow-lg`}
+            className={`glass-player p-4 w-full sm:w-72 md:w-80`}
             style={{ boxShadow: `0 8px 32px ${colors.glow}` }}
           >
             {/* Header */}
             <div className="flex items-start gap-3 mb-3">
               {/* Thumbnail or Music Icon */}
-              <div className="w-14 h-14 rounded-lg overflow-hidden bg-white/10 flex items-center justify-center flex-shrink-0">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-white/10 flex items-center justify-center flex-shrink-0">
                 {musicData.thumbnail ? (
                   <img
                     src={musicData.thumbnail}
@@ -332,13 +332,13 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
 
               {/* Song Info */}
               <div className="flex-1 min-w-0">
-                <h4 className="text-white font-medium text-sm truncate" title={musicData.title}>
+                <h4 className="text-white font-medium text-xs sm:text-sm truncate" title={musicData.title}>
                   {musicData.title}
                 </h4>
                 <p className="text-white/60 text-xs truncate" title={musicData.artist}>
                   {musicData.artist}
                 </p>
-                <p className={`text-xs ${colors.accent} mt-1`}>
+                <p className={`text-xs ${colors.accent} mt-0.5 sm:mt-1 hidden sm:block`}>
                   YouTube Music
                 </p>
               </div>
@@ -348,7 +348,7 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={handleClose}
-                className="p-1.5 hover:bg-white/10 rounded-full transition-colors"
+                className="glass-btn p-1.5 rounded-full"
               >
                 <X className="w-4 h-4 text-white/70 hover:text-white" />
               </motion.button>
@@ -377,20 +377,20 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 onClick={toggleMute}
-                className={`w-full mb-2 py-2 px-3 rounded-lg bg-gradient-to-r ${colors.primary} border ${colors.border} flex items-center justify-center gap-2 hover:bg-white/10 transition-colors`}
+                className="glass-btn w-full mb-2 py-2 px-3 rounded-lg flex items-center justify-center gap-2"
               >
                 <VolumeX className={`w-4 h-4 ${colors.accent}`} />
-                <span className="text-white text-sm font-medium">Tap to unmute</span>
+                <span className="text-white text-xs sm:text-sm font-medium">Tap to unmute</span>
               </motion.button>
             )}
 
             {/* Controls */}
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-1 sm:gap-2">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={toggleMute}
-                className={`p-2 hover:bg-white/10 rounded-full transition-colors ${autoplayBlocked ? 'animate-pulse' : ''}`}
+                className={`glass-btn p-2 rounded-full ${autoplayBlocked ? 'animate-pulse' : ''}`}
               >
                 {isMuted ? (
                   <VolumeX className={`w-4 h-4 ${autoplayBlocked ? colors.accent : 'text-white/70'}`} />
@@ -403,7 +403,7 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={seekBackward}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                className="glass-btn p-2 rounded-full"
               >
                 <SkipBack className="w-4 h-4 text-white" />
               </motion.button>
@@ -412,7 +412,7 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={togglePlay}
-                className={`p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors`}
+                className="glass-btn p-2.5 sm:p-3 rounded-full bg-white/10"
                 disabled={!isReady}
               >
                 {isPlaying ? (
@@ -426,12 +426,12 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={seekForward}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                className="glass-btn p-2 rounded-full"
               >
                 <SkipForward className="w-4 h-4 text-white" />
               </motion.button>
 
-              <div className="w-8" /> {/* Spacer for balance */}
+              <div className="w-6 sm:w-8" /> {/* Spacer for balance */}
             </div>
 
             {/* Loading indicator */}

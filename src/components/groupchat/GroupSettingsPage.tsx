@@ -190,10 +190,8 @@ export function GroupSettingsPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
         {/* Group Info Card */}
-        <div className="relative overflow-hidden rounded-2xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-2xl" />
-          <div className={`absolute inset-0 bg-gradient-to-br ${personaColors[groupChat.persona]} opacity-10`} />
-          <div className="absolute inset-[1px] rounded-2xl border border-white/[0.08]" />
+        <div className="glass-card glass-purple relative overflow-hidden rounded-2xl">
+          <div className={`absolute inset-0 bg-gradient-to-br ${personaColors[groupChat.persona]} opacity-10 rounded-2xl`} />
 
           <div className="relative p-6">
             <div className="flex items-center gap-4 mb-4">
@@ -258,7 +256,7 @@ export function GroupSettingsPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={copyInviteLink}
-              className="w-full flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+              className="glass-btn w-full flex items-center justify-between p-4 rounded-xl"
             >
               <div className="flex items-center gap-3">
                 <LinkIcon className="w-5 h-5 text-white/50" />
@@ -277,9 +275,7 @@ export function GroupSettingsPage() {
         </div>
 
         {/* Participants Section */}
-        <div className="relative overflow-hidden rounded-2xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-2xl" />
-          <div className="absolute inset-[1px] rounded-2xl border border-white/[0.08]" />
+        <div className="glass-card relative overflow-hidden rounded-2xl">
 
           <div className="relative p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -313,7 +309,7 @@ export function GroupSettingsPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleLeaveGroup}
-              className="w-full flex items-center justify-between p-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-colors"
+              className="glass-btn w-full flex items-center justify-between p-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 border-red-500/20"
             >
               <div className="flex items-center gap-3">
                 <LogOut className="w-5 h-5 text-red-400" />
@@ -326,7 +322,7 @@ export function GroupSettingsPage() {
           {isOwner && (
             <>
               {showDeleteConfirm ? (
-                <div className="p-4 rounded-xl bg-red-500/20 border border-red-500/30 space-y-3">
+                <div className="glass-card p-4 rounded-xl bg-red-500/10 border-red-500/30 space-y-3">
                   <p className="text-red-200 text-sm">
                     Are you sure you want to delete this group? This cannot be undone.
                   </p>
@@ -336,7 +332,7 @@ export function GroupSettingsPage() {
                       whileTap={{ scale: 0.98 }}
                       onClick={handleDeleteGroup}
                       disabled={isDeleting}
-                      className="flex-1 py-2 px-4 rounded-lg bg-red-500 text-white font-medium flex items-center justify-center gap-2"
+                      className="glass-btn flex-1 py-2 px-4 rounded-lg bg-red-500 text-white font-medium flex items-center justify-center gap-2"
                     >
                       {isDeleting ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -351,7 +347,7 @@ export function GroupSettingsPage() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setShowDeleteConfirm(false)}
-                      className="flex-1 py-2 px-4 rounded-lg bg-white/10 text-white/70 font-medium"
+                      className="glass-btn flex-1 py-2 px-4 rounded-lg text-white/70 font-medium"
                     >
                       Cancel
                     </motion.button>
@@ -362,7 +358,7 @@ export function GroupSettingsPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full flex items-center justify-between p-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-colors"
+                  className="glass-btn w-full flex items-center justify-between p-4 rounded-xl bg-red-500/10 hover:bg-red-500/20 border-red-500/20"
                 >
                   <div className="flex items-center gap-3">
                     <Trash2 className="w-5 h-5 text-red-400" />
@@ -397,7 +393,7 @@ function ParticipantRow({
   onKick
 }: ParticipantRowProps) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/[0.07] transition-colors">
+    <div className="glass-input flex items-center gap-3 p-3 rounded-xl">
       {/* Avatar */}
       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden flex-shrink-0">
         {participant.avatar_url ? (
@@ -438,7 +434,7 @@ function ParticipantRow({
           whileTap={{ scale: 0.9 }}
           onClick={onKick}
           disabled={isKicking}
-          className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400"
+          className="glass-btn p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400"
         >
           {isKicking ? (
             <Loader2 className="w-4 h-4 animate-spin" />

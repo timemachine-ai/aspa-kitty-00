@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Universal Glass Kit */
+@import './stylesheet/UniversalGlassKit.css';
+
 /* Prevent white borders on iOS */
 html, body {
   margin: 0;
