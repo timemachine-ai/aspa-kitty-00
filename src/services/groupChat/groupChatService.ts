@@ -325,6 +325,65 @@ export async function updateGroupName(chatId: string, userId: string, newName: s
   }
 }
 
+// Toggle reaction on a message
+export async function toggleMessageReaction(
+  messageId: number,
+  emoji: string,
+  userId: string
+): Promise<Record<string, string[]> | null> {
+  try {
+    // Get current reactions
+    const { data: message, error: fetchError } = await supabase
+      .from('group_chat_messages')
+      .select('reactions')
+      .eq('id', messageId)
+      .single();
+
+    if (fetchError) {
+      console.error('Failed to fetch message reactions:', fetchError);
+      return null;
+    }
+
+    // Parse current reactions (default to empty object)
+    const reactions: Record<string, string[]> = message?.reactions || {};
+
+    // Toggle the reaction
+    if (reactions[emoji]) {
+      const userIndex = reactions[emoji].indexOf(userId);
+      if (userIndex > -1) {
+        // Remove user's reaction
+        reactions[emoji].splice(userIndex, 1);
+        // If no more users have this reaction, remove the emoji key
+        if (reactions[emoji].length === 0) {
+          delete reactions[emoji];
+        }
+      } else {
+        // Add user's reaction
+        reactions[emoji].push(userId);
+      }
+    } else {
+      // Create new reaction with user
+      reactions[emoji] = [userId];
+    }
+
+    // Update the message
+    const { error: updateError } = await supabase
+      .from('group_chat_messages')
+      .update({ reactions })
+      .eq('id', messageId);
+
+    if (updateError) {
+      console.error('Failed to update reactions:', updateError);
+      return null;
+    }
+
+    return reactions;
+  } catch (error) {
+    console.error('Failed to toggle reaction:', error);
+    return null;
+  }
+}
+
 // Subscribe to group chat messages (real-time)
 export function subscribeToGroupChat(
   chatId: string,

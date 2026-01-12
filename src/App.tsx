@@ -27,7 +27,8 @@ import {
   getGroupChat,
   getGroupChatInvite,
   joinGroupChat,
-  isGroupChatParticipant
+  isGroupChatParticipant,
+  toggleMessageReaction
 } from './services/groupChat/groupChatService';
 import { GroupChat } from './types/groupChat';
 import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './config/constants';
@@ -149,7 +150,8 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     loadChat,
     clearYoutubeMusic,
     enableCollaborativeMode,
-    joinCollaborativeChat
+    joinCollaborativeChat,
+    updateMessageReactions
   } = useChat(user?.id, profile || undefined);
 
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
@@ -322,6 +324,17 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
   const handleClearReply = useCallback(() => {
     setReplyTo(null);
   }, []);
+
+  // Handle reactions on messages
+  const handleReact = useCallback(async (messageId: number, emoji: string) => {
+    if (!user) return;
+
+    const newReactions = await toggleMessageReaction(messageId, emoji, user.id);
+    if (newReactions) {
+      // Update local message state with new reactions
+      updateMessageReactions(messageId, newReactions);
+    }
+  }, [user, updateMessageReactions]);
 
   const handleOpenAuth = useCallback(() => {
     setAuthModalMessage(undefined);
@@ -640,6 +653,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
                   isGroupMode={isGroupMode}
                   currentUserId={user?.id}
                   onReply={isCollaborative ? handleReply : undefined}
+                  onReact={isCollaborative ? handleReact : undefined}
                 />
               ) : (
                 <StageMode
