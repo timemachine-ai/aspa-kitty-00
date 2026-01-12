@@ -164,7 +164,7 @@ export function ChatMessage({
     );
   };
 
-  // Render action buttons (now below message)
+  // Render action buttons (positioned absolutely to avoid layout shift)
   const renderActions = () => {
     if (!isGroupMode || !onReply) return null;
 
@@ -172,14 +172,14 @@ export function ChatMessage({
       <AnimatePresence>
         {showActions && (
           <motion.div
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            className={`flex items-center gap-1 mt-1 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className={`absolute -bottom-8 ${isOwnMessage ? 'right-0' : 'left-0'} flex items-center gap-1 z-10`}
           >
             <button
               onClick={handleReply}
-              className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+              className="p-1.5 rounded-md bg-black/40 backdrop-blur-sm hover:bg-black/60 text-white/50 hover:text-white transition-colors"
               title="Reply"
             >
               <Reply className="w-3.5 h-3.5" />
@@ -187,7 +187,7 @@ export function ChatMessage({
             <div className="relative">
               <button
                 onClick={toggleEmojiPicker}
-                className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
+                className="p-1.5 rounded-md bg-black/40 backdrop-blur-sm hover:bg-black/60 text-white/50 hover:text-white transition-colors"
                 title="React"
               >
                 <Smile className="w-3.5 h-3.5" />

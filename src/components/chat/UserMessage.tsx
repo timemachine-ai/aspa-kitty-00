@@ -47,11 +47,10 @@ export function UserMessage({ content, imageData, audioData, sender_nickname, se
         ) : (
           <div className={`px-4 py-2 rounded-2xl
             ${isOtherUser
-              ? 'bg-white/5 border-white/10'
-              : 'bg-purple-500/10 border-purple-500/20'
+              ? 'bg-blue-500/10 border-blue-500/20 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
+              : 'bg-purple-500/10 border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)]'
             }
             backdrop-blur-sm border
-            shadow-[0_0_15px_rgba(168,85,247,0.1)]
             ${theme.text} text-base`}
           >
           {/* Display images if present */}
