@@ -190,7 +190,7 @@ export function GroupSettingsPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
         {/* Group Info Card */}
-        <div className="glass-card glass-purple relative overflow-hidden rounded-2xl">
+        <div className="glass-card relative overflow-hidden">
           <div className={`absolute inset-0 bg-gradient-to-br ${personaColors[groupChat.persona]} opacity-10 rounded-2xl`} />
 
           <div className="relative p-6">
