@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChatMessage } from './ChatMessage';
 import { Message } from '../../types/chat';
 import { AI_PERSONAS } from '../../config/constants';
@@ -72,6 +73,12 @@ export function ChatMode({
     }
   }, [messages]);
 
+  // Check if we should show welcome text (only initial message present)
+  const showWelcomeText = messages.length === 1 && messages[0].id === 1;
+
+  // Filter out the initial welcome message (id: 1) from rendering
+  const displayMessages = messages.filter(m => m.id !== 1);
+
   return (
     <div className={`min-h-full pt-20 pb-48 ${theme.text}`}>
       <div className="w-full max-w-4xl mx-auto px-4">
@@ -80,32 +87,56 @@ export function ChatMode({
             {error}
           </div>
         )}
-        <div className="space-y-6">
-          {messages.map((message, index) => {
-            // For AI messages, get the previous user message to detect @mentions
-            const previousMessage = message.isAI && index > 0 ? messages[index - 1].content : null;
-            return (
-              <div
-                key={message.id}
-                ref={index === messages.length - 1 && !message.isAI ? lastUserMessageRef : null}
-                className={index === 0 && !isGroupMode ? 'h-[calc(100vh-16rem)] flex items-center justify-center' : ''}
+
+        {/* Welcome Text - shown when no messages sent yet */}
+        <AnimatePresence>
+          {showWelcomeText && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+              className="h-[calc(100vh-16rem)] flex items-center justify-center"
+            >
+              <h1
+                className="text-2xl sm:text-3xl md:text-4xl font-bold text-white/90 text-center px-4"
+                style={{ fontFamily: 'Montserrat, sans-serif' }}
               >
-                <ChatMessage
-                  {...message}
-                  isChatMode={true}
-                  onAnimationComplete={onMessageAnimated}
-                  currentPersona={currentPersona}
-                  previousMessage={previousMessage}
-                  streamingMessageId={streamingMessageId}
-                  isGroupMode={isGroupMode}
-                  currentUserId={currentUserId}
-                  onReply={onReply}
-                  onReact={onReact}
-                />
-              </div>
-            );
-          })}
-        </div>
+                Your future starts from here.
+              </h1>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Messages */}
+        {!showWelcomeText && (
+          <div className="space-y-6">
+            {displayMessages.map((message, index) => {
+              // For AI messages, get the previous user message to detect @mentions
+              const prevIndex = messages.findIndex(m => m.id === message.id) - 1;
+              const previousMessage = message.isAI && prevIndex >= 0 ? messages[prevIndex].content : null;
+              return (
+                <div
+                  key={message.id}
+                  ref={index === displayMessages.length - 1 && !message.isAI ? lastUserMessageRef : null}
+                >
+                  <ChatMessage
+                    {...message}
+                    isChatMode={true}
+                    onAnimationComplete={onMessageAnimated}
+                    currentPersona={currentPersona}
+                    previousMessage={previousMessage}
+                    streamingMessageId={streamingMessageId}
+                    isGroupMode={isGroupMode}
+                    currentUserId={currentUserId}
+                    onReply={onReply}
+                    onReact={onReact}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
         <div ref={messagesEndRef} className="h-20" />
       </div>
     </div>

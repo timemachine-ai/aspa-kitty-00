@@ -348,16 +348,17 @@ export function AIMessage({
         <>
           {isChatMode ? (
             <div className="flex flex-col gap-1">
-              {/* Streaming indicator only */}
-              {isStreamingActive && (
-                <div className={`text-xs font-medium ${personaColor} opacity-60 flex items-center`}>
+              {/* Persona name with streaming indicator */}
+              <div className={`text-xs font-medium ${personaColor} opacity-60 flex items-center gap-2`}>
+                {AI_PERSONAS[displayPersona].name}
+                {isStreamingActive && (
                   <motion.div
                     animate={{ opacity: [0.3, 1, 0.3] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
                     className="w-2 h-2 bg-current rounded-full"
                   />
-                </div>
-              )}
+                )}
+              </div>
               <div className={`${theme.text} text-base leading-relaxed max-w-[85%]`}>
                 {content ? (
                   <ReactMarkdown
