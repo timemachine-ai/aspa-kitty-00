@@ -160,7 +160,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="glass-card relative overflow-hidden rounded-2xl p-4 text-left w-full group"
+      className="relative overflow-hidden rounded-2xl p-4 text-left w-full group"
+      style={{
+        background: 'rgba(255, 255, 255, 0.05)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+      }}
     >
       {/* Gradient overlay */}
       <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-30 rounded-2xl`} />
@@ -226,7 +233,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass-card relative overflow-hidden mb-6"
+            className="relative overflow-hidden mb-6 rounded-3xl"
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+            }}
           >
             {/* Gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/5 rounded-3xl" />
@@ -390,7 +404,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
                       <motion.button
                         whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
                         onClick={() => setEditingField('gender')}
-                        className="glass-input w-full px-4 py-3 rounded-xl text-left flex items-center justify-between group"
+                        className="w-full px-4 py-3 rounded-xl text-left flex items-center justify-between group"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          backdropFilter: 'blur(20px)',
+                          WebkitBackdropFilter: 'blur(20px)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                        }}
                       >
                         <span className={gender ? 'text-white' : 'text-white/30'}>
                           {gender ? gender.charAt(0).toUpperCase() + gender.slice(1) : 'Not set'}
@@ -442,7 +463,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
                       <motion.button
                         whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
                         onClick={() => setEditingField('birthDate')}
-                        className="glass-input w-full px-4 py-3 rounded-xl text-left flex items-center justify-between group"
+                        className="w-full px-4 py-3 rounded-xl text-left flex items-center justify-between group"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          backdropFilter: 'blur(20px)',
+                          WebkitBackdropFilter: 'blur(20px)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                        }}
                       >
                         <div className="flex items-center gap-3">
                           <Calendar size={16} className="text-white/40" />
@@ -461,7 +489,16 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
                   <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
                     Email
                   </label>
-                  <div className="glass-input flex items-center gap-3 px-4 py-3 rounded-xl">
+                  <div
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      backdropFilter: 'blur(20px)',
+                      WebkitBackdropFilter: 'blur(20px)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                    }}
+                  >
                     <Mail size={16} className="text-white/40" />
                     <span className="text-white/60">{user?.email || 'No email'}</span>
                   </div>
@@ -496,7 +533,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
             onClick={handleSignOut}
-            className="glass-btn w-full py-4 rounded-2xl text-red-400 font-medium flex items-center justify-center gap-2 hover:bg-red-500/10 hover:border-red-500/20"
+            className="w-full py-4 rounded-2xl text-red-400 font-medium flex items-center justify-center gap-2"
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+            }}
           >
             <LogOut size={18} />
             Sign Out
@@ -599,7 +643,14 @@ const EditableField: React.FC<EditableFieldProps> = ({
         <motion.button
           whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
           onClick={onEdit}
-          className="glass-input w-full px-4 py-3 rounded-xl text-left flex items-center justify-between group"
+          className="w-full px-4 py-3 rounded-xl text-left flex items-center justify-between group"
+          style={{
+            background: 'rgba(255, 255, 255, 0.03)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+          }}
         >
           <span className={value ? 'text-white' : 'text-white/30'}>
             {value || placeholder || 'Not set'}

@@ -367,14 +367,14 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
             whileTap={{ scale: 0.95 }}
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading || isUploading || selectedImages.length >= 4}
-            className={`p-3 rounded-full
-              bg-gradient-to-r ${personaStyles.borderColors[currentPersona]}
-              backdrop-blur-xl ${theme.text}
-              disabled:opacity-50 relative group
-              border border-white/10
-              shadow-[0_0_15px_${personaStyles.glowColors[currentPersona]}]
-              ${personaStyles.hoverGlow[currentPersona]}
-              transition-all duration-300`}
+            className={`p-3 rounded-full ${theme.text} disabled:opacity-50 relative group transition-all duration-300`}
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+            }}
           >
             <Plus className="w-5 h-5 relative z-10" />
           </motion.button>
@@ -389,14 +389,18 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                 placeholder="Explore future"
                 disabled={isLoading || isUploading}
                 className={`w-full px-6 py-4 pr-32 rounded-[28px]
-                  bg-gray-200/5 backdrop-blur-xl
                   ${theme.input.text} placeholder-gray-400
-                  outline-none ${personaStyles.focusGlow[currentPersona]}
+                  outline-none
                   disabled:opacity-50
-                  transition-shadow duration-300
+                  transition-all duration-300
                   text-base resize-none
                   overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]`}
                 style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
                   textShadow: '0 0 10px rgba(255,255,255,0.1)',
                   fontSize: '1rem',
                   minHeight: '56px',
@@ -417,15 +421,14 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   disabled={isLoading || isUploading || (!message.trim() && selectedImages.length === 0)}
-                  className={`p-3 rounded-full
-                    bg-gradient-to-r ${personaStyles.borderColors[currentPersona]}
-                    backdrop-blur-xl
-                    ${theme.text}
-                    disabled:opacity-50 relative group
-                    border border-white/10
-                    shadow-[0_0_15px_${personaStyles.glowColors[currentPersona]}]
-                    ${personaStyles.hoverGlow[currentPersona]}
-                    transition-all duration-300`}
+                  className={`p-3 rounded-full ${theme.text} disabled:opacity-50 relative group transition-all duration-300`}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                  }}
                 >
                   {isLoading || isUploading ? (
                     <LoadingSpinner size="sm" />
