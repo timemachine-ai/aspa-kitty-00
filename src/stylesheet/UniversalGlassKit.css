@@ -4,7 +4,42 @@
    ════════════════════════════════════════════════════════════ */
 
 /* ════════════════════════════════════════════════════════════
-   Base Glass - Core element
+   CRITICAL NOTICE:
+
+   These CSS classes may NOT work due to specificity issues,
+   stacking context problems with backdrop-filter, or loading order.
+
+   ** ALWAYS USE INLINE STYLES FOR GLASS EFFECTS **
+
+   Example inline style (copy this):
+
+   style={{
+     background: 'rgba(255, 255, 255, 0.05)',
+     backdropFilter: 'blur(20px)',
+     WebkitBackdropFilter: 'blur(20px)',
+     border: '1px solid rgba(255, 255, 255, 0.1)',
+     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+   }}
+
+   The "inset 0 1px 0" is the KEY - it creates the glass edge
+   reflection like light hitting actual glass.
+
+   For inputs (lighter background):
+
+   style={{
+     background: 'rgba(255, 255, 255, 0.03)',
+     backdropFilter: 'blur(20px)',
+     WebkitBackdropFilter: 'blur(20px)',
+     border: '1px solid rgba(255, 255, 255, 0.08)',
+     boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+   }}
+
+   ALWAYS add rounded corners via className (e.g., rounded-xl, rounded-2xl)
+
+   ════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════
+   Base Glass - Core element (USE INLINE STYLES INSTEAD)
    ════════════════════════════════════════════════════════════ */
 
 .glass {
@@ -28,7 +63,7 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   Glass Card - For larger containers and modals
+   Glass Card - For larger containers (USE INLINE STYLES INSTEAD)
    ════════════════════════════════════════════════════════════ */
 
 .glass-card {
@@ -52,7 +87,7 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   Glass Button - Interactive elements with hover effects
+   Glass Button (USE INLINE STYLES INSTEAD)
    ════════════════════════════════════════════════════════════ */
 
 .glass-btn {
@@ -82,7 +117,7 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   Glass Input - For form elements
+   Glass Input (USE INLINE STYLES INSTEAD)
    ════════════════════════════════════════════════════════════ */
 
 .glass-input {
@@ -106,7 +141,7 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   Glass Modal - For overlay content
+   Glass Modal (USE INLINE STYLES INSTEAD)
    ════════════════════════════════════════════════════════════ */
 
 .glass-modal {
@@ -121,7 +156,7 @@
 }
 
 /* ════════════════════════════════════════════════════════════
-   Glass Player - For media players
+   Glass Player (USE INLINE STYLES INSTEAD)
    ════════════════════════════════════════════════════════════ */
 
 .glass-player {
@@ -141,14 +176,4 @@
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-
-/* ════════════════════════════════════════════════════════════
-   Utility - No hover effects needed versions
-   ════════════════════════════════════════════════════════════ */
-
-.glass-purple,
-.glass-pink,
-.glass-cyan {
-  /* No glow - just for semantic grouping if needed */
 }
