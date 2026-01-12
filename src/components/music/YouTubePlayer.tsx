@@ -62,8 +62,10 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
   const [isReady, setIsReady] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastVideoIdRef = useRef<string | null>(null);
 
   const personaColors = {
     default: {
@@ -92,6 +94,11 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
   useEffect(() => {
     if (!musicData) return;
 
+    // Skip if same video is already playing
+    if (lastVideoIdRef.current === musicData.videoId && playerInstance && isPlaying) {
+      return;
+    }
+
     const initPlayer = async () => {
       await loadYouTubeAPI();
 
@@ -104,6 +111,11 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
         }
         playerInstance = null;
       }
+
+      // Reset states
+      setIsReady(false);
+      setAutoplayBlocked(false);
+      lastVideoIdRef.current = musicData.videoId;
 
       // Create a new player
       const playerElement = document.getElementById('yt-player-hidden');
@@ -126,8 +138,37 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
           onReady: (event) => {
             setIsReady(true);
             setDuration(event.target.getDuration());
-            event.target.playVideo();
-            setIsPlaying(true);
+
+            // Try to play with sound first
+            const playPromise = event.target.playVideo();
+
+            // Check if play was successful after a short delay
+            setTimeout(() => {
+              try {
+                const state = event.target.getPlayerState();
+                if (state === window.YT.PlayerState.PLAYING) {
+                  setIsPlaying(true);
+                  setAutoplayBlocked(false);
+                } else if (state === window.YT.PlayerState.UNSTARTED || state === window.YT.PlayerState.PAUSED) {
+                  // Autoplay was blocked - try muted playback
+                  console.log('Autoplay blocked, trying muted playback');
+                  event.target.mute();
+                  event.target.playVideo();
+                  setIsMuted(true);
+                  setAutoplayBlocked(true);
+
+                  // Check again if muted playback works
+                  setTimeout(() => {
+                    const muteState = event.target.getPlayerState();
+                    if (muteState === window.YT.PlayerState.PLAYING) {
+                      setIsPlaying(true);
+                    }
+                  }, 500);
+                }
+              } catch (e) {
+                console.error('Error checking playback state:', e);
+              }
+            }, 1000);
           },
           onStateChange: (event) => {
             if (event.data === window.YT.PlayerState.PLAYING) {
@@ -153,7 +194,7 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
         clearInterval(progressIntervalRef.current);
       }
     };
-  }, [musicData?.videoId]);
+  }, [musicData?.videoId, musicData]);
 
   // Update progress bar
   useEffect(() => {
@@ -200,6 +241,7 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
       if (isMuted) {
         playerInstance.unMute();
         setIsMuted(false);
+        setAutoplayBlocked(false); // User interacted, so autoplay is no longer an issue
       } else {
         playerInstance.mute();
         setIsMuted(true);
@@ -329,16 +371,29 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
               </div>
             </div>
 
+            {/* Autoplay blocked indicator */}
+            {autoplayBlocked && (
+              <motion.button
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                onClick={toggleMute}
+                className={`w-full mb-2 py-2 px-3 rounded-lg bg-gradient-to-r ${colors.primary} border ${colors.border} flex items-center justify-center gap-2 hover:bg-white/10 transition-colors`}
+              >
+                <VolumeX className={`w-4 h-4 ${colors.accent}`} />
+                <span className="text-white text-sm font-medium">Tap to unmute</span>
+              </motion.button>
+            )}
+
             {/* Controls */}
             <div className="flex items-center justify-center gap-2">
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={toggleMute}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                className={`p-2 hover:bg-white/10 rounded-full transition-colors ${autoplayBlocked ? 'animate-pulse' : ''}`}
               >
                 {isMuted ? (
-                  <VolumeX className="w-4 h-4 text-white/70" />
+                  <VolumeX className={`w-4 h-4 ${autoplayBlocked ? colors.accent : 'text-white/70'}`} />
                 ) : (
                   <Volume2 className="w-4 h-4 text-white/70" />
                 )}
