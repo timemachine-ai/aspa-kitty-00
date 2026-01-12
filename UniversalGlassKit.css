@@ -1,0 +1,308 @@
+/*
+ * ╔═══════════════════════════════════════════════════════════════════════════╗
+ * ║                         UNIVERSAL GLASS KIT                               ║
+ * ║                                                                           ║
+ * ║  Premium frosted glass effects for dark-themed web apps                   ║
+ * ║  Works on backgrounds from #000000 to #1a1a1a                             ║
+ * ║                                                                           ║
+ * ║  Created by: TimeMachine AI                                               ║
+ * ║  Version: 1.0                                                             ║
+ * ╚═══════════════════════════════════════════════════════════════════════════╝
+ *
+ * HOW TO USE:
+ * 1. Copy this entire file into your project's CSS
+ * 2. Add the class to any element: <div class="glass">...</div>
+ * 3. For buttons: <button class="glass glass-button">...</button>
+ * 4. For inputs: <div class="glass glass-input"><input /></div>
+ * 5. For dropdowns: <div class="glass glass-dropdown">...</div>
+ *
+ * REQUIREMENTS:
+ * - Dark background (works best on #000 to #1a1a1a)
+ * - Modern browser with backdrop-filter support
+ *
+ * CUSTOMIZATION:
+ * - Change --glass-accent-color to match your brand
+ * - Adjust --glass-blur for more/less frosting
+ * - Modify --glass-opacity for transparency level
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CSS VARIABLES - Customize these to match your brand
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Main accent color for glows (default: purple) */
+  --glass-accent-color: 139, 0, 255;
+
+  /* Glass properties */
+  --glass-blur: 20px;
+  --glass-opacity: 0.05;
+  --glass-border-opacity: 0.1;
+  --glass-highlight-opacity: 0.15;
+
+  /* Transition timing */
+  --glass-transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE GLASS - The foundation class
+   ═══════════════════════════════════════════════════════════════════════════ */
+.glass {
+  /* The frosted background */
+  background: rgba(255, 255, 255, var(--glass-opacity));
+
+  /* The blur effect - THIS IS THE MAGIC */
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+
+  /* Subtle border for definition */
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-opacity));
+
+  /* Shadow stack:
+     1. Soft drop shadow for depth
+     2. Inner top highlight - CRUCIAL for glass realism (simulates light hitting edge) */
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, var(--glass-highlight-opacity));
+
+  /* Smooth transitions */
+  transition: var(--glass-transition);
+}
+
+/* Hover state - brightens and lifts */
+.glass:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(var(--glass-accent-color), 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLASS BUTTON - For clickable elements
+   ═══════════════════════════════════════════════════════════════════════════ */
+.glass.glass-button {
+  cursor: pointer;
+  border-radius: 50%;
+  padding: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glass.glass-button:hover {
+  transform: scale(1.05);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(var(--glass-accent-color), 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.glass.glass-button:active {
+  transform: scale(0.95);
+}
+
+/* Icon styling inside buttons */
+.glass.glass-button svg,
+.glass.glass-button i {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  color: white;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLASS INPUT - For text inputs and textareas
+   ═══════════════════════════════════════════════════════════════════════════ */
+.glass.glass-input {
+  border-radius: 28px;
+  padding: 0;
+  position: relative;
+}
+
+/* The actual input inside should be transparent */
+.glass.glass-input input,
+.glass.glass-input textarea {
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 100%;
+  padding: 16px 24px;
+  color: white;
+  font-size: 15px;
+  line-height: 1.5;
+  resize: none;
+}
+
+.glass.glass-input input::placeholder,
+.glass.glass-input textarea::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Focus state - colored glow ring */
+.glass.glass-input:focus-within {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(var(--glass-accent-color), 0.4);
+  box-shadow:
+    0 0 0 3px rgba(var(--glass-accent-color), 0.15),
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 30px rgba(var(--glass-accent-color), 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLASS DROPDOWN - For menus and modals
+   ═══════════════════════════════════════════════════════════════════════════ */
+.glass.glass-dropdown {
+  --glass-blur: 80px;
+  background:
+    /* Top edge highlight */
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.15) 0%,
+      rgba(255, 255, 255, 0.05) 2px,
+      transparent 20px
+    ),
+    /* Base with slight dark tint for better contrast */
+    rgba(20, 20, 25, 0.7);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.1),
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    0 12px 24px -8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Dropdown menu items */
+.glass-dropdown-item {
+  padding: 12px 20px;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: var(--glass-transition);
+  position: relative;
+}
+
+.glass-dropdown-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.glass-dropdown-item:hover::before {
+  opacity: 1;
+}
+
+.glass-dropdown-item:hover {
+  transform: translateX(4px);
+}
+
+/* Divider for dropdown sections */
+.glass-divider {
+  height: 1px;
+  margin: 0 16px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 20%,
+    rgba(255, 255, 255, 0.1) 80%,
+    transparent 100%
+  );
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GLASS CARD - For content containers
+   ═══════════════════════════════════════════════════════════════════════════ */
+.glass.glass-card {
+  border-radius: 20px;
+  padding: 24px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COLOR VARIANTS - Different accent colors
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Pink/Rose variant */
+.glass.glass-pink {
+  --glass-accent-color: 236, 72, 153;
+}
+
+/* Cyan/Teal variant */
+.glass.glass-cyan {
+  --glass-accent-color: 34, 211, 238;
+}
+
+/* Green variant */
+.glass.glass-green {
+  --glass-accent-color: 34, 197, 94;
+}
+
+/* Orange variant */
+.glass.glass-orange {
+  --glass-accent-color: 249, 115, 22;
+}
+
+/* Blue variant */
+.glass.glass-blue {
+  --glass-accent-color: 59, 130, 246;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Rounded variants */
+.glass-rounded-sm { border-radius: 8px; }
+.glass-rounded-md { border-radius: 12px; }
+.glass-rounded-lg { border-radius: 16px; }
+.glass-rounded-xl { border-radius: 24px; }
+.glass-rounded-full { border-radius: 9999px; }
+
+/* Blur intensity variants */
+.glass-blur-sm { --glass-blur: 10px; }
+.glass-blur-md { --glass-blur: 20px; }
+.glass-blur-lg { --glass-blur: 40px; }
+.glass-blur-xl { --glass-blur: 80px; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EXAMPLE HTML USAGE
+   ═══════════════════════════════════════════════════════════════════════════
+
+   <!-- Basic glass panel -->
+   <div class="glass glass-card">
+     <h2>Hello World</h2>
+     <p>This is a glass card</p>
+   </div>
+
+   <!-- Glass button -->
+   <button class="glass glass-button">
+     <svg>...</svg>
+   </button>
+
+   <!-- Glass input -->
+   <div class="glass glass-input">
+     <input type="text" placeholder="Type here..." />
+   </div>
+
+   <!-- Glass dropdown -->
+   <div class="glass glass-dropdown">
+     <div class="glass-dropdown-item">Option 1</div>
+     <div class="glass-divider"></div>
+     <div class="glass-dropdown-item">Option 2</div>
+   </div>
+
+   <!-- Pink colored glass button -->
+   <button class="glass glass-button glass-pink">
+     <svg>...</svg>
+   </button>
+
+   ═══════════════════════════════════════════════════════════════════════════ */
