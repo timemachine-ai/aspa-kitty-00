@@ -99,7 +99,7 @@ export function ChatMode({
               transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
               className="h-[calc(100vh-16rem)] flex items-center justify-center"
             >
-              <div className="text-xl sm:text-2xl font-normal text-neutral-400 text-left px-4">
+              <div className="text-lg sm:text-xl font-normal text-neutral-400 text-left px-4">
                 <div className="flex items-center">
                   <span>Start a</span>
                   <FlipWords

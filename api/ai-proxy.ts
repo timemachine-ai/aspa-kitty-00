@@ -869,7 +869,7 @@ async function searchYouTubeMusic(params: YouTubeMusicParams): Promise<YouTubeMu
 
   const searchUrl = new URL('https://www.googleapis.com/youtube/v3/search');
   searchUrl.searchParams.set('part', 'snippet');
-  searchUrl.searchParams.set('q', query);
+  searchUrl.searchParams.set('q', `${query} music`); // Append "music" to get music results
   searchUrl.searchParams.set('type', 'video');
   searchUrl.searchParams.set('videoCategoryId', '10'); // Music category
   searchUrl.searchParams.set('maxResults', '1');

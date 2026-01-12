@@ -615,10 +615,10 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
                 </button>
               </div>
               <motion.button
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.02, backgroundColor: 'rgba(139, 92, 246, 0.25)' }}
                 whileTap={{ scale: 0.98 }}
                 onClick={playPendingMusic}
-                className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 text-white font-medium text-sm flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-lg bg-purple-500/15 backdrop-blur-sm border border-purple-500/30 text-purple-200 font-medium text-sm flex items-center justify-center gap-2 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
