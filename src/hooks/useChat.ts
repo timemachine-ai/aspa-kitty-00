@@ -8,7 +8,10 @@ import {
   subscribeToGroupChat,
   sendGroupChatMessage,
   getGroupChat,
-  createGroupChat
+  createGroupChat,
+  updateGroupChatMusic,
+  subscribeToGroupChatMusic,
+  getGroupChatMusic
 } from '../services/groupChat/groupChatService';
 import { GroupChatParticipant } from '../types/groupChat';
 
@@ -95,6 +98,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
   const [collaborativeId, setCollaborativeId] = useState<string | null>(null);
   const [participants, setParticipants] = useState<GroupChatParticipant[]>([]);
   const collaborativeUnsubscribeRef = useRef<(() => void) | null>(null);
+  const musicUnsubscribeRef = useRef<(() => void) | null>(null);
 
   // Track if save is pending to debounce
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -331,7 +335,23 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
   // Clear YouTube music
   const clearYoutubeMusic = useCallback(() => {
     setYoutubeMusic(null);
-  }, []);
+    // If in collaborative mode, also clear group music
+    if (isCollaborative && collaborativeId) {
+      updateGroupChatMusic(collaborativeId, null);
+    }
+  }, [isCollaborative, collaborativeId]);
+
+  // Sync music to group chat when it changes in collaborative mode
+  useEffect(() => {
+    if (isCollaborative && collaborativeId && youtubeMusic) {
+      // Update group chat music so all participants can see it
+      updateGroupChatMusic(collaborativeId, {
+        videoId: youtubeMusic.videoId,
+        title: youtubeMusic.title,
+        artist: youtubeMusic.artist
+      });
+    }
+  }, [isCollaborative, collaborativeId, youtubeMusic]);
 
   // Save chat session when messages change (but not on initial load, and not during streaming)
   useEffect(() => {
@@ -692,6 +712,22 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
           });
         }
       );
+
+      // Subscribe to music changes
+      musicUnsubscribeRef.current = subscribeToGroupChatMusic(
+        shareId,
+        (music) => {
+          if (music) {
+            setYoutubeMusic({
+              videoId: music.videoId,
+              title: music.title,
+              artist: music.artist
+            });
+          } else {
+            setYoutubeMusic(null);
+          }
+        }
+      );
     }
 
     return shareId;
@@ -720,7 +756,8 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
         inputImageUrls: m.inputImageUrls,
         sender_id: m.sender_id,
         sender_nickname: m.sender_nickname,
-        sender_avatar: m.sender_avatar
+        sender_avatar: m.sender_avatar,
+        reactions: m.reactions
       }))
       : [{ ...INITIAL_MESSAGE, hasAnimated: true }];
 
@@ -762,6 +799,32 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       }
     );
 
+    // Get current music if any
+    const currentMusic = await getGroupChatMusic(shareId);
+    if (currentMusic) {
+      setYoutubeMusic({
+        videoId: currentMusic.videoId,
+        title: currentMusic.title,
+        artist: currentMusic.artist
+      });
+    }
+
+    // Subscribe to music changes
+    musicUnsubscribeRef.current = subscribeToGroupChatMusic(
+      shareId,
+      (music) => {
+        if (music) {
+          setYoutubeMusic({
+            videoId: music.videoId,
+            title: music.title,
+            artist: music.artist
+          });
+        } else {
+          setYoutubeMusic(null);
+        }
+      }
+    );
+
     return true;
   }, [setPersonaTheme, userId]);
 
@@ -771,9 +834,14 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       collaborativeUnsubscribeRef.current();
       collaborativeUnsubscribeRef.current = null;
     }
+    if (musicUnsubscribeRef.current) {
+      musicUnsubscribeRef.current();
+      musicUnsubscribeRef.current = null;
+    }
     setIsCollaborative(false);
     setCollaborativeId(null);
     setParticipants([]);
+    setYoutubeMusic(null); // Clear music when leaving group
   }, []);
 
   // Update reactions on a specific message
@@ -783,11 +851,14 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     ));
   }, []);
 
-  // Cleanup collaborative subscription on unmount
+  // Cleanup collaborative and music subscriptions on unmount
   useEffect(() => {
     return () => {
       if (collaborativeUnsubscribeRef.current) {
         collaborativeUnsubscribeRef.current();
+      }
+      if (musicUnsubscribeRef.current) {
+        musicUnsubscribeRef.current();
       }
     };
   }, []);
