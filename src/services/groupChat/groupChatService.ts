@@ -391,19 +391,21 @@ export async function updateGroupChatMusic(
   music: { videoId: string; title: string; artist?: string } | null
 ): Promise<boolean> {
   try {
+    console.log('[GroupChat] Updating music for', chatId, ':', music);
     const { error } = await supabase
       .from('group_chats')
       .update({ current_music: music })
       .eq('id', chatId);
 
     if (error) {
-      console.error('Failed to update group music:', error);
+      console.error('[GroupChat] Failed to update group music:', error);
       return false;
     }
 
+    console.log('[GroupChat] Music updated successfully');
     return true;
   } catch (error) {
-    console.error('Failed to update group music:', error);
+    console.error('[GroupChat] Failed to update group music:', error);
     return false;
   }
 }
@@ -445,8 +447,10 @@ export function subscribeToGroupChatMusic(
         filter: `id=eq.${chatId}`,
       },
       (payload) => {
+        console.log('[GroupChat] Music change received:', payload);
         const newData = payload.new as any;
         if (newData.current_music !== undefined) {
+          console.log('[GroupChat] Broadcasting music change:', newData.current_music);
           onMusicChange(newData.current_music);
         }
       }
