@@ -335,17 +335,12 @@ export function AIMessage({
       {/* Display audio response if present */}
       {audioUrl && !isRecordingVoice && (
         <div className="w-full max-w-2xl mx-auto my-4">
-          <div className="flex flex-col gap-1">
-            <div className={`text-xs font-medium ${personaColor} opacity-60`}>
-              {AI_PERSONAS[displayPersona].name}
-            </div>
-            <AudioPlayerBubble
-              audioSrc={audioUrl}
-              isUserMessage={false}
-              className="max-w-full"
-              currentPersona={displayPersona}
-            />
-          </div>
+          <AudioPlayerBubble
+            audioSrc={audioUrl}
+            isUserMessage={false}
+            className="max-w-full"
+            currentPersona={displayPersona}
+          />
         </div>
       )}
       {/* Show content when not generating or when generation is complete */}
@@ -353,18 +348,16 @@ export function AIMessage({
         <>
           {isChatMode ? (
             <div className="flex flex-col gap-1">
-              <div className={`text-xs font-medium ${personaColor} opacity-60`}>
-                {AI_PERSONAS[displayPersona].name}
-                {isStreamingActive && (
-                  <span className="ml-2 inline-flex items-center">
-                    <motion.div
-                      animate={{ opacity: [0.3, 1, 0.3] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                      className="w-2 h-2 bg-current rounded-full"
-                    />
-                  </span>
-                )}
-              </div>
+              {/* Streaming indicator only */}
+              {isStreamingActive && (
+                <div className={`text-xs font-medium ${personaColor} opacity-60 flex items-center`}>
+                  <motion.div
+                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="w-2 h-2 bg-current rounded-full"
+                  />
+                </div>
+              )}
               <div className={`${theme.text} text-base leading-relaxed max-w-[85%]`}>
                 {content ? (
                   <ReactMarkdown

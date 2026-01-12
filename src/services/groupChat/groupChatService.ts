@@ -173,6 +173,7 @@ export async function getGroupChat(chatId: string): Promise<GroupChat | null> {
         inputImageUrls: m.images,
         audioUrl: m.audio_url,
         thinking: m.reasoning,
+        reactions: m.reactions || {},
       })),
     };
   } catch (error) {
@@ -382,6 +383,83 @@ export async function toggleMessageReaction(
     console.error('Failed to toggle reaction:', error);
     return null;
   }
+}
+
+// Update current music for group chat (syncs across all participants)
+export async function updateGroupChatMusic(
+  chatId: string,
+  music: { videoId: string; title: string; artist?: string } | null
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('group_chats')
+      .update({ current_music: music })
+      .eq('id', chatId);
+
+    if (error) {
+      console.error('Failed to update group music:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Failed to update group music:', error);
+    return false;
+  }
+}
+
+// Get current music for group chat
+export async function getGroupChatMusic(
+  chatId: string
+): Promise<{ videoId: string; title: string; artist?: string } | null> {
+  try {
+    const { data, error } = await supabase
+      .from('group_chats')
+      .select('current_music')
+      .eq('id', chatId)
+      .single();
+
+    if (error || !data) return null;
+    return data.current_music;
+  } catch (error) {
+    console.error('Failed to get group music:', error);
+    return null;
+  }
+}
+
+// Subscribe to group chat music changes
+export function subscribeToGroupChatMusic(
+  chatId: string,
+  onMusicChange: (music: { videoId: string; title: string; artist?: string } | null) => void
+) {
+  const subscriptionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  const channel = supabase
+    .channel(`group_music_${chatId}_${subscriptionId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'group_chats',
+        filter: `id=eq.${chatId}`,
+      },
+      (payload) => {
+        const newData = payload.new as any;
+        if (newData.current_music !== undefined) {
+          onMusicChange(newData.current_music);
+        }
+      }
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`[GroupChat] Subscribed to music changes for ${chatId}`);
+      }
+    });
+
+  return () => {
+    channel.unsubscribe();
+  };
 }
 
 // Subscribe to group chat messages (real-time)
