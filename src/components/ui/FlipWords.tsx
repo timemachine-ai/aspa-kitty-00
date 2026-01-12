@@ -1,17 +1,16 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { cn } from "../../lib/utils";
 
-interface FlipWordsProps {
+export const FlipWords = ({
+  words,
+  duration = 3000,
+  className,
+}: {
   words: string[];
   duration?: number;
   className?: string;
-}
-
-export function FlipWords({
-  words,
-  duration = 3000,
-  className = "",
-}: FlipWordsProps) {
+}) => {
   const [currentWord, setCurrentWord] = useState(words[0]);
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
 
@@ -22,12 +21,10 @@ export function FlipWords({
   }, [currentWord, words]);
 
   useEffect(() => {
-    if (!isAnimating) {
-      const timeout = setTimeout(() => {
+    if (!isAnimating)
+      setTimeout(() => {
         startAnimation();
       }, duration);
-      return () => clearTimeout(timeout);
-    }
   }, [isAnimating, duration, startAnimation]);
 
   return (
@@ -58,7 +55,10 @@ export function FlipWords({
           scale: 2,
           position: "absolute",
         }}
-        className={`z-10 inline-block relative text-left px-2 ${className}`}
+        className={cn(
+          "z-10 inline-block relative text-left px-2",
+          className
+        )}
         key={currentWord}
       >
         {currentWord.split(" ").map((word, wordIndex) => (
@@ -92,4 +92,4 @@ export function FlipWords({
       </motion.div>
     </AnimatePresence>
   );
-}
+};
