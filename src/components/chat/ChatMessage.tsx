@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Reply, Smile, CornerDownRight } from 'lucide-react';
 import { AIMessage } from './AIMessage';
@@ -48,13 +48,58 @@ export function ChatMessage({
   onReact
 }: ChatMessageProps) {
   const [showActions, setShowActions] = useState(false);
+  const [actionsLocked, setActionsLocked] = useState(false); // For mobile click-to-lock
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // In group mode, check if this message is from another user
   const isOtherUserMessage = isGroupMode && !isAI && sender_id && sender_id !== currentUserId;
   const isOwnMessage = !isAI && (!sender_id || sender_id === currentUserId);
 
-  const handleReply = () => {
+  // Close actions when clicking outside
+  useEffect(() => {
+    if (!actionsLocked) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setActionsLocked(false);
+        setShowActions(false);
+        setShowEmojiPicker(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [actionsLocked]);
+
+  const handleClick = () => {
+    if (!isGroupMode || !onReply) return;
+    // Toggle lock state on click (for mobile)
+    if (actionsLocked) {
+      setActionsLocked(false);
+      setShowActions(false);
+      setShowEmojiPicker(false);
+    } else {
+      setActionsLocked(true);
+      setShowActions(true);
+    }
+  };
+
+  const handleMouseEnter = () => {
+    if (!actionsLocked) {
+      setShowActions(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!actionsLocked) {
+      setShowActions(false);
+      setShowEmojiPicker(false);
+    }
+  };
+
+  const handleReply = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (onReply) {
       onReply({
         id,
@@ -63,15 +108,23 @@ export function ChatMessage({
         isAI
       });
     }
+    setActionsLocked(false);
     setShowActions(false);
   };
 
-  const handleReact = (emoji: string) => {
+  const handleReact = (emoji: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     if (onReact) {
       onReact(id, emoji);
     }
     setShowEmojiPicker(false);
+    setActionsLocked(false);
     setShowActions(false);
+  };
+
+  const toggleEmojiPicker = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowEmojiPicker(!showEmojiPicker);
   };
 
   // Render reply preview if this message is replying to another
@@ -79,7 +132,7 @@ export function ChatMessage({
     if (!replyTo) return null;
 
     return (
-      <div className="flex items-start gap-2 mb-2 px-3 py-2 rounded-lg bg-white/5 border-l-2 border-purple-500/50 text-sm">
+      <div className={`flex items-start gap-2 mb-2 px-3 py-2 rounded-lg bg-white/5 border-l-2 border-purple-500/50 text-sm max-w-[85%] ${isOwnMessage ? 'ml-auto' : ''}`}>
         <CornerDownRight className="w-3 h-3 text-white/40 mt-1 flex-shrink-0" />
         <div className="min-w-0">
           <span className="text-purple-400 text-xs font-medium">
@@ -96,11 +149,11 @@ export function ChatMessage({
     if (!reactions || Object.keys(reactions).length === 0) return null;
 
     return (
-      <div className="flex flex-wrap gap-1 mt-2">
+      <div className={`flex flex-wrap gap-1 mt-1 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
         {Object.entries(reactions).map(([emoji, userIds]) => (
           <button
             key={emoji}
-            onClick={() => handleReact(emoji)}
+            onClick={(e) => handleReact(emoji, e)}
             className="px-2 py-0.5 rounded-full bg-white/10 hover:bg-white/20 text-xs flex items-center gap-1 transition-colors"
           >
             <span>{emoji}</span>
@@ -111,7 +164,7 @@ export function ChatMessage({
     );
   };
 
-  // Render action buttons
+  // Render action buttons (now below message)
   const renderActions = () => {
     if (!isGroupMode || !onReply) return null;
 
@@ -119,25 +172,25 @@ export function ChatMessage({
       <AnimatePresence>
         {showActions && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className={`absolute top-0 ${isOwnMessage ? 'right-full mr-2' : 'left-full ml-2'} flex items-center gap-1 bg-black/60 backdrop-blur-xl rounded-lg p-1 border border-white/10 z-10`}
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className={`flex items-center gap-1 mt-1 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
           >
             <button
               onClick={handleReply}
-              className="p-1.5 rounded-md hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+              className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
               title="Reply"
             >
-              <Reply className="w-4 h-4" />
+              <Reply className="w-3.5 h-3.5" />
             </button>
             <div className="relative">
               <button
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="p-1.5 rounded-md hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                onClick={toggleEmojiPicker}
+                className="p-1.5 rounded-md bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
                 title="React"
               >
-                <Smile className="w-4 h-4" />
+                <Smile className="w-3.5 h-3.5" />
               </button>
               <AnimatePresence>
                 {showEmojiPicker && (
@@ -145,12 +198,12 @@ export function ChatMessage({
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 5 }}
-                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur-xl rounded-lg p-2 border border-white/10 flex gap-1"
+                    className={`absolute bottom-full mb-2 ${isOwnMessage ? 'right-0' : 'left-0'} bg-black/80 backdrop-blur-xl rounded-lg p-2 border border-white/10 flex gap-1 z-20`}
                   >
                     {QUICK_REACTIONS.map(emoji => (
                       <button
                         key={emoji}
-                        onClick={() => handleReact(emoji)}
+                        onClick={(e) => handleReact(emoji, e)}
                         className="p-1.5 rounded hover:bg-white/10 text-lg transition-colors"
                       >
                         {emoji}
@@ -169,12 +222,11 @@ export function ChatMessage({
   if (isAI) {
     return (
       <div
-        className="relative group"
-        onMouseEnter={() => setShowActions(true)}
-        onMouseLeave={() => {
-          setShowActions(false);
-          setShowEmojiPicker(false);
-        }}
+        ref={containerRef}
+        className="relative cursor-pointer"
+        onClick={handleClick}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
         {renderReplyPreview()}
         <AIMessage
@@ -198,12 +250,11 @@ export function ChatMessage({
 
   return (
     <div
-      className="relative group"
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => {
-        setShowActions(false);
-        setShowEmojiPicker(false);
-      }}
+      ref={containerRef}
+      className="relative cursor-pointer"
+      onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {renderReplyPreview()}
       <UserMessage
