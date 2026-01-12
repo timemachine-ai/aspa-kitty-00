@@ -470,7 +470,8 @@ export function subscribeToGroupChatMusic(
 export function subscribeToGroupChat(
   chatId: string,
   onMessage: (message: GroupChatMessage) => void,
-  onParticipantJoin: (participant: GroupChatParticipant) => void
+  onParticipantJoin: (participant: GroupChatParticipant) => void,
+  onReactionUpdate?: (messageId: number, reactions: Record<string, string[]>) => void
 ) {
   // Generate unique channel names to prevent channel sharing issues
   const subscriptionId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -499,6 +500,7 @@ export function subscribeToGroupChat(
           inputImageUrls: m.images,
           audioUrl: m.audio_url,
           thinking: m.reasoning,
+          reactions: m.reactions || {},
         });
       }
     )
@@ -507,6 +509,33 @@ export function subscribeToGroupChat(
         console.log(`[GroupChat] Subscribed to messages for ${chatId}`);
       } else if (status === 'CHANNEL_ERROR') {
         console.error(`[GroupChat] Error subscribing to messages for ${chatId}`);
+      }
+    });
+
+  // Subscribe to message updates (for reactions)
+  const messageUpdatesChannel = supabase
+    .channel(`group_message_updates_${chatId}_${subscriptionId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'group_chat_messages',
+        filter: `group_chat_id=eq.${chatId}`,
+      },
+      (payload) => {
+        const m = payload.new as any;
+        if (onReactionUpdate && m.reactions !== undefined) {
+          // Use the same ID format as when messages are created
+          const messageId = new Date(m.created_at).getTime();
+          console.log('[GroupChat] Reaction update received:', messageId, m.reactions);
+          onReactionUpdate(messageId, m.reactions || {});
+        }
+      }
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`[GroupChat] Subscribed to message updates for ${chatId}`);
       }
     });
 
@@ -543,6 +572,7 @@ export function subscribeToGroupChat(
   return () => {
     console.log(`[GroupChat] Unsubscribing from ${chatId}`);
     messagesChannel.unsubscribe();
+    messageUpdatesChannel.unsubscribe();
     participantsChannel.unsubscribe();
   };
 }

@@ -584,7 +584,8 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
         )}
 
         {/* Play for me too - shown when someone else plays music in group chat */}
-        {pendingRemoteMusic && !youtubeMusic && (
+        {/* Hidden when same music is already playing locally (youtubeMusic.videoId === pendingRemoteMusic.videoId) */}
+        {pendingRemoteMusic && youtubeMusic?.videoId !== pendingRemoteMusic.videoId && (
           <motion.div
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}

@@ -708,7 +708,8 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
                 inputImageUrls: newMessage.inputImageUrls,
                 sender_id: newMessage.sender_id,
                 sender_nickname: newMessage.sender_nickname,
-                sender_avatar: newMessage.sender_avatar
+                sender_avatar: newMessage.sender_avatar,
+                reactions: newMessage.reactions
               }];
             });
           }
@@ -719,6 +720,12 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
             if (exists) return prev;
             return [...prev, newParticipant];
           });
+        },
+        // Reaction update callback
+        (messageId, reactions) => {
+          setMessages(prev => prev.map(msg =>
+            msg.id === messageId ? { ...msg, reactions } : msg
+          ));
         }
       );
 
@@ -727,15 +734,9 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
         shareId,
         (music) => {
           console.log('[useChat] Music subscription callback - received:', music);
-          console.log('[useChat] Current local music videoId:', currentMusicVideoIdRef.current);
 
-          // Set as pending remote music - user needs to click "Play for me too"
+          // Always set pending remote music - UI will hide button if already playing locally
           if (music) {
-            // Skip if we already have this music playing locally (we initiated it)
-            if (currentMusicVideoIdRef.current === music.videoId) {
-              console.log('[useChat] Skipping - same music already playing locally');
-              return;
-            }
             console.log('[useChat] Setting pending remote music');
             setPendingRemoteMusic({
               videoId: music.videoId,
@@ -746,7 +747,6 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
           } else {
             console.log('[useChat] Clearing pending remote music');
             setPendingRemoteMusic(null);
-            setYoutubeMusic(null);
           }
         }
       );
@@ -807,7 +807,8 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
               inputImageUrls: newMessage.inputImageUrls,
               sender_id: newMessage.sender_id,
               sender_nickname: newMessage.sender_nickname,
-              sender_avatar: newMessage.sender_avatar
+              sender_avatar: newMessage.sender_avatar,
+              reactions: newMessage.reactions
             }];
           });
         }
@@ -818,6 +819,12 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
           if (exists) return prev;
           return [...prev, newParticipant];
         });
+      },
+      // Reaction update callback
+      (messageId, reactions) => {
+        setMessages(prev => prev.map(msg =>
+          msg.id === messageId ? { ...msg, reactions } : msg
+        ));
       }
     );
 
@@ -837,15 +844,9 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       shareId,
       (music) => {
         console.log('[useChat] joinCollaborativeChat - music subscription callback:', music);
-        console.log('[useChat] Current local music videoId:', currentMusicVideoIdRef.current);
 
-        // Set as pending remote music - user needs to click "Play for me too"
+        // Always set pending remote music - UI will hide button if already playing locally
         if (music) {
-          // Skip if we already have this music playing locally (we initiated it)
-          if (currentMusicVideoIdRef.current === music.videoId) {
-            console.log('[useChat] Skipping - same music already playing locally');
-            return;
-          }
           console.log('[useChat] Setting pending remote music from join');
           setPendingRemoteMusic({
             videoId: music.videoId,
@@ -856,7 +857,6 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
         } else {
           console.log('[useChat] Clearing pending remote music from join');
           setPendingRemoteMusic(null);
-          setYoutubeMusic(null);
         }
       }
     );
