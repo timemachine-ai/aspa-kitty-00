@@ -99,14 +99,16 @@ export function ChatMode({
               transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
               className="h-[calc(100vh-16rem)] flex items-center justify-center"
             >
-              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-white/90 text-center px-4 flex flex-wrap items-center justify-center">
-                <span>Start a</span>
-                <FlipWords
-                  words={["better", "brighter", "bolder", "new"]}
-                  duration={2500}
-                  className="text-purple-400 font-bold"
-                />
-                <span>future with TimeMachine.</span>
+              <div className="text-3xl sm:text-4xl md:text-5xl font-normal text-neutral-400 text-center px-4">
+                <div>Start a</div>
+                <div className="flex items-center justify-center">
+                  <FlipWords
+                    words={["better", "brighter", "bolder", "new"]}
+                    duration={2500}
+                    className="text-purple-400"
+                  />
+                  <span>future</span>
+                </div>
               </div>
             </motion.div>
           )}

@@ -101,6 +101,8 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
   const [participants, setParticipants] = useState<GroupChatParticipant[]>([]);
   const collaborativeUnsubscribeRef = useRef<(() => void) | null>(null);
   const musicUnsubscribeRef = useRef<(() => void) | null>(null);
+  // Track current local music to avoid showing "Play for me too" for own music
+  const currentMusicVideoIdRef = useRef<string | null>(null);
 
   // Track if save is pending to debounce
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -354,6 +356,11 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       });
     }
   }, [isCollaborative, collaborativeId, youtubeMusic]);
+
+  // Keep ref in sync with youtubeMusic state for subscription callbacks
+  useEffect(() => {
+    currentMusicVideoIdRef.current = youtubeMusic?.videoId || null;
+  }, [youtubeMusic]);
 
   // Save chat session when messages change (but not on initial load, and not during streaming)
   useEffect(() => {
@@ -720,8 +727,15 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
         shareId,
         (music) => {
           console.log('[useChat] Music subscription callback - received:', music);
+          console.log('[useChat] Current local music videoId:', currentMusicVideoIdRef.current);
+
           // Set as pending remote music - user needs to click "Play for me too"
           if (music) {
+            // Skip if we already have this music playing locally (we initiated it)
+            if (currentMusicVideoIdRef.current === music.videoId) {
+              console.log('[useChat] Skipping - same music already playing locally');
+              return;
+            }
             console.log('[useChat] Setting pending remote music');
             setPendingRemoteMusic({
               videoId: music.videoId,
@@ -823,8 +837,15 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       shareId,
       (music) => {
         console.log('[useChat] joinCollaborativeChat - music subscription callback:', music);
+        console.log('[useChat] Current local music videoId:', currentMusicVideoIdRef.current);
+
         // Set as pending remote music - user needs to click "Play for me too"
         if (music) {
+          // Skip if we already have this music playing locally (we initiated it)
+          if (currentMusicVideoIdRef.current === music.videoId) {
+            console.log('[useChat] Skipping - same music already playing locally');
+            return;
+          }
           console.log('[useChat] Setting pending remote music from join');
           setPendingRemoteMusic({
             videoId: music.videoId,
