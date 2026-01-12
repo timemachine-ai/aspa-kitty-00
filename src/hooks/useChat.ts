@@ -99,6 +99,8 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
   const [participants, setParticipants] = useState<GroupChatParticipant[]>([]);
   const collaborativeUnsubscribeRef = useRef<(() => void) | null>(null);
   const musicUnsubscribeRef = useRef<(() => void) | null>(null);
+  // Track if music change is from remote subscription (to avoid sync loop)
+  const isMusicFromRemoteRef = useRef<boolean>(false);
 
   // Track if save is pending to debounce
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -343,7 +345,8 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
 
   // Sync music to group chat when it changes in collaborative mode
   useEffect(() => {
-    if (isCollaborative && collaborativeId && youtubeMusic) {
+    // Only sync to database if this is a local music change (not from subscription)
+    if (isCollaborative && collaborativeId && youtubeMusic && !isMusicFromRemoteRef.current) {
       // Update group chat music so all participants can see it
       updateGroupChatMusic(collaborativeId, {
         videoId: youtubeMusic.videoId,
@@ -351,6 +354,8 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
         artist: youtubeMusic.artist
       });
     }
+    // Reset the flag after processing
+    isMusicFromRemoteRef.current = false;
   }, [isCollaborative, collaborativeId, youtubeMusic]);
 
   // Save chat session when messages change (but not on initial load, and not during streaming)
@@ -717,6 +722,8 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       musicUnsubscribeRef.current = subscribeToGroupChatMusic(
         shareId,
         (music) => {
+          // Mark as remote to avoid sync loop
+          isMusicFromRemoteRef.current = true;
           if (music) {
             setYoutubeMusic({
               videoId: music.videoId,
@@ -813,6 +820,8 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     musicUnsubscribeRef.current = subscribeToGroupChatMusic(
       shareId,
       (music) => {
+        // Mark as remote to avoid sync loop
+        isMusicFromRemoteRef.current = true;
         if (music) {
           setYoutubeMusic({
             videoId: music.videoId,
