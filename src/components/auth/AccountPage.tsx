@@ -160,15 +160,13 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="relative overflow-hidden rounded-2xl p-4 text-left w-full group"
+      className="glass-card relative overflow-hidden rounded-2xl p-4 text-left w-full group"
     >
-      {/* Glass background */}
-      <div className="absolute inset-0 bg-white/[0.03] backdrop-blur-xl" />
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-50`} />
-      <div className="absolute inset-[1px] rounded-2xl border border-white/[0.08]" />
+      {/* Gradient overlay */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-30 rounded-2xl`} />
 
       {/* Hover glow */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-30 transition-opacity duration-300`} />
+      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-300 rounded-2xl`} />
 
       <div className="relative flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -228,12 +226,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="relative overflow-hidden rounded-3xl mb-6"
+            className="glass-card glass-purple relative overflow-hidden rounded-3xl mb-6"
           >
-            {/* Glass background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-2xl" />
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/5" />
-            <div className="absolute inset-[1px] rounded-3xl border border-white/[0.08]" />
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/5 rounded-3xl" />
 
             <div className="relative p-6">
               {/* Avatar Section */}
@@ -394,7 +390,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
                       <motion.button
                         whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
                         onClick={() => setEditingField('gender')}
-                        className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left flex items-center justify-between group transition-all"
+                        className="glass-input w-full px-4 py-3 rounded-xl text-left flex items-center justify-between group"
                       >
                         <span className={gender ? 'text-white' : 'text-white/30'}>
                           {gender ? gender.charAt(0).toUpperCase() + gender.slice(1) : 'Not set'}
@@ -446,7 +442,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
                       <motion.button
                         whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
                         onClick={() => setEditingField('birthDate')}
-                        className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left flex items-center justify-between group transition-all"
+                        className="glass-input w-full px-4 py-3 rounded-xl text-left flex items-center justify-between group"
                       >
                         <div className="flex items-center gap-3">
                           <Calendar size={16} className="text-white/40" />
@@ -465,7 +461,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
                   <label className="text-white/40 text-xs font-medium uppercase tracking-wider mb-2 block">
                     Email
                   </label>
-                  <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <div className="glass-input flex items-center gap-3 px-4 py-3 rounded-xl">
                     <Mail size={16} className="text-white/40" />
                     <span className="text-white/60">{user?.email || 'No email'}</span>
                   </div>
@@ -500,7 +496,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
             onClick={handleSignOut}
-            className="w-full py-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-red-400 font-medium flex items-center justify-center gap-2 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+            className="glass-btn w-full py-4 rounded-2xl text-red-400 font-medium flex items-center justify-center gap-2 hover:bg-red-500/10 hover:border-red-500/20"
           >
             <LogOut size={18} />
             Sign Out
@@ -603,7 +599,7 @@ const EditableField: React.FC<EditableFieldProps> = ({
         <motion.button
           whileHover={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
           onClick={onEdit}
-          className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left flex items-center justify-between group transition-all"
+          className="glass-input w-full px-4 py-3 rounded-xl text-left flex items-center justify-between group"
         >
           <span className={value ? 'text-white' : 'text-white/30'}>
             {value || placeholder || 'Not set'}

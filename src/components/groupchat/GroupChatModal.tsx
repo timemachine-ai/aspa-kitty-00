@@ -94,11 +94,9 @@ export function GroupChatModal({
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 className="fixed inset-0 flex items-center justify-center p-4 z-50"
               >
-                <div className="relative w-full max-w-md overflow-hidden rounded-3xl">
-                  {/* Glass background */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-2xl" />
-                  <div className={`absolute inset-0 bg-gradient-to-br ${personaColors[persona]} opacity-10`} />
-                  <div className="absolute inset-[1px] rounded-3xl border border-white/[0.08]" />
+                <div className="glass-modal relative w-full max-w-md overflow-hidden">
+                  {/* Persona gradient overlay */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${personaColors[persona]} opacity-10 rounded-3xl`} />
 
                   <div className="relative p-6">
                     {/* Header */}
@@ -115,7 +113,7 @@ export function GroupChatModal({
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          className="p-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10"
+                          className="glass-btn p-2 rounded-full"
                         >
                           <X className="w-5 h-5 text-white/70" />
                         </motion.button>
@@ -138,7 +136,7 @@ export function GroupChatModal({
                           </p>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                        <div className="glass-card p-4 rounded-2xl">
                           <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Chat Name</p>
                           <p className="text-white font-medium">{chatName || 'Untitled Chat'}</p>
                         </div>
@@ -154,7 +152,7 @@ export function GroupChatModal({
                           whileTap={{ scale: 0.98 }}
                           onClick={handleCreateGroupChat}
                           disabled={isCreating || !user}
-                          className={`w-full py-4 rounded-xl bg-gradient-to-r ${personaColors[persona]} text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50`}
+                          className={`glass-btn w-full py-4 rounded-xl bg-gradient-to-r ${personaColors[persona]} text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50`}
                         >
                           {isCreating ? (
                             <Loader2 className="w-5 h-5 animate-spin" />
@@ -191,7 +189,7 @@ export function GroupChatModal({
                           </p>
                         </div>
 
-                        <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                        <div className="glass-card p-4 rounded-2xl">
                           <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Share Link</p>
                           <p className="text-white font-mono text-sm break-all">{shareUrl}</p>
                         </div>
@@ -201,7 +199,7 @@ export function GroupChatModal({
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleCopy}
-                            className="flex-1 py-3 rounded-xl bg-white/10 border border-white/20 text-white font-medium flex items-center justify-center gap-2"
+                            className="glass-btn flex-1 py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2"
                           >
                             {copied ? (
                               <>
@@ -220,7 +218,7 @@ export function GroupChatModal({
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleContinue}
-                            className={`flex-1 py-3 rounded-xl bg-gradient-to-r ${personaColors[persona] || personaColors.default} text-white font-medium flex items-center justify-center gap-2`}
+                            className={`glass-btn flex-1 py-3 rounded-xl bg-gradient-to-r ${personaColors[persona] || personaColors.default} text-white font-medium flex items-center justify-center gap-2`}
                           >
                             <Check className="w-4 h-4" />
                             Continue
