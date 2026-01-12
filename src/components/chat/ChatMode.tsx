@@ -4,6 +4,7 @@ import { ChatMessage } from './ChatMessage';
 import { Message } from '../../types/chat';
 import { AI_PERSONAS } from '../../config/constants';
 import { useTheme } from '../../context/ThemeContext';
+import { FlipWords } from '../ui/FlipWords';
 
 interface ReplyTo {
   id: number;
@@ -99,10 +100,16 @@ export function ChatMode({
               className="h-[calc(100vh-16rem)] flex items-center justify-center"
             >
               <h1
-                className="text-2xl sm:text-3xl md:text-4xl font-bold text-white/90 text-center px-4"
+                className="text-2xl sm:text-3xl md:text-4xl font-bold text-white/90 text-center px-4 flex flex-wrap items-center justify-center"
                 style={{ fontFamily: 'Montserrat, sans-serif' }}
               >
-                Your future starts from here.
+                <span>Start a</span>
+                <FlipWords
+                  words={["better", "brighter", "bolder", "new"]}
+                  duration={2500}
+                  className="text-purple-400 font-bold"
+                />
+                <span>future with TimeMachine.</span>
               </h1>
             </motion.div>
           )}

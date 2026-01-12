@@ -92,6 +92,8 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
   const [streamingMessageId, setStreamingMessageId] = useState<number | null>(null);
   const [useStreaming, setUseStreaming] = useState(true);
   const [youtubeMusic, setYoutubeMusic] = useState<YouTubeMusicData | null>(null);
+  // Pending remote music - music received from group chat that needs user action to play
+  const [pendingRemoteMusic, setPendingRemoteMusic] = useState<YouTubeMusicData | null>(null);
 
   // Collaborative mode state
   const [isCollaborative, setIsCollaborative] = useState(false);
@@ -99,8 +101,6 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
   const [participants, setParticipants] = useState<GroupChatParticipant[]>([]);
   const collaborativeUnsubscribeRef = useRef<(() => void) | null>(null);
   const musicUnsubscribeRef = useRef<(() => void) | null>(null);
-  // Track if music change is from remote subscription (to avoid sync loop)
-  const isMusicFromRemoteRef = useRef<boolean>(false);
 
   // Track if save is pending to debounce
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -345,17 +345,14 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
 
   // Sync music to group chat when it changes in collaborative mode
   useEffect(() => {
-    // Only sync to database if this is a local music change (not from subscription)
-    if (isCollaborative && collaborativeId && youtubeMusic && !isMusicFromRemoteRef.current) {
-      // Update group chat music so all participants can see it
+    // Sync local music to database so other participants can see it
+    if (isCollaborative && collaborativeId && youtubeMusic) {
       updateGroupChatMusic(collaborativeId, {
         videoId: youtubeMusic.videoId,
         title: youtubeMusic.title,
         artist: youtubeMusic.artist
       });
     }
-    // Reset the flag after processing
-    isMusicFromRemoteRef.current = false;
   }, [isCollaborative, collaborativeId, youtubeMusic]);
 
   // Save chat session when messages change (but not on initial load, and not during streaming)
@@ -722,15 +719,16 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       musicUnsubscribeRef.current = subscribeToGroupChatMusic(
         shareId,
         (music) => {
-          // Mark as remote to avoid sync loop
-          isMusicFromRemoteRef.current = true;
+          // Set as pending remote music - user needs to click "Play for me too"
           if (music) {
-            setYoutubeMusic({
+            setPendingRemoteMusic({
               videoId: music.videoId,
               title: music.title,
-              artist: music.artist
+              artist: music.artist || '',
+              thumbnail: ''
             });
           } else {
+            setPendingRemoteMusic(null);
             setYoutubeMusic(null);
           }
         }
@@ -806,13 +804,14 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       }
     );
 
-    // Get current music if any
+    // Get current music if any - set as pending (user needs to click to play)
     const currentMusic = await getGroupChatMusic(shareId);
     if (currentMusic) {
-      setYoutubeMusic({
+      setPendingRemoteMusic({
         videoId: currentMusic.videoId,
         title: currentMusic.title,
-        artist: currentMusic.artist
+        artist: currentMusic.artist || '',
+        thumbnail: ''
       });
     }
 
@@ -820,15 +819,16 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     musicUnsubscribeRef.current = subscribeToGroupChatMusic(
       shareId,
       (music) => {
-        // Mark as remote to avoid sync loop
-        isMusicFromRemoteRef.current = true;
+        // Set as pending remote music - user needs to click "Play for me too"
         if (music) {
-          setYoutubeMusic({
+          setPendingRemoteMusic({
             videoId: music.videoId,
             title: music.title,
-            artist: music.artist
+            artist: music.artist || '',
+            thumbnail: ''
           });
         } else {
+          setPendingRemoteMusic(null);
           setYoutubeMusic(null);
         }
       }
@@ -850,7 +850,21 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     setIsCollaborative(false);
     setCollaborativeId(null);
     setParticipants([]);
-    setYoutubeMusic(null); // Clear music when leaving group
+    setYoutubeMusic(null);
+    setPendingRemoteMusic(null);
+  }, []);
+
+  // Play pending remote music (user clicked "Play for me too")
+  const playPendingMusic = useCallback(() => {
+    if (pendingRemoteMusic) {
+      setYoutubeMusic(pendingRemoteMusic);
+      setPendingRemoteMusic(null);
+    }
+  }, [pendingRemoteMusic]);
+
+  // Dismiss pending remote music without playing
+  const dismissPendingMusic = useCallback(() => {
+    setPendingRemoteMusic(null);
   }, []);
 
   // Update reactions on a specific message
@@ -906,6 +920,10 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     enableCollaborativeMode,
     joinCollaborativeChat,
     leaveCollaborativeMode,
-    updateMessageReactions
+    updateMessageReactions,
+    // Remote music
+    pendingRemoteMusic,
+    playPendingMusic,
+    dismissPendingMusic
   };
 }
