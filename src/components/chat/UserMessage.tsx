@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { MessageProps } from '../../types/chat';
-import { slideInFromRight } from '../../utils/animations';
+import { slideInFromRight, slideInFromLeft } from '../../utils/animations';
 import { useTheme } from '../../context/ThemeContext';
 import { AudioPlayerBubble } from './AudioPlayerBubble';
 
@@ -11,15 +11,19 @@ export function UserMessage({ content, imageData, audioData, sender_nickname, se
   // Check if this is another user's message in group mode
   const isOtherUser = isGroupMode && sender_nickname;
 
+  // Other users' messages align left (like AI), own messages align right
+  const alignment = isOtherUser ? 'justify-start' : 'justify-end';
+  const animation = isOtherUser ? slideInFromLeft : slideInFromRight;
+
   return (
     <motion.div
-      {...slideInFromRight}
-      className="flex items-start justify-end"
+      {...animation}
+      className={`flex items-start ${alignment}`}
     >
       <div className="max-w-[85%]">
         {/* Show sender info in group mode for other users */}
         {isOtherUser && (
-          <div className="flex items-center gap-2 mb-1 justify-end">
+          <div className="flex items-center gap-2 mb-1">
             {sender_avatar && (
               <img
                 src={sender_avatar}
@@ -37,13 +41,13 @@ export function UserMessage({ content, imageData, audioData, sender_nickname, se
         {audioData ? (
           <AudioPlayerBubble
             audioSrc={audioData}
-            isUserMessage={true}
+            isUserMessage={!isOtherUser}
             className="w-full"
           />
         ) : (
           <div className={`px-4 py-2 rounded-2xl
             ${isOtherUser
-              ? 'bg-blue-500/10 border-blue-500/20'
+              ? 'bg-white/5 border-white/10'
               : 'bg-purple-500/10 border-purple-500/20'
             }
             backdrop-blur-sm border
@@ -73,7 +77,7 @@ export function UserMessage({ content, imageData, audioData, sender_nickname, se
               )}
             </div>
           )}
-          
+
             {/* Display text content if present */}
             {content && <div>{content}</div>}
           </div>

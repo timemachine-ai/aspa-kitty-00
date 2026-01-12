@@ -776,6 +776,13 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     setParticipants([]);
   }, []);
 
+  // Update reactions on a specific message
+  const updateMessageReactions = useCallback((messageId: number, reactions: Record<string, string[]>) => {
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId ? { ...msg, reactions } : msg
+    ));
+  }, []);
+
   // Cleanup collaborative subscription on unmount
   useEffect(() => {
     return () => {
@@ -818,6 +825,7 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
     // Collaborative actions
     enableCollaborativeMode,
     joinCollaborativeChat,
-    leaveCollaborativeMode
+    leaveCollaborativeMode,
+    updateMessageReactions
   };
 }
