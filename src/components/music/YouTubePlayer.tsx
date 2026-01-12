@@ -311,7 +311,16 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto z-50"
         >
-          <div className="glass-player p-4 w-full sm:w-72 md:w-80">
+          <div
+            className="p-4 w-full sm:w-72 md:w-80 rounded-2xl"
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+            }}
+          >
             {/* Header */}
             <div className="flex items-start gap-3 mb-3">
               {/* Thumbnail or Music Icon */}
@@ -345,7 +354,14 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={handleClose}
-                className="glass-btn p-1.5 rounded-full"
+                className="p-1.5 rounded-full"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                }}
               >
                 <X className="w-4 h-4 text-white/70 hover:text-white" />
               </motion.button>
@@ -374,7 +390,14 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 onClick={toggleMute}
-                className="glass-btn w-full mb-2 py-2 px-3 rounded-lg flex items-center justify-center gap-2"
+                className="w-full mb-2 py-2 px-3 rounded-xl flex items-center justify-center gap-2"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                }}
               >
                 <VolumeX className={`w-4 h-4 ${colors.accent}`} />
                 <span className="text-white text-xs sm:text-sm font-medium">Tap to unmute</span>
@@ -387,7 +410,14 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={toggleMute}
-                className={`glass-btn p-2 rounded-full ${autoplayBlocked ? 'animate-pulse' : ''}`}
+                className={`p-2 rounded-full ${autoplayBlocked ? 'animate-pulse' : ''}`}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                }}
               >
                 {isMuted ? (
                   <VolumeX className={`w-4 h-4 ${autoplayBlocked ? colors.accent : 'text-white/70'}`} />
@@ -400,7 +430,14 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={seekBackward}
-                className="glass-btn p-2 rounded-full"
+                className="p-2 rounded-full"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                }}
               >
                 <SkipBack className="w-4 h-4 text-white" />
               </motion.button>
@@ -409,7 +446,14 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={togglePlay}
-                className="glass-btn p-2.5 sm:p-3 rounded-full bg-white/10"
+                className="p-2.5 sm:p-3 rounded-full"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                }}
                 disabled={!isReady}
               >
                 {isPlaying ? (
@@ -423,7 +467,14 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={seekForward}
-                className="glass-btn p-2 rounded-full"
+                className="p-2 rounded-full"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                }}
               >
                 <SkipForward className="w-4 h-4 text-white" />
               </motion.button>

@@ -94,7 +94,16 @@ export function GroupChatModal({
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 className="fixed inset-0 flex items-center justify-center p-4 z-50"
               >
-                <div className="glass-modal relative w-full max-w-md overflow-hidden">
+                <div
+                  className="relative w-full max-w-md overflow-hidden rounded-3xl"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(30px)',
+                    WebkitBackdropFilter: 'blur(30px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                  }}
+                >
                   {/* Persona gradient overlay */}
                   <div className={`absolute inset-0 bg-gradient-to-br ${personaColors[persona]} opacity-10 rounded-3xl`} />
 
@@ -113,7 +122,14 @@ export function GroupChatModal({
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          className="glass-btn p-2 rounded-full"
+                          className="p-2 rounded-full"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                          }}
                         >
                           <X className="w-5 h-5 text-white/70" />
                         </motion.button>
@@ -136,7 +152,16 @@ export function GroupChatModal({
                           </p>
                         </div>
 
-                        <div className="glass-card p-4 rounded-2xl">
+                        <div
+                          className="p-4 rounded-2xl"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                          }}
+                        >
                           <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Chat Name</p>
                           <p className="text-white font-medium">{chatName || 'Untitled Chat'}</p>
                         </div>
@@ -152,7 +177,13 @@ export function GroupChatModal({
                           whileTap={{ scale: 0.98 }}
                           onClick={handleCreateGroupChat}
                           disabled={isCreating || !user}
-                          className={`glass-btn w-full py-4 rounded-xl bg-gradient-to-r ${personaColors[persona]} text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50`}
+                          className={`w-full py-4 rounded-xl bg-gradient-to-r ${personaColors[persona]} text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50`}
+                          style={{
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                          }}
                         >
                           {isCreating ? (
                             <Loader2 className="w-5 h-5 animate-spin" />
@@ -189,7 +220,16 @@ export function GroupChatModal({
                           </p>
                         </div>
 
-                        <div className="glass-card p-4 rounded-2xl">
+                        <div
+                          className="p-4 rounded-2xl"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                          }}
+                        >
                           <p className="text-white/40 text-xs uppercase tracking-wider mb-2">Share Link</p>
                           <p className="text-white font-mono text-sm break-all">{shareUrl}</p>
                         </div>
@@ -199,7 +239,14 @@ export function GroupChatModal({
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleCopy}
-                            className="glass-btn flex-1 py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2"
+                            className="flex-1 py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              backdropFilter: 'blur(20px)',
+                              WebkitBackdropFilter: 'blur(20px)',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                            }}
                           >
                             {copied ? (
                               <>
@@ -218,7 +265,13 @@ export function GroupChatModal({
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleContinue}
-                            className={`glass-btn flex-1 py-3 rounded-xl bg-gradient-to-r ${personaColors[persona] || personaColors.default} text-white font-medium flex items-center justify-center gap-2`}
+                            className={`flex-1 py-3 rounded-xl bg-gradient-to-r ${personaColors[persona] || personaColors.default} text-white font-medium flex items-center justify-center gap-2`}
+                            style={{
+                              backdropFilter: 'blur(20px)',
+                              WebkitBackdropFilter: 'blur(20px)',
+                              border: '1px solid rgba(255, 255, 255, 0.2)',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                            }}
                           >
                             <Check className="w-4 h-4" />
                             Continue

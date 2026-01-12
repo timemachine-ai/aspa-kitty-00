@@ -592,7 +592,16 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
             exit={{ opacity: 0, y: 50 }}
             className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-4 sm:w-72 z-50"
           >
-            <div className="glass-player p-4">
+            <div
+              className="p-4 rounded-2xl"
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+              }}
+            >
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
                   <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -605,7 +614,14 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
                 </div>
                 <button
                   onClick={dismissPendingMusic}
-                  className="glass-btn p-1.5 rounded-full"
+                  className="p-1.5 rounded-full"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                  }}
                 >
                   <svg className="w-4 h-4 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -616,7 +632,14 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={playPendingMusic}
-                className="glass-btn w-full py-2.5 px-4 rounded-lg text-white font-medium text-sm flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-xl text-white font-medium text-sm flex items-center justify-center gap-2"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                }}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
