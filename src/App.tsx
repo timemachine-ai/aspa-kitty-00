@@ -592,9 +592,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
             exit={{ opacity: 0, y: 50 }}
             className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-4 sm:w-72 z-50"
           >
-            <div className="glass-player glass-purple p-4"
-              style={{ boxShadow: '0 8px 32px rgba(139, 92, 246, 0.3)' }}
-            >
+            <div className="glass-player p-4">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
                   <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -618,7 +616,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={playPendingMusic}
-                className="glass-btn glass-purple w-full py-2.5 px-4 rounded-lg text-purple-200 font-medium text-sm flex items-center justify-center gap-2"
+                className="glass-btn w-full py-2.5 px-4 rounded-lg text-white font-medium text-sm flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />

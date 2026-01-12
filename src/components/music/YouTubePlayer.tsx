@@ -311,10 +311,7 @@ export function YouTubePlayer({ musicData, onClose, currentPersona = 'default' }
           transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-4 sm:w-auto z-50"
         >
-          <div
-            className={`glass-player p-4 w-full sm:w-72 md:w-80`}
-            style={{ boxShadow: `0 8px 32px ${colors.glow}` }}
-          >
+          <div className="glass-player p-4 w-full sm:w-72 md:w-80">
             {/* Header */}
             <div className="flex items-start gap-3 mb-3">
               {/* Thumbnail or Music Icon */}

@@ -226,7 +226,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="glass-card glass-purple relative overflow-hidden rounded-3xl mb-6"
+            className="glass-card relative overflow-hidden mb-6"
           >
             {/* Gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/5 rounded-3xl" />
