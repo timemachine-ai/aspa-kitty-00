@@ -56,9 +56,9 @@ export function ChatMessage({
   const isOtherUserMessage = isGroupMode && !isAI && sender_id && sender_id !== currentUserId;
   const isOwnMessage = !isAI && (!sender_id || sender_id === currentUserId);
 
-  // Close actions when clicking outside
+  // Close actions/emoji picker when clicking outside
   useEffect(() => {
-    if (!actionsLocked) return;
+    if (!actionsLocked && !showEmojiPicker) return;
 
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -70,7 +70,7 @@ export function ChatMessage({
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [actionsLocked]);
+  }, [actionsLocked, showEmojiPicker]);
 
   const handleClick = () => {
     if (!isGroupMode || !onReply) return;
@@ -92,9 +92,9 @@ export function ChatMessage({
   };
 
   const handleMouseLeave = () => {
-    if (!actionsLocked) {
+    // Don't close if emoji picker is open or actions are locked
+    if (!actionsLocked && !showEmojiPicker) {
       setShowActions(false);
-      setShowEmojiPicker(false);
     }
   };
 
@@ -124,7 +124,12 @@ export function ChatMessage({
 
   const toggleEmojiPicker = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowEmojiPicker(!showEmojiPicker);
+    const newValue = !showEmojiPicker;
+    setShowEmojiPicker(newValue);
+    // Keep actions visible while emoji picker is open
+    if (newValue) {
+      setShowActions(true);
+    }
   };
 
   // Render reply preview if this message is replying to another
