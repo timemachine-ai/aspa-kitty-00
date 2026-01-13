@@ -295,7 +295,7 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
   const handleLoadGroupChat = (groupChatId: string) => {
     // Navigate to the group chat URL
     onClose();
-    navigate(`/group/${groupChatId}`);
+    navigate(`/groupchat/${groupChatId}`);
   };
 
   const handleTabChange = (direction: 'next' | 'prev') => {
