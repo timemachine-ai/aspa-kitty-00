@@ -2,6 +2,66 @@ import { supabase } from '../../lib/supabase';
 import { GroupChat, GroupChatMessage, GroupChatParticipant, GroupChatInvite } from '../../types/groupChat';
 import { AI_PERSONAS } from '../../config/constants';
 
+// Get all group chats for a user (where they are a participant)
+export async function getUserGroupChats(userId: string): Promise<{
+  id: string;
+  name: string;
+  persona: keyof typeof AI_PERSONAS;
+  owner_nickname: string;
+  updated_at: string;
+  participant_count: number;
+}[]> {
+  try {
+    // Get all group chat IDs where user is a participant
+    const { data: participations, error: partError } = await supabase
+      .from('group_chat_participants')
+      .select('group_chat_id')
+      .eq('user_id', userId);
+
+    if (partError || !participations || participations.length === 0) {
+      return [];
+    }
+
+    const groupChatIds = participations.map(p => p.group_chat_id);
+
+    // Get group chat details
+    const { data: chats, error: chatError } = await supabase
+      .from('group_chats')
+      .select('id, name, persona, owner_nickname, updated_at, is_active')
+      .in('id', groupChatIds)
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false });
+
+    if (chatError || !chats) {
+      return [];
+    }
+
+    // Get participant counts for each chat
+    const result = await Promise.all(
+      chats.map(async (chat) => {
+        const { count } = await supabase
+          .from('group_chat_participants')
+          .select('*', { count: 'exact', head: true })
+          .eq('group_chat_id', chat.id);
+
+        return {
+          id: chat.id,
+          name: chat.name,
+          persona: chat.persona as keyof typeof AI_PERSONAS,
+          owner_nickname: chat.owner_nickname,
+          updated_at: chat.updated_at,
+          participant_count: count || 1
+        };
+      })
+    );
+
+    return result;
+  } catch (error) {
+    console.error('Failed to get user group chats:', error);
+    return [];
+  }
+}
+
 // Generate a short shareable ID
 function generateShareId(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';

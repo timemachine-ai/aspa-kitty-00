@@ -24,17 +24,17 @@ export interface ReplyTo {
 const personaStyles = {
   // Subtle tint colors for glass buttons
   tintColors: {
-    default: 'rgba(139, 0, 255, 0.15)',   // Purple tint
+    default: 'rgba(168, 85, 247, 0.2)',    // Purple tint (brighter)
     girlie: 'rgba(236, 72, 153, 0.15)',    // Pink tint
     pro: 'rgba(34, 211, 238, 0.15)'        // Cyan tint
   },
   borderColors: {
-    default: 'rgba(139, 0, 255, 0.3)',     // Purple border
+    default: 'rgba(168, 85, 247, 0.4)',    // Purple border (brighter)
     girlie: 'rgba(236, 72, 153, 0.3)',      // Pink border
     pro: 'rgba(34, 211, 238, 0.3)'          // Cyan border
   },
   glowShadow: {
-    default: '0 0 12px rgba(139, 0, 255, 0.25)',
+    default: '0 0 15px rgba(168, 85, 247, 0.35)',  // Purple glow (brighter, larger)
     girlie: '0 0 12px rgba(236, 72, 153, 0.25)',
     pro: '0 0 12px rgba(34, 211, 238, 0.25)'
   }
@@ -384,8 +384,8 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                 onKeyDown={handleKeyDown}
                 placeholder="Explore future"
                 disabled={isLoading || isUploading}
-                className={`w-full px-6 py-4 pr-32 rounded-[28px]
-                  ${theme.input.text} placeholder-gray-400 placeholder:text-center
+                className={`w-full px-6 pr-32 rounded-[28px]
+                  ${theme.input.text} placeholder-gray-400
                   outline-none
                   disabled:opacity-50
                   transition-all duration-300
@@ -399,7 +399,10 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                   boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                   fontSize: '1rem',
                   minHeight: '56px',
-                  maxHeight: '150px'
+                  maxHeight: '150px',
+                  paddingTop: '16px',
+                  paddingBottom: '16px',
+                  lineHeight: '24px'
                 }}
                 rows={1}
               />
