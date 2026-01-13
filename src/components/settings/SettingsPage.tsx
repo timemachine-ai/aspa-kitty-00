@@ -51,13 +51,6 @@ export function SettingsPage() {
 
   return (
     <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
-      {/* Ambient background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-500/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-pink-500/15 rounded-full blur-[100px] animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-500/10 rounded-full blur-[150px]" />
-      </div>
-
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-6">
         {/* Header */}
         <motion.div
@@ -100,12 +93,14 @@ export function SettingsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="relative overflow-hidden rounded-3xl"
+          style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+          }}
         >
-          {/* Glass background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-2xl" />
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/5" />
-          <div className="absolute inset-[1px] rounded-3xl border border-white/[0.08]" />
-
           <div className="relative p-6 space-y-8">
             {/* Appearance Section */}
             <div className="space-y-4">
@@ -141,7 +136,13 @@ export function SettingsPage() {
               {/* Default Theme Section */}
               <div className="space-y-3">
                 <label className="text-sm font-medium text-white/60">Default Theme</label>
-                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                <div
+                  className="p-4 rounded-xl"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)'
+                  }}
+                >
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <span className="text-sm text-white/80">
                       {defaultTheme
@@ -190,7 +191,13 @@ export function SettingsPage() {
             {/* Season Themes */}
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-white">Seasons</h2>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+              <div
+                className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 p-4 rounded-xl"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)'
+                }}
+              >
                 {seasonButtons}
               </div>
             </div>

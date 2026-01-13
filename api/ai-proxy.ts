@@ -1489,7 +1489,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       : [imageGenerationTool, webSearchTool, youtubeMusicTool];
 
     // Handle audio transcription if audioData is provided
-    let processedMessages = [...messages];
+    const processedMessages = [...messages];
     let isAudioInput = false;
     if (audioData) {
       isAudioInput = true;
@@ -1644,7 +1644,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const reader = streamingResponse.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
-      let toolCallsMap: Map<number, any> = new Map(); // Accumulate tool calls by index
+      const toolCallsMap: Map<number, any> = new Map(); // Accumulate tool calls by index
 
       try {
         while (true) {
