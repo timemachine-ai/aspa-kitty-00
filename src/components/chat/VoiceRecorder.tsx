@@ -14,17 +14,17 @@ interface VoiceRecorderProps {
 // Persona-colored glass styling (matches ChatInput buttons)
 const personaStyles = {
   tintColors: {
-    default: 'rgba(139, 0, 255, 0.15)',   // Purple tint
+    default: 'rgba(168, 85, 247, 0.2)',    // Purple tint (brighter)
     girlie: 'rgba(236, 72, 153, 0.15)',    // Pink tint
     pro: 'rgba(34, 211, 238, 0.15)'        // Cyan tint
   },
   borderColors: {
-    default: 'rgba(139, 0, 255, 0.3)',     // Purple border
+    default: 'rgba(168, 85, 247, 0.4)',    // Purple border (brighter)
     girlie: 'rgba(236, 72, 153, 0.3)',      // Pink border
     pro: 'rgba(34, 211, 238, 0.3)'          // Cyan border
   },
   glowShadow: {
-    default: '0 0 12px rgba(139, 0, 255, 0.25)',
+    default: '0 0 15px rgba(168, 85, 247, 0.35)',  // Purple glow (brighter, larger)
     girlie: '0 0 12px rgba(236, 72, 153, 0.25)',
     pro: '0 0 12px rgba(34, 211, 238, 0.25)'
   }

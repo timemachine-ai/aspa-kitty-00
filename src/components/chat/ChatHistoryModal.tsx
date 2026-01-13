@@ -18,6 +18,17 @@ import {
   migrateLocalSessionsToSupabase,
   saveSupabaseSession,
 } from '../../services/chat/chatService';
+import { getUserGroupChats } from '../../services/groupChat/groupChatService';
+import { useNavigate } from 'react-router-dom';
+
+interface GroupChatItem {
+  id: string;
+  name: string;
+  persona: string;
+  owner_nickname: string;
+  updated_at: string;
+  participant_count: number;
+}
 
 // Only show TimeMachine personas in tabs (not external AI)
 const HISTORY_TABS = {
@@ -38,7 +49,9 @@ interface ChatHistoryModalProps {
 export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryModalProps) {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [groupChats, setGroupChats] = useState<GroupChatItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [selectedTab, setSelectedTab] = useState<HistoryTabKey>('default');
@@ -56,9 +69,13 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
       if (user) {
         // Load from Supabase for logged in users
         sessions = await getSupabaseSessions(user.id);
+        // Load group chats
+        const userGroupChats = await getUserGroupChats(user.id);
+        setGroupChats(userGroupChats);
       } else {
         // Load from localStorage for anonymous users
         sessions = getLocalSessions();
+        setGroupChats([]);
       }
 
       setChatSessions(sessions.sort((a, b) =>
@@ -67,6 +84,7 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
     } catch (error) {
       console.error('Failed to load chat sessions:', error);
       setChatSessions([]);
+      setGroupChats([]);
     } finally {
       setIsLoading(false);
     }
@@ -274,6 +292,12 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
     onClose();
   };
 
+  const handleLoadGroupChat = (groupChatId: string) => {
+    // Navigate to the group chat URL
+    onClose();
+    navigate(`/group/${groupChatId}`);
+  };
+
   const handleTabChange = (direction: 'next' | 'prev') => {
     const currentIndex = tabKeys.indexOf(selectedTab);
     const newIndex = direction === 'next'
@@ -282,15 +306,10 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
     setSelectedTab(tabKeys[newIndex]);
   };
 
-  // Filter sessions based on selected tab
-  // For groupChats tab, filter sessions that have isGroupChat flag
-  // For other tabs, filter by persona
-  const filteredSessions = chatSessions.filter(session => {
-    if (selectedTab === 'groupChats') {
-      return (session as any).isGroupChat === true;
-    }
-    return session.persona === selectedTab && !(session as any).isGroupChat;
-  });
+  // Filter sessions based on selected tab (excludes group chats - they're handled separately)
+  const filteredSessions = selectedTab === 'groupChats'
+    ? []
+    : chatSessions.filter(session => session.persona === selectedTab);
 
   // Check if there are local sessions to migrate
   const hasLocalSessions = user && getLocalSessions().length > 0;
@@ -526,17 +545,59 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                         <div className="flex items-center justify-center py-12">
                           <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         </div>
+                      ) : selectedTab === 'groupChats' ? (
+                        // Render group chats
+                        groupChats.length === 0 ? (
+                          <div className="text-center py-12 text-white opacity-70 text-lg font-light">
+                            <div className="flex flex-col items-center gap-4">
+                              <div className="text-6xl opacity-30">👥</div>
+                              <div>
+                                <p className="text-lg mb-2">No group chats found</p>
+                                <p className="text-sm opacity-50">
+                                  {user
+                                    ? 'Group chats will appear here when you create or join them'
+                                    : 'Sign in to access group chats'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          groupChats.map(chat => (
+                            <motion.div
+                              key={chat.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="p-4 rounded-xl cursor-pointer transition-all duration-300 hover:bg-white/10"
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)'
+                              }}
+                              onClick={() => handleLoadGroupChat(chat.id)}
+                            >
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <Users className="w-4 h-4 text-purple-400" />
+                                    <h3 className="font-semibold text-white truncate text-lg tracking-tight">
+                                      {chat.name || 'Untitled Group'}
+                                    </h3>
+                                  </div>
+                                  <p className="text-sm text-gray-300 opacity-70 font-light mt-1">
+                                    {chat.participant_count} participants • by {chat.owner_nickname} • {formatDate(chat.updated_at)}
+                                  </p>
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))
+                        )
                       ) : filteredSessions.length === 0 ? (
                         <div className="text-center py-12 text-white opacity-70 text-lg font-light">
                           <div className="flex flex-col items-center gap-4">
-                            <div className="text-6xl opacity-30">{selectedTab === 'groupChats' ? '👥' : '💭'}</div>
+                            <div className="text-6xl opacity-30">💭</div>
                             <div>
                               <p className="text-lg mb-2">No chats found for {HISTORY_TABS[selectedTab].name}</p>
-                              <p className="text-sm opacity-50">
-                                {selectedTab === 'groupChats'
-                                  ? 'Group chats will appear here when you create them'
-                                  : 'Start a conversation to see your chat history here'}
-                              </p>
+                              <p className="text-sm opacity-50">Start a conversation to see your chat history here</p>
                             </div>
                           </div>
                         </div>
