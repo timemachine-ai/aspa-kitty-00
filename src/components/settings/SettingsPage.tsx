@@ -30,18 +30,25 @@ export function SettingsPage() {
           >
             <button
               onClick={() => setSeason(key as keyof typeof seasonThemes)}
-              className={`w-16 h-16 rounded-full
-                ${seasonTheme.background} bg-opacity-20 backdrop-blur-md
-                border-2 border-white/20
-                ${season === key ? 'ring-2 ring-purple-500 ring-offset-2 ring-offset-transparent' : ''}
-                hover:bg-opacity-30 relative group transition-all duration-200`}
+              className={`w-12 h-12 rounded-full flex items-center justify-center relative transition-all duration-200`}
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: season === key ? '1px solid rgba(255, 255, 255, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
+                boxShadow: season === key ? '0 0 15px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2)' : 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+              }}
               aria-label={`Select ${seasonTheme.name} theme`}
             >
-              {season === key && (
-                <Palette className="w-5 h-5 text-white/80 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
-              )}
+              <Palette
+                className={`w-5 h-5`}
+                style={{
+                  color: seasonTheme.name === 'Winter' ? '#60a5fa' :
+                         seasonTheme.name === 'Spring' ? '#f472b6' :
+                         seasonTheme.name === 'Summer' ? '#fbbf24' :
+                         seasonTheme.name === 'Autumn' ? '#f87171' : 'rgba(255,255,255,0.8)'
+                }}
+              />
             </button>
-            <span className="text-xs font-medium mt-2 text-center text-white/80">
+            <span className="text-xs font-medium mt-2 text-center text-white/60">
               {seasonTheme.name}
             </span>
           </motion.div>
@@ -50,14 +57,7 @@ export function SettingsPage() {
   );
 
   return (
-    <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
-      {/* Ambient background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-500/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-pink-500/15 rounded-full blur-[100px] animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-500/10 rounded-full blur-[150px]" />
-      </div>
-
+    <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-y-auto`}>
       <div className="relative z-10 max-w-2xl mx-auto px-4 py-6">
         {/* Header */}
         <motion.div
@@ -100,12 +100,14 @@ export function SettingsPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="relative overflow-hidden rounded-3xl"
+          style={{
+            background: 'rgba(255, 255, 255, 0.05)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+          }}
         >
-          {/* Glass background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-2xl" />
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/5" />
-          <div className="absolute inset-[1px] rounded-3xl border border-white/[0.08]" />
-
           <div className="relative p-6 space-y-8">
             {/* Appearance Section */}
             <div className="space-y-4">
@@ -121,13 +123,13 @@ export function SettingsPage() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setMode(option as 'light' | 'dark' | 'monochrome')}
-                      className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium
-                        ${mode === option
-                          ? 'bg-purple-500/30 border-purple-500/50 text-purple-200'
-                          : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
-                        }
-                        border transition-all duration-200
-                        flex items-center justify-center gap-2`}
+                      className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200`}
+                      style={{
+                        background: mode === option ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                        border: mode === option ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(255, 255, 255, 0.08)',
+                        color: mode === option ? 'white' : 'rgba(255, 255, 255, 0.6)',
+                        boxShadow: mode === option ? 'inset 0 1px 0 rgba(255, 255, 255, 0.1)' : 'none'
+                      }}
                     >
                       {option === 'light' && <Sun className="w-4 h-4" />}
                       {option === 'dark' && <Moon className="w-4 h-4" />}
@@ -141,7 +143,13 @@ export function SettingsPage() {
               {/* Default Theme Section */}
               <div className="space-y-3">
                 <label className="text-sm font-medium text-white/60">Default Theme</label>
-                <div className="p-4 rounded-xl bg-white/5 border border-white/10">
+                <div
+                  className="p-4 rounded-xl"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)'
+                  }}
+                >
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <span className="text-sm text-white/80">
                       {defaultTheme
@@ -158,10 +166,12 @@ export function SettingsPage() {
                           setDefaultTheme({ mode, season });
                           setConfirmationMessage(defaultTheme ? 'Default theme changed!' : 'Default theme set!');
                         }}
-                        className="px-4 py-2 rounded-lg text-sm font-medium
-                          bg-purple-500/20 hover:bg-purple-500/30
-                          border border-purple-500/30
-                          text-purple-200 transition-all duration-200"
+                        className="px-4 py-2 rounded-lg text-sm font-medium text-white transition-all duration-200"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                        }}
                       >
                         {defaultTheme ? 'Change' : 'Set Default'}
                       </motion.button>
@@ -173,10 +183,11 @@ export function SettingsPage() {
                             clearDefaultTheme();
                             setConfirmationMessage('Default theme cleared!');
                           }}
-                          className="px-4 py-2 rounded-lg text-sm font-medium
-                            bg-red-500/20 hover:bg-red-500/30
-                            border border-red-500/30
-                            text-red-200 transition-all duration-200"
+                          className="px-4 py-2 rounded-lg text-sm font-medium text-red-300 transition-all duration-200"
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                          }}
                         >
                           Clear
                         </motion.button>
@@ -190,7 +201,13 @@ export function SettingsPage() {
             {/* Season Themes */}
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-white">Seasons</h2>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
+              <div
+                className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 p-4 rounded-xl"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)'
+                }}
+              >
                 {seasonButtons}
               </div>
             </div>

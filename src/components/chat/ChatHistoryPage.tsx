@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as Tabs from '@radix-ui/react-tabs';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Upload, Cloud, CloudOff, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Pencil, Trash2, ChevronRight, Download, Upload, Cloud, CloudOff, RefreshCw, MessageCircle, Users } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { AI_PERSONAS } from '../../config/constants';
@@ -16,6 +16,8 @@ import {
   migrateLocalSessionsToSupabase,
   saveSupabaseSession,
 } from '../../services/chat/chatService';
+import { getUserGroupChats } from '../../services/groupChat/groupChatService';
+import { GroupChat } from '../../types/groupChat';
 
 interface ChatHistoryPageProps {
   onLoadChat: (session: ChatSession) => void;
@@ -26,13 +28,20 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [groupChats, setGroupChats] = useState<GroupChat[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
-  const [selectedPersona, setSelectedPersona] = useState<keyof typeof AI_PERSONAS>('default');
+
+  // Filter out the AI Personas we don't want to show
+  const allowedPersonas = Object.keys(AI_PERSONAS).filter(key =>
+    !['chatgpt', 'gemini', 'claude', 'grok'].includes(key)
+  ) as (keyof typeof AI_PERSONAS)[];
+
+  const [selectedTab, setSelectedTab] = useState<string>('default');
+
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const personaKeys = Object.keys(AI_PERSONAS) as (keyof typeof AI_PERSONAS)[];
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const loadChatSessions = useCallback(async () => {
@@ -49,6 +58,13 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
       setChatSessions(sessions.sort((a, b) =>
         new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
       ));
+
+      if (user) {
+        const groups = await getUserGroupChats(user.id);
+        setGroupChats(groups);
+      } else {
+        setGroupChats([]);
+      }
     } catch (error) {
       console.error('Failed to load chat sessions:', error);
       setChatSessions([]);
@@ -80,7 +96,7 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
       } else {
         setFeedbackMessage({ type: 'success', text: 'No local chats to migrate.' });
       }
-    } catch (error) {
+    } catch {
       setFeedbackMessage({ type: 'error', text: 'Failed to migrate chats.' });
     } finally {
       setIsSyncing(false);
@@ -186,6 +202,7 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
           throw new Error('Invalid file format');
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const validSessions = importData.sessions.filter((session: any) => {
           return session.id && session.name && session.messages &&
                  session.persona && session.createdAt && session.lastModified &&
@@ -251,27 +268,18 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
 
   const handleLoadChat = (session: ChatSession) => {
     onLoadChat(session);
+    // Note: ChatHistoryPage is a full page, so we might need navigation logic if it's not handled by parent
+    navigate('/');
   };
 
-  const handlePersonaChange = (direction: 'next' | 'prev') => {
-    const currentIndex = personaKeys.indexOf(selectedPersona);
-    const newIndex = direction === 'next'
-      ? (currentIndex + 1) % personaKeys.length
-      : (currentIndex - 1 + personaKeys.length) % personaKeys.length;
-    setSelectedPersona(personaKeys[newIndex]);
+  const handleOpenGroupChat = (groupId: string) => {
+    window.location.href = `/groupchat/${groupId}`;
   };
 
-  const filteredSessions = chatSessions.filter(session => session.persona === selectedPersona);
   const hasLocalSessions = user && getLocalSessions().length > 0;
 
   return (
-    <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
-      {/* Ambient background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-500/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-pink-500/15 rounded-full blur-[100px] animate-pulse delay-1000" />
-      </div>
-
+    <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-y-auto`}>
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-6">
         {/* Header */}
         <motion.div
@@ -360,9 +368,11 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleExportChats}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg
-              bg-white/10 hover:bg-white/20 text-white
-              border border-white/20 transition-all duration-200"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-white transition-all duration-200"
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
           >
             <Download className="w-4 h-4" />
             <span className="text-sm font-medium">Export All</span>
@@ -372,9 +382,11 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleImportChats}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg
-              bg-white/10 hover:bg-white/20 text-white
-              border border-white/20 transition-all duration-200"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-white transition-all duration-200"
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
           >
             <Upload className="w-4 h-4" />
             <span className="text-sm font-medium">Import</span>
@@ -385,9 +397,11 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
             whileTap={{ scale: 0.95 }}
             onClick={loadChatSessions}
             disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg
-              bg-white/10 hover:bg-white/20 text-white
-              border border-white/20 transition-all duration-200 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-white transition-all duration-200 disabled:opacity-50"
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </motion.button>
@@ -403,56 +417,51 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
 
         {/* Tabs */}
         <Tabs.Root
-          value={selectedPersona}
-          onValueChange={(value) => setSelectedPersona(value as keyof typeof AI_PERSONAS)}
+          value={selectedTab}
+          onValueChange={setSelectedTab}
           className="flex flex-col"
         >
-          <Tabs.List className="mb-6">
-            <div className="sm:hidden flex items-center justify-between">
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handlePersonaChange('prev')}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200"
+          <Tabs.List className="mb-6 flex space-x-2 overflow-x-auto pb-2">
+            {allowedPersonas.map((key) => (
+              <Tabs.Trigger
+                key={key}
+                value={key}
+                className={`px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium whitespace-nowrap flex items-center gap-2
+                  ${selectedTab === key
+                    ? 'text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                style={selectedTab === key ? {
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)'
+                } : {}}
               >
-                <ChevronLeft className="w-5 h-5 text-gray-200" />
-              </motion.button>
-              <motion.div
-                key={selectedPersona}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm font-medium"
-              >
-                {AI_PERSONAS[selectedPersona].name}
-              </motion.div>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => handlePersonaChange('next')}
-                className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200"
-              >
-                <ChevronRight className="w-5 h-5 text-gray-200" />
-              </motion.button>
-            </div>
-            <div className="hidden sm:flex space-x-2 overflow-x-auto">
-              {Object.entries(AI_PERSONAS).map(([key, persona]) => (
-                <Tabs.Trigger
-                  key={key}
-                  value={key}
-                  className={`px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium whitespace-nowrap
-                    ${selectedPersona === key
-                      ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-lg'
-                      : 'bg-white/5 hover:bg-white/10 text-gray-200'
-                    }`}
-                >
-                  {persona.name}
-                </Tabs.Trigger>
-              ))}
-            </div>
+                <MessageCircle className="w-3.5 h-3.5" />
+                {AI_PERSONAS[key].name}
+              </Tabs.Trigger>
+            ))}
+
+            <Tabs.Trigger
+              value="group"
+              className={`px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium whitespace-nowrap flex items-center gap-2
+                ${selectedTab === 'group'
+                  ? 'text-white shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              style={selectedTab === 'group' ? {
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(10px)'
+              } : {}}
+            >
+              <Users className="w-3.5 h-3.5" />
+              Group Chats
+            </Tabs.Trigger>
           </Tabs.List>
 
           <motion.div
-            key={selectedPersona}
+            key={selectedTab}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="space-y-3"
@@ -461,96 +470,150 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
               <div className="flex items-center justify-center py-12">
                 <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
               </div>
-            ) : filteredSessions.length === 0 ? (
-              <div className="text-center py-12 text-white opacity-70">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="text-6xl opacity-30">💭</div>
-                  <div>
-                    <p className="text-lg mb-2">No chats found for {AI_PERSONAS[selectedPersona].name}</p>
-                    <p className="text-sm opacity-50">Start a conversation to see your chat history here</p>
+            ) : selectedTab === 'group' ? (
+              groupChats.length === 0 ? (
+                <div className={`text-center py-12 text-white opacity-70 text-lg font-light`}>
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="text-6xl opacity-30">👥</div>
+                    <div>
+                      <p className="text-lg mb-2">No group chats found</p>
+                      <p className="text-sm opacity-50">Create a group chat to see it here</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              filteredSessions.map(session => (
-                <motion.div
-                  key={session.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-4 rounded-xl bg-white/5 border border-white/10
-                    transition-all duration-300 hover:bg-gradient-to-r hover:from-white/10 hover:to-purple-500/10
-                    cursor-pointer"
-                  onClick={() => handleLoadChat(session)}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      {editingId === session.id ? (
-                        <div className="flex flex-col gap-2">
-                          <input
-                            type="text"
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSaveRename()}
-                            className="w-full px-4 py-2 rounded-lg bg-white/10 text-white
-                              border border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-400
-                              text-sm font-medium"
-                            autoFocus
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSaveRename();
-                            }}
-                            className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white
-                              text-sm font-medium self-start"
-                          >
-                            Save
-                          </motion.button>
-                        </div>
-                      ) : (
-                        <>
-                          <h3 className="font-semibold text-white truncate text-lg">
-                            {session.name || 'Untitled Chat'}
-                          </h3>
-                          <p className="text-sm text-gray-300 opacity-70 mt-1">
-                            {session.messages?.length || 0} messages • {formatDate(session.lastModified)}
-                          </p>
-                        </>
-                      )}
+              ) : (
+                groupChats.map(group => (
+                  <motion.div
+                    key={group.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 rounded-xl cursor-pointer"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onClick={() => handleOpenGroupChat(group.id)}
+                    whileHover={{
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      borderColor: 'rgba(255, 255, 255, 0.15)'
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-white truncate text-lg">
+                          {group.name || 'Untitled Group'}
+                        </h3>
+                        <p className="text-sm text-gray-300 opacity-70 mt-1">
+                          {group.participants?.length || 0} participants • {AI_PERSONAS[group.persona]?.name || 'Unknown Persona'}
+                        </p>
+                      </div>
+                      <div className="p-2 rounded-full bg-white/5">
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                      </div>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRename(session.id);
-                        }}
-                        className="p-2 rounded-full bg-white/10 hover:bg-white/20"
-                        title="Rename"
-                      >
-                        <Pencil className="w-5 h-5 text-gray-200" />
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(session.id);
-                        }}
-                        className="p-2 rounded-full bg-white/10 hover:bg-red-500/30"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-5 h-5 text-gray-200" />
-                      </motion.button>
+                  </motion.div>
+                ))
+              )
+            ) : (
+              chatSessions.filter(s => s.persona === selectedTab).length === 0 ? (
+                <div className="text-center py-12 text-white opacity-70">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="text-6xl opacity-30">💭</div>
+                    <div>
+                      <p className="text-lg mb-2">No chats found for {AI_PERSONAS[selectedTab as keyof typeof AI_PERSONAS].name}</p>
+                      <p className="text-sm opacity-50">Start a conversation to see your chat history here</p>
                     </div>
                   </div>
-                </motion.div>
-              ))
+                </div>
+              ) : (
+                chatSessions.filter(s => s.persona === selectedTab).map(session => (
+                  <motion.div
+                    key={session.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 rounded-xl cursor-pointer"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.03)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onClick={() => handleLoadChat(session)}
+                    whileHover={{
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      borderColor: 'rgba(255, 255, 255, 0.15)'
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        {editingId === session.id ? (
+                          <div className="flex flex-col gap-2">
+                            <input
+                              type="text"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleSaveRename()}
+                              className="w-full px-4 py-2 rounded-lg bg-white/10 text-white
+                                border border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-400
+                                text-sm font-medium"
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSaveRename();
+                              }}
+                              className="px-4 py-2 rounded-lg bg-purple-500 text-white
+                                text-sm font-medium self-start"
+                            >
+                              Save
+                            </motion.button>
+                          </div>
+                        ) : (
+                          <>
+                            <h3 className="font-semibold text-white truncate text-lg">
+                              {session.name || 'Untitled Chat'}
+                            </h3>
+                            <p className="text-sm text-gray-300 opacity-70 mt-1">
+                              {session.messages?.length || 0} messages • {formatDate(session.lastModified)}
+                            </p>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRename(session.id);
+                          }}
+                          className="p-2 rounded-full bg-white/5 hover:bg-white/10"
+                          title="Rename"
+                        >
+                          <Pencil className="w-5 h-5 text-gray-200" />
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(session.id);
+                          }}
+                          className="p-2 rounded-full bg-white/5 hover:bg-red-500/30"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-5 h-5 text-gray-200" />
+                        </motion.button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              )
             )}
           </motion.div>
         </Tabs.Root>

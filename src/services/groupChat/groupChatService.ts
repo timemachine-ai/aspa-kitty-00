@@ -24,7 +24,7 @@ export async function createGroupChat(
     const shareId = generateShareId();
 
     // Create group chat record
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('group_chats')
       .insert({
         id: shareId,
@@ -82,6 +82,47 @@ export async function getGroupChatInvite(chatId: string): Promise<GroupChatInvit
   } catch (error) {
     console.error('Failed to get group chat invite:', error);
     return null;
+  }
+}
+
+// Get all group chats for a user
+export async function getUserGroupChats(userId: string): Promise<GroupChat[]> {
+  try {
+    const { data: participations, error } = await supabase
+      .from('group_chat_participants')
+      .select('group_chat_id')
+      .eq('user_id', userId);
+
+    if (error) throw error;
+    if (!participations || participations.length === 0) return [];
+
+    const groupChatIds = participations.map(p => p.group_chat_id);
+
+    const { data: chats, error: chatsError } = await supabase
+      .from('group_chats')
+      .select('*')
+      .in('id', groupChatIds)
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false });
+
+    if (chatsError) throw chatsError;
+    if (!chats) return [];
+
+    return chats.map(chat => ({
+      id: chat.id,
+      name: chat.name,
+      owner_id: chat.owner_id,
+      owner_nickname: chat.owner_nickname,
+      persona: chat.persona as keyof typeof AI_PERSONAS,
+      is_active: chat.is_active,
+      created_at: chat.created_at,
+      updated_at: chat.updated_at,
+      participants: [], // Participants not loaded for list view to save performance
+      messages: [],     // Messages not loaded for list view to save performance
+    }));
+  } catch (error) {
+    console.error('Failed to get user group chats:', error);
+    return [];
   }
 }
 
