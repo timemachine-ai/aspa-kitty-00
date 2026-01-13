@@ -279,7 +279,7 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
   const hasLocalSessions = user && getLocalSessions().length > 0;
 
   return (
-    <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
+    <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-y-auto`}>
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-6">
         {/* Header */}
         <motion.div
