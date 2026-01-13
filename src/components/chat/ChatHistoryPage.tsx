@@ -282,7 +282,7 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
 
   const handleLoadGroupChat = (groupChatId: string) => {
     // Navigate to the group chat URL
-    navigate(`/group/${groupChatId}`);
+    navigate(`/groupchat/${groupChatId}`);
   };
 
   const handleTabChange = (direction: 'next' | 'prev') => {
@@ -302,12 +302,12 @@ export function ChatHistoryPage({ onLoadChat }: ChatHistoryPageProps) {
 
   return (
     <div
-      className="min-h-screen relative overflow-y-auto text-white"
+      className="h-screen overflow-y-auto text-white"
       style={{
         background: 'linear-gradient(to top, #581c87 0%, #000000 40%, #000000 100%)'
       }}
     >
-      <div className="relative max-w-4xl mx-auto px-4 py-6 pb-24">
+      <div className="max-w-4xl mx-auto px-4 py-6 pb-24">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
