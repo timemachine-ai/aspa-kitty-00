@@ -153,9 +153,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
     icon: React.ReactNode;
     label: string;
     value: number;
-    gradient: string;
     onClick?: () => void;
-  }> = ({ icon, label, value, gradient, onClick }) => (
+  }> = ({ icon, label, value, onClick }) => (
     <motion.button
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
@@ -166,18 +165,18 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+        boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
       }}
     >
-      {/* Gradient overlay */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-30 rounded-2xl`} />
-
-      {/* Hover glow */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-300 rounded-2xl`} />
-
       <div className="relative flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-xl bg-gradient-to-br ${gradient} border border-white/10`}>
+          <div
+            className="p-2.5 rounded-xl"
+            style={{
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
             {icon}
           </div>
           <div>
@@ -193,13 +192,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
   );
 
   return (
-    <div className="h-screen bg-[#0a0a0f] overflow-hidden flex flex-col">
-      {/* Ambient background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-500/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-pink-500/15 rounded-full blur-[100px] animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-500/10 rounded-full blur-[150px]" />
-      </div>
+    <div
+      className="h-screen overflow-hidden flex flex-col"
+      style={{
+        background: 'linear-gradient(to top, #581c87 0%, #000000 40%, #000000 100%)'
+      }}
+    >
 
       {/* Scrollable content */}
       <div className="relative z-10 flex-1 overflow-y-auto">
@@ -239,19 +237,30 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
             }}
           >
-            {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-pink-500/5 rounded-3xl" />
 
             <div className="relative p-6">
               {/* Avatar Section */}
               <div className="flex flex-col items-center mb-8">
                 <div className="relative">
-                  {/* Purple glass avatar container */}
-                  <div className="w-28 h-28 rounded-full p-[2px] bg-gradient-to-br from-purple-500 to-pink-500">
-                    <div className="w-full h-full rounded-full bg-gradient-to-br from-purple-900/80 to-purple-950/80 backdrop-blur-xl flex items-center justify-center overflow-hidden border-2 border-purple-500/20">
+                  {/* Glass avatar container */}
+                  <div
+                    className="w-28 h-28 rounded-full p-[2px]"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.15)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)'
+                    }}
+                  >
+                    <div
+                      className="w-full h-full rounded-full flex items-center justify-center overflow-hidden"
+                      style={{
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)'
+                      }}
+                    >
                       {profile?.avatar_url ? (
                         <img
                           src={profile.avatar_url}
@@ -270,7 +279,13 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
                     whileTap={{ scale: 0.9 }}
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadingAvatar}
-                    className="absolute -bottom-1 -right-1 p-2.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30"
+                    className="absolute -bottom-1 -right-1 p-2.5 rounded-full text-white"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      backdropFilter: 'blur(20px)',
+                      WebkitBackdropFilter: 'blur(20px)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)'
+                    }}
                   >
                     {uploadingAvatar ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -299,30 +314,26 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
               {stats && (
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   <StatCard
-                    icon={<MessageSquare size={18} className="text-purple-300" />}
+                    icon={<MessageSquare size={18} className="text-white/70" />}
                     label="Chats"
                     value={stats.chatCount}
-                    gradient="from-purple-500/20 to-violet-500/20"
                     onClick={handleOpenHistory}
                   />
                   <StatCard
-                    icon={<Sparkles size={18} className="text-pink-300" />}
+                    icon={<Sparkles size={18} className="text-white/70" />}
                     label="Messages"
                     value={stats.messageCount}
-                    gradient="from-pink-500/20 to-rose-500/20"
                   />
                   <StatCard
-                    icon={<ImageIcon size={18} className="text-cyan-300" />}
+                    icon={<ImageIcon size={18} className="text-white/70" />}
                     label="Images"
                     value={stats.imageCount}
-                    gradient="from-cyan-500/20 to-blue-500/20"
                     onClick={() => setShowImages(true)}
                   />
                   <StatCard
-                    icon={<Brain size={18} className="text-amber-300" />}
+                    icon={<Brain size={18} className="text-white/70" />}
                     label="Memories"
                     value={stats.memoryCount}
-                    gradient="from-amber-500/20 to-orange-500/20"
                     onClick={() => setShowMemories(true)}
                   />
                 </div>
@@ -539,7 +550,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               border: '1px solid rgba(255, 255, 255, 0.1)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
             }}
           >
             <LogOut size={18} />

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Tabs from '@radix-ui/react-tabs';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Upload, Cloud, CloudOff, RefreshCw } from 'lucide-react';
+import { X, Pencil, Trash2, ChevronLeft, ChevronRight, Download, Upload, Cloud, CloudOff, RefreshCw, Users } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { Message } from '../../types/chat';
@@ -19,6 +19,16 @@ import {
   saveSupabaseSession,
 } from '../../services/chat/chatService';
 
+// Only show TimeMachine personas in tabs (not external AI)
+const HISTORY_TABS = {
+  default: { name: 'TimeMachine Air' },
+  girlie: { name: 'TimeMachine Girlie' },
+  pro: { name: 'TimeMachine PRO' },
+  groupChats: { name: 'Group Chats' }
+} as const;
+
+type HistoryTabKey = keyof typeof HISTORY_TABS;
+
 interface ChatHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -31,11 +41,11 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
-  const [selectedPersona, setSelectedPersona] = useState<keyof typeof AI_PERSONAS>('default');
+  const [selectedTab, setSelectedTab] = useState<HistoryTabKey>('default');
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const personaKeys = Object.keys(AI_PERSONAS) as (keyof typeof AI_PERSONAS)[];
+  const tabKeys = Object.keys(HISTORY_TABS) as HistoryTabKey[];
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const loadChatSessions = useCallback(async () => {
@@ -264,15 +274,23 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
     onClose();
   };
 
-  const handlePersonaChange = (direction: 'next' | 'prev') => {
-    const currentIndex = personaKeys.indexOf(selectedPersona);
+  const handleTabChange = (direction: 'next' | 'prev') => {
+    const currentIndex = tabKeys.indexOf(selectedTab);
     const newIndex = direction === 'next'
-      ? (currentIndex + 1) % personaKeys.length
-      : (currentIndex - 1 + personaKeys.length) % personaKeys.length;
-    setSelectedPersona(personaKeys[newIndex]);
+      ? (currentIndex + 1) % tabKeys.length
+      : (currentIndex - 1 + tabKeys.length) % tabKeys.length;
+    setSelectedTab(tabKeys[newIndex]);
   };
 
-  const filteredSessions = chatSessions.filter(session => session.persona === selectedPersona);
+  // Filter sessions based on selected tab
+  // For groupChats tab, filter sessions that have isGroupChat flag
+  // For other tabs, filter by persona
+  const filteredSessions = chatSessions.filter(session => {
+    if (selectedTab === 'groupChats') {
+      return (session as any).isGroupChat === true;
+    }
+    return session.persona === selectedTab && !(session as any).isGroupChat;
+  });
 
   // Check if there are local sessions to migrate
   const hasLocalSessions = user && getLocalSessions().length > 0;
@@ -300,10 +318,15 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                 className="fixed inset-0 flex items-center justify-center p-4 z-50"
               >
                 <div
-                  className={`relative w-[95vw] max-w-[700px] h-[90vh] max-h-[85vh] p-6 sm:p-10 rounded-2xl
-                    bg-gradient-to-b from-white/3 to-white/1 backdrop-blur-3xl bg-opacity-5
-                    border border-white/10 shadow-[0_0_40px_rgba(139,92,246,0.1)] flex flex-col`}
-                  style={{ fontFamily: '"Inter", system-ui, sans-serif' }}
+                  className="relative w-[95vw] max-w-[700px] h-[90vh] max-h-[85vh] p-6 sm:p-10 rounded-2xl flex flex-col"
+                  style={{
+                    fontFamily: '"Inter", system-ui, sans-serif',
+                    background: 'linear-gradient(to top, #581c87 0%, #000000 40%, #000000 100%)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                  }}
                 >
                   <div className="flex items-center justify-between mb-6">
                     <Dialog.Title className={`text-2xl font-bold text-white tracking-tight`}>
@@ -379,9 +402,11 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={handleExportChats}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg
-                        bg-white/10 hover:bg-white/20 text-white
-                        border border-white/20 transition-all duration-200"
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-white transition-all duration-200"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}
                     >
                       <Download className="w-4 h-4" />
                       <span className="text-sm font-medium">Export All Chats</span>
@@ -391,9 +416,11 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={handleImportChats}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg
-                        bg-white/10 hover:bg-white/20 text-white
-                        border border-white/20 transition-all duration-200"
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-white transition-all duration-200"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}
                     >
                       <Upload className="w-4 h-4" />
                       <span className="text-sm font-medium">Import Chats</span>
@@ -404,9 +431,11 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                       whileTap={{ scale: 0.95 }}
                       onClick={loadChatSessions}
                       disabled={isLoading}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg
-                        bg-white/10 hover:bg-white/20 text-white
-                        border border-white/20 transition-all duration-200 disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg text-white transition-all duration-200 disabled:opacity-50"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}
                     >
                       <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                     </motion.button>
@@ -421,8 +450,8 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                   </div>
 
                   <Tabs.Root
-                    value={selectedPersona}
-                    onValueChange={(value) => setSelectedPersona(value as keyof typeof AI_PERSONAS)}
+                    value={selectedTab}
+                    onValueChange={(value) => setSelectedTab(value as HistoryTabKey)}
                     className="flex flex-col flex-1 min-h-0"
                   >
                     <Tabs.List className="mb-6">
@@ -430,53 +459,64 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handlePersonaChange('prev')}
-                          className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200"
+                          onClick={() => handleTabChange('prev')}
+                          className="p-2 rounded-full transition-all duration-200"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)'
+                          }}
                         >
                           <ChevronLeft className="w-5 h-5 text-gray-200" />
                         </motion.button>
                         <motion.div
-                          key={selectedPersona}
+                          key={selectedTab}
                           initial={{ opacity: 0, scale: 0.95 }}
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.95 }}
                           transition={{ duration: 0.15, ease: 'easeInOut' }}
-                          className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-sm font-medium
-                            border border-transparent bg-clip-padding
-                            shadow-[0_0_10px_rgba(139,92,246,0.4),0_0_20px_rgba(139,92,246,0.2)]"
+                          className="px-4 py-2 rounded-full text-white text-sm font-medium flex items-center gap-2"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)'
+                          }}
                         >
-                          {AI_PERSONAS[selectedPersona].name}
+                          {selectedTab === 'groupChats' && <Users className="w-4 h-4" />}
+                          {HISTORY_TABS[selectedTab].name}
                         </motion.div>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={() => handlePersonaChange('next')}
-                          className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200"
+                          onClick={() => handleTabChange('next')}
+                          className="p-2 rounded-full transition-all duration-200"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)'
+                          }}
                         >
                           <ChevronRight className="w-5 h-5 text-gray-200" />
                         </motion.button>
                       </div>
                       <div className="hidden sm:flex space-x-2 overflow-x-auto">
-                        {Object.entries(AI_PERSONAS).map(([key, persona]) => (
+                        {Object.entries(HISTORY_TABS).map(([key, tab]) => (
                           <Tabs.Trigger
                             key={key}
                             value={key}
-                            className={`px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium whitespace-nowrap
-                              ${selectedPersona === key
-                                ? `bg-gradient-to-r from-purple-500 to-indigo-500 text-white
-                                   border border-transparent bg-clip-padding
-                                   shadow-[0_0_10px_rgba(139,92,246,0.4),0_0_20px_rgba(139,92,246,0.2)]`
-                                : `bg-white/5 hover:bg-white/10 text-gray-200`
-                              }`}
+                            className="px-4 py-2 rounded-full transition-all duration-300 text-sm font-medium whitespace-nowrap flex items-center gap-2"
+                            style={{
+                              background: selectedTab === key ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                              border: selectedTab === key ? '1px solid rgba(255, 255, 255, 0.2)' : '1px solid rgba(255, 255, 255, 0.1)',
+                              color: selectedTab === key ? '#fff' : 'rgba(255, 255, 255, 0.7)'
+                            }}
                           >
-                            {persona.name}
+                            {key === 'groupChats' && <Users className="w-4 h-4" />}
+                            {tab.name}
                           </Tabs.Trigger>
                         ))}
                       </div>
                     </Tabs.List>
 
                     <motion.div
-                      key={selectedPersona}
+                      key={selectedTab}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2 }}
@@ -484,15 +524,19 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                     >
                       {isLoading ? (
                         <div className="flex items-center justify-center py-12">
-                          <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+                          <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         </div>
                       ) : filteredSessions.length === 0 ? (
-                        <div className={`text-center py-12 text-white opacity-70 text-lg font-light`}>
+                        <div className="text-center py-12 text-white opacity-70 text-lg font-light">
                           <div className="flex flex-col items-center gap-4">
-                            <div className="text-6xl opacity-30">💭</div>
+                            <div className="text-6xl opacity-30">{selectedTab === 'groupChats' ? '👥' : '💭'}</div>
                             <div>
-                              <p className="text-lg mb-2">No chats found for {AI_PERSONAS[selectedPersona].name}</p>
-                              <p className="text-sm opacity-50">Start a conversation to see your chat history here</p>
+                              <p className="text-lg mb-2">No chats found for {HISTORY_TABS[selectedTab].name}</p>
+                              <p className="text-sm opacity-50">
+                                {selectedTab === 'groupChats'
+                                  ? 'Group chats will appear here when you create them'
+                                  : 'Start a conversation to see your chat history here'}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -503,9 +547,11 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2 }}
-                            className={`p-4 rounded-xl bg-white/5 border border-white/10
-                              transition-all duration-300 hover:bg-gradient-to-r hover:from-white/10 hover:to-purple-500/10
-                              cursor-pointer shadow-sm hover:shadow-lg`}
+                            className="p-4 rounded-xl cursor-pointer transition-all duration-300"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              border: '1px solid rgba(255, 255, 255, 0.1)'
+                            }}
                             onClick={() => handleLoadChat(session)}
                           >
                             <div className="flex items-start justify-between gap-4">
@@ -530,8 +576,11 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                                         e.stopPropagation();
                                         handleSaveRename();
                                       }}
-                                      className={`px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 text-white
-                                        text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 self-start`}
+                                      className="px-4 py-2 rounded-lg text-white text-sm font-medium transition-all duration-200 self-start"
+                                      style={{
+                                        background: 'rgba(255, 255, 255, 0.15)',
+                                        border: '1px solid rgba(255, 255, 255, 0.2)'
+                                      }}
                                     >
                                       Save
                                     </motion.button>
@@ -550,25 +599,33 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
 
                               <div className="flex items-center gap-2">
                                 <motion.button
-                                  whileHover={{ scale: 1.1, rotate: 5 }}
+                                  whileHover={{ scale: 1.1 }}
                                   whileTap={{ scale: 0.9 }}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleRename(session.id);
                                   }}
-                                  className={`p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200`}
+                                  className="p-2 rounded-full transition-all duration-200"
+                                  style={{
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                                  }}
                                   title="Rename"
                                 >
                                   <Pencil className="w-5 h-5 text-gray-200" />
                                 </motion.button>
                                 <motion.button
-                                  whileHover={{ scale: 1.1, rotate: 5 }}
+                                  whileHover={{ scale: 1.1 }}
                                   whileTap={{ scale: 0.9 }}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleDelete(session.id);
                                   }}
-                                  className={`p-2 rounded-full bg-white/10 hover:bg-red-500/30 transition-all duration-200`}
+                                  className="p-2 rounded-full transition-all duration-200 hover:bg-red-500/20"
+                                  style={{
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                                  }}
                                   title="Delete"
                                 >
                                   <Trash2 className="w-5 h-5 text-gray-200" />
@@ -585,7 +642,11 @@ export function ChatHistoryModal({ isOpen, onClose, onLoadChat }: ChatHistoryMod
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
-                      className={`absolute top-6 right-6 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-all duration-200`}
+                      className="absolute top-6 right-6 p-2 rounded-full transition-all duration-200"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                      }}
                     >
                       <X className="w-5 h-5 text-gray-200" />
                     </motion.button>

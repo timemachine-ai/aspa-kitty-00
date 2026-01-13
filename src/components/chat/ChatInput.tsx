@@ -22,25 +22,21 @@ export interface ReplyTo {
 }
 
 const personaStyles = {
-  glowColors: {
-    default: 'rgba(139,0,255,0.7)',
-    girlie: 'rgba(199,21,133,0.7)',
-    pro: 'rgba(34,211,238,0.7)'
+  // Subtle tint colors for glass buttons
+  tintColors: {
+    default: 'rgba(139, 0, 255, 0.15)',   // Purple tint
+    girlie: 'rgba(236, 72, 153, 0.15)',    // Pink tint
+    pro: 'rgba(34, 211, 238, 0.15)'        // Cyan tint
   },
   borderColors: {
-    default: 'from-purple-600/20 to-blue-600/20',
-    girlie: 'from-pink-500/20 to-rose-400/20',
-    pro: 'from-cyan-600/20 to-blue-600/20'
+    default: 'rgba(139, 0, 255, 0.3)',     // Purple border
+    girlie: 'rgba(236, 72, 153, 0.3)',      // Pink border
+    pro: 'rgba(34, 211, 238, 0.3)'          // Cyan border
   },
-  focusGlow: {
-    default: 'focus:shadow-[0_0_30px_2px_rgba(139,0,255,0.4)]',
-    girlie: 'focus:shadow-[0_0_30px_2px_rgba(199,21,133,0.4)]',
-    pro: 'focus:shadow-[0_0_30px_2px_rgba(34,211,238,0.4)]'
-  },
-  hoverGlow: {
-    default: 'hover:shadow-[0_0_25px_rgba(139,0,255,0.5)]',
-    girlie: 'hover:shadow-[0_0_25px_rgba(199,21,133,0.7)]',
-    pro: 'hover:shadow-[0_0_25px_rgba(34,211,238,0.5)]'
+  glowShadow: {
+    default: '0 0 12px rgba(139, 0, 255, 0.25)',
+    girlie: '0 0 12px rgba(236, 72, 153, 0.25)',
+    pro: '0 0 12px rgba(34, 211, 238, 0.25)'
   }
 } as const;
 
@@ -369,11 +365,11 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
             disabled={isLoading || isUploading || selectedImages.length >= 4}
             className={`p-3 rounded-full ${theme.text} disabled:opacity-50 relative group transition-all duration-300`}
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
+              background: `linear-gradient(135deg, ${personaStyles.tintColors[currentPersona]}, rgba(255, 255, 255, 0.05))`,
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+              border: `1px solid ${personaStyles.borderColors[currentPersona]}`,
+              boxShadow: `${personaStyles.glowShadow[currentPersona]}, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
             }}
           >
             <Plus className="w-5 h-5 relative z-10" />
@@ -389,7 +385,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                 placeholder="Explore future"
                 disabled={isLoading || isUploading}
                 className={`w-full px-6 py-4 pr-32 rounded-[28px]
-                  ${theme.input.text} placeholder-gray-400
+                  ${theme.input.text} placeholder-gray-400 placeholder:text-center
                   outline-none
                   disabled:opacity-50
                   transition-all duration-300
@@ -400,8 +396,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                   backdropFilter: 'blur(20px)',
                   WebkitBackdropFilter: 'blur(20px)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
-                  textShadow: '0 0 10px rgba(255,255,255,0.1)',
+                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
                   fontSize: '1rem',
                   minHeight: '56px',
                   maxHeight: '150px'
@@ -423,11 +418,11 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                   disabled={isLoading || isUploading || (!message.trim() && selectedImages.length === 0)}
                   className={`p-3 rounded-full ${theme.text} disabled:opacity-50 relative group transition-all duration-300`}
                   style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
+                    background: `linear-gradient(135deg, ${personaStyles.tintColors[currentPersona]}, rgba(255, 255, 255, 0.05))`,
                     backdropFilter: 'blur(20px)',
                     WebkitBackdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                    border: `1px solid ${personaStyles.borderColors[currentPersona]}`,
+                    boxShadow: `${personaStyles.glowShadow[currentPersona]}, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
                   }}
                 >
                   {isLoading || isUploading ? (
