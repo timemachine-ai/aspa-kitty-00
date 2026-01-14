@@ -92,11 +92,13 @@ export function ChatMode({
     }
   }, [messages]);
 
-  // Check if we should show welcome text (only initial message present)
-  const showWelcomeText = messages.length === 1 && messages[0].id === 1;
+  // Check if we should show welcome text (no user messages sent yet)
+  const hasUserMessages = messages.some(m => !m.isAI);
+  const showWelcomeText = !hasUserMessages && messages.length > 0;
 
-  // Filter out the initial welcome message (id: 1) from rendering
-  const displayMessages = messages.filter(m => m.id !== 1);
+  // When showing welcome text, don't display the AI's initial greeting
+  // When chat has started, show all messages
+  const displayMessages = showWelcomeText ? [] : messages;
 
   return (
     <div className={`min-h-full pt-20 pb-48 ${theme.text}`}>
