@@ -602,26 +602,40 @@ const youtubeMusicTool = {
   }
 };
 
-// Memory tool - saves info about the user for future chats
-const memoryTool = {
-  type: "function" as const,
-  function: {
-    name: "memory",
-    strict: true,
-    description: "Remember something about the user.",
-    parameters: {
-      type: "object",
-      properties: {
-        content: {
-          type: "string",
-          description: "Information to remember about the user"
-        }
-      },
-      required: ["content"],
-      additionalProperties: false
+// Helper function to process memory tags from AI response
+// Returns { content: string (without memory tags), memoryContent: string | null, hasSavedMemory: boolean }
+async function processMemoryTags(
+  content: string,
+  userId: string | null,
+  persona: string
+): Promise<{ content: string; memoryContent: string | null; hasSavedMemory: boolean }> {
+  const memoryRegex = /<memory>([\s\S]*?)<\/memory>/gi;
+  const matches = content.match(memoryRegex);
+
+  if (!matches || matches.length === 0) {
+    return { content, memoryContent: null, hasSavedMemory: false };
+  }
+
+  let hasSavedMemory = false;
+  let memoryContent: string | null = null;
+
+  // Extract and save each memory
+  for (const match of matches) {
+    const innerContent = match.replace(/<\/?memory>/gi, '').trim();
+    if (innerContent && userId) {
+      memoryContent = innerContent;
+      const newMemory = await addUserMemory(userId, innerContent, 'general', 5, persona);
+      if (newMemory) {
+        hasSavedMemory = true;
+      }
     }
   }
-};
+
+  // Remove memory tags from content
+  let cleanedContent = content.replace(memoryRegex, '').trim();
+
+  return { content: cleanedContent, memoryContent, hasSavedMemory };
+}
 
 // Audio-specific system prompt for voice message interactions
 const AUDIO_SYSTEM_PROMPT = `You are TimeMachine Voice Assistant, a specialized AI designed to process and respond to voice messages. Your primary goal is to understand the user's spoken intent, provide concise and helpful responses, and maintain a natural, conversational flow.
@@ -1475,18 +1489,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       memoryContext = formatMemoriesForContext(memories, userProfile);
     }
 
+    // Memory instructions for logged-in users (XML-based approach)
+    const memoryInstructions = userId ? `
+
+## Memory
+When the user shares important information about themselves that you should remember for future conversations (like preferences, facts about their life, things they like/dislike, etc.), save it by writing the information inside <memory> tags at the END of your message. Only save genuinely important, lasting information - not temporary things.
+
+Example: If user says "My favorite song is Attention by Charlie Puth", you would end your response with:
+<memory>User's favorite song is Attention by Charlie Puth</memory>
+
+The memory tags will be processed and removed from the visible response, so write your actual response normally before the tags.` : '';
+
     // Enhanced system prompt with tool usage instructions and memory context
-    const enhancedSystemPrompt = `${systemPrompt}${memoryContext}
+    const enhancedSystemPrompt = `${systemPrompt}${memoryContext}${memoryInstructions}
 
 .`;
 
     // Initialize model, system prompt, and tools with defaults
     let modelToUse = personaConfig.model;
     let systemPromptToUse = enhancedSystemPrompt;
-    // Include memory tool only for logged-in users
-    let toolsToUse: any[] = userId
-      ? [imageGenerationTool, webSearchTool, youtubeMusicTool, memoryTool]
-      : [imageGenerationTool, webSearchTool, youtubeMusicTool];
+    // Tools (memory is now handled via XML tags, not as a tool)
+    let toolsToUse: any[] = [imageGenerationTool, webSearchTool, youtubeMusicTool];
 
     // Handle audio transcription if audioData is provided
     let processedMessages = [...messages];
@@ -1775,24 +1798,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         res.write(errorMsg);
                         fullContent += errorMsg;
                       }
-                    } else if (toolCall.function?.name === 'memory') {
-                      try {
-                        const params: MemoryParams = JSON.parse(toolCall.function.arguments);
-
-                        if (!userId) {
-                          const errorMsg = '\n\n*Memory feature requires being logged in.*';
-                          res.write(errorMsg);
-                          fullContent += errorMsg;
-                        } else if (params.content) {
-                          const newMemory = await addUserMemory(userId, params.content, 'general', 5, persona);
-                          if (newMemory) {
-                            res.write('\n\n*Remembered.*');
-                            fullContent += '\n\n*Remembered.*';
-                          }
-                        }
-                      } catch (error) {
-                        console.error('Memory error:', error);
-                      }
                     }
                   }
                 }
@@ -1807,18 +1812,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Increment rate limit after successful response (async, don't await)
         incrementRateLimit(userId || null, ip, persona);
 
+        // Process memory tags from the full content (XML-based memory system)
+        if (userId && fullContent) {
+          const memoryResult = await processMemoryTags(fullContent, userId, persona);
+          if (memoryResult.hasSavedMemory) {
+            // Send a special marker that the frontend can detect
+            res.write('\n\n[MEMORY_SAVED]');
+          }
+        }
+
         // Generate audio response if needed
         if (isAudioInput && fullContent) {
           try {
             const cleanContent = fullContent
               .replace(/[*_`#]/g, '') // Remove markdown formatting
               .replace(/\n+/g, ' ') // Replace newlines with spaces
+              .replace(/<memory>[\s\S]*?<\/memory>/gi, '') // Remove memory tags
               .trim();
-            
+
             const encodedText = encodeURIComponent(cleanContent);
             const hardcodedToken = "Cf5zT0TTvLLEskfY";
             const audioUrl = `https://text.pollinations.ai/Repeat%20this%20exact%20text%20in%20a%20soothing%20cute%20voice%3A%20${encodedText}?model=openai-audio&voice=nova&token=${hardcodedToken}`;
-            
+
             res.write(`\n\n[AUDIO_URL]${audioUrl}[/AUDIO_URL]`);
           } catch (error) {
             console.error('Error generating audio URL:', error);
@@ -1942,21 +1957,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               console.error('Error processing web search:', error);
               fullContent += '\n\nSorry, I had trouble performing that web search. Please try again.';
             }
-          } else if (toolCall.function?.name === 'memory') {
-            try {
-              const params: MemoryParams = JSON.parse(toolCall.function.arguments);
-              if (!userId) {
-                fullContent += '\n\n*Memory feature requires being logged in.*';
-              } else if (params.content) {
-                const newMemory = await addUserMemory(userId, params.content, 'general', 5, persona);
-                if (newMemory) {
-                  fullContent += '\n\n*Remembered.*';
-                }
-              }
-            } catch (error) {
-              console.error('Memory error:', error);
-            }
           }
+        }
+      }
+
+      // Process memory tags from the full content (XML-based memory system)
+      if (userId && fullContent) {
+        const memoryResult = await processMemoryTags(fullContent, userId, persona);
+        if (memoryResult.hasSavedMemory) {
+          // Replace memory tags with marker and clean content
+          fullContent = memoryResult.content + '\n\n[MEMORY_SAVED]';
         }
       }
 
