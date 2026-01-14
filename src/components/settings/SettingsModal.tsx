@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sun, Moon, Palette } from 'lucide-react';
+import { X, Palette } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { seasonThemes } from '../../themes/seasons';
 
@@ -22,19 +22,19 @@ export const SettingsModal = React.memo(({ isOpen, onClose }: SettingsModalProps
     }
   }, [confirmationMessage]);
 
-  // Handle mode change - also update season to match
-  const handleModeChange = (newMode: 'light' | 'dark' | 'monochrome') => {
-    setMode(newMode);
-    // When switching to light/dark mode, we need to update season too for visual effect
-    // Light themes: spring, summer, autumn, winter (white backgrounds)
-    // Dark themes: springDark, summerDark, autumnDark, winterDark (black backgrounds)
-    if (newMode === 'light') {
-      setSeason('autumn'); // Light theme with purple tones
-    } else if (newMode === 'dark') {
-      setSeason('autumnDark'); // Dark theme with purple tones
+  // Toggle monochrome mode
+  const handleMonochromeToggle = () => {
+    if (mode === 'monochrome') {
+      // Switch back to dark mode
+      setMode('dark');
+      setSeason('autumnDark');
+    } else {
+      // Switch to monochrome
+      setMode('monochrome');
     }
-    // Monochrome is handled separately by setMode
   };
+
+  const isMonochrome = mode === 'monochrome';
 
   // Memoized season buttons to prevent re-renders
   const seasonButtons = React.useMemo(
@@ -128,37 +128,56 @@ export const SettingsModal = React.memo(({ isOpen, onClose }: SettingsModalProps
                   </Dialog.Title>
 
                   <div className="space-y-6">
-                    {/* Theme Mode Selector */}
+                    {/* Monochrome Toggle */}
                     <div className="space-y-3">
-                      <label className="text-sm font-medium text-white/70">
-                        Theme Mode
-                      </label>
-                      <div className="flex space-x-2">
-                        {['light', 'dark', 'monochrome'].map((option) => (
-                          <button
-                            key={option}
-                            onClick={() => handleModeChange(option as 'light' | 'dark' | 'monochrome')}
-                            className="flex-1 py-2.5 px-4 rounded-full text-sm transition-all duration-200 flex items-center justify-center space-x-2"
-                            style={{
-                              background: mode === option
-                                ? 'rgba(168, 85, 247, 0.3)'
-                                : 'rgba(255, 255, 255, 0.05)',
-                              backdropFilter: 'blur(12px)',
-                              WebkitBackdropFilter: 'blur(12px)',
-                              border: mode === option
-                                ? '1px solid rgba(168, 85, 247, 0.5)'
-                                : '1px solid rgba(255, 255, 255, 0.1)',
-                              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-                              color: mode === option ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.7)'
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Palette className="w-4 h-4 text-white/70" />
+                          <label className="text-sm font-medium text-white/70">
+                            Monochrome
+                          </label>
+                        </div>
+                        {/* Glass Toggle Switch */}
+                        <button
+                          onClick={handleMonochromeToggle}
+                          className="relative w-14 h-8 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-purple-400/50"
+                          style={{
+                            background: isMonochrome
+                              ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.4), rgba(139, 92, 246, 0.3))'
+                              : 'rgba(255, 255, 255, 0.08)',
+                            backdropFilter: 'blur(12px)',
+                            WebkitBackdropFilter: 'blur(12px)',
+                            border: isMonochrome
+                              ? '1px solid rgba(168, 85, 247, 0.5)'
+                              : '1px solid rgba(255, 255, 255, 0.15)',
+                            boxShadow: isMonochrome
+                              ? '0 0 20px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                              : 'inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 -1px 0 rgba(0, 0, 0, 0.1)'
+                          }}
+                          aria-label="Toggle monochrome mode"
+                          role="switch"
+                          aria-checked={isMonochrome}
+                        >
+                          <motion.div
+                            className="absolute top-1 w-6 h-6 rounded-full"
+                            animate={{
+                              x: isMonochrome ? 26 : 2,
                             }}
-                            aria-label={`Select ${option} mode`}
-                          >
-                            {option === 'light' && <Sun className="w-4 h-4" />}
-                            {option === 'dark' && <Moon className="w-4 h-4" />}
-                            {option === 'monochrome' && <Palette className="w-4 h-4" />}
-                            <span className="capitalize">{option}</span>
-                          </button>
-                        ))}
+                            transition={{
+                              type: 'spring',
+                              stiffness: 500,
+                              damping: 30
+                            }}
+                            style={{
+                              background: isMonochrome
+                                ? 'linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85))'
+                                : 'linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.4))',
+                              boxShadow: isMonochrome
+                                ? '0 2px 8px rgba(0, 0, 0, 0.3), 0 0 12px rgba(168, 85, 247, 0.4)'
+                                : '0 2px 4px rgba(0, 0, 0, 0.2)'
+                            }}
+                          />
+                        </button>
                       </div>
                     </div>
 
