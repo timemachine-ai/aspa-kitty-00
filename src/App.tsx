@@ -123,8 +123,9 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
   const [replyTo, setReplyTo] = useState<{ id: number; content: string; sender_nickname?: string; isAI: boolean } | null>(null);
 
   // Get initial persona from profile (validated against AI_PERSONAS)
+  // Only set initialPersona once auth is done loading to avoid flash of default persona
   const savedPersona = profile?.last_persona as keyof typeof AI_PERSONAS | null;
-  const initialPersona = savedPersona && savedPersona in AI_PERSONAS ? savedPersona : undefined;
+  const initialPersona = !authLoading && savedPersona && savedPersona in AI_PERSONAS ? savedPersona : undefined;
 
   const {
     messages,
@@ -160,7 +161,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     pendingRemoteMusic,
     playPendingMusic,
     dismissPendingMusic
-  } = useChat(user?.id, profile || undefined, initialPersona);
+  } = useChat(user?.id, profile || undefined, initialPersona, authLoading);
 
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
 
