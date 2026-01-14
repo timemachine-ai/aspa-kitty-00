@@ -38,17 +38,20 @@ export function ChatMode({
 }: ChatModeProps) {
   const { theme } = useTheme();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const lastUserMessageRef = useRef<HTMLDivElement>(null);
+  // Track the last user message ID we've scrolled to (prevents duplicate scrolls)
+  const lastScrolledUserMsgId = useRef<number | null>(null);
 
   // Smart scroll: positions user message at the top of viewport
   // No auto-scroll for AI messages - they naturally fill below
-  const scrollUserMessageToTop = () => {
+  const scrollUserMessageToTop = (messageId: number) => {
     const container = document.querySelector('.message-container');
-    if (container && lastUserMessageRef.current) {
-      // Small delay to ensure DOM has updated
+    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+
+    if (container && messageElement) {
+      // Use requestAnimationFrame to ensure DOM is ready
       requestAnimationFrame(() => {
         const containerRect = container.getBoundingClientRect();
-        const messageRect = lastUserMessageRef.current!.getBoundingClientRect();
+        const messageRect = messageElement.getBoundingClientRect();
 
         // Calculate scroll position to put the message at the top
         // Add a small offset (20px) for visual breathing room
@@ -70,14 +73,21 @@ export function ChatMode({
     }
   }, []);
 
-  // Smart scroll effect: only scrolls for user messages
+  // Smart scroll effect: detect new user messages and scroll to them
   useEffect(() => {
-    if (messages.length > 0) {
-      const lastMessage = messages[messages.length - 1];
-      // Only auto-scroll when user sends a message
-      // AI messages don't trigger scroll - they fill naturally below
-      if (!lastMessage.isAI) {
-        scrollUserMessageToTop();
+    // Find all user messages (excluding the welcome message with id: 1)
+    const userMessages = messages.filter(m => !m.isAI && m.id !== 1);
+
+    if (userMessages.length > 0) {
+      const lastUserMessage = userMessages[userMessages.length - 1];
+
+      // Only scroll if this is a NEW user message we haven't scrolled to yet
+      if (lastUserMessage.id !== lastScrolledUserMsgId.current) {
+        lastScrolledUserMsgId.current = lastUserMessage.id;
+        // Small delay to ensure the message element is rendered
+        setTimeout(() => {
+          scrollUserMessageToTop(lastUserMessage.id);
+        }, 50);
       }
     }
   }, [messages]);
@@ -132,7 +142,7 @@ export function ChatMode({
               return (
                 <div
                   key={message.id}
-                  ref={index === displayMessages.length - 1 && !message.isAI ? lastUserMessageRef : null}
+                  data-message-id={message.id}
                 >
                   <ChatMessage
                     {...message}
