@@ -102,23 +102,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Initialize auth state
   useEffect(() => {
     let mounted = true;
-    let isInitialized = false;
 
     const initializeAuth = async () => {
       try {
         // Get initial session
-        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error('Error getting session:', error);
-        }
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
         if (initialSession?.user) {
           setSession(initialSession);
           setUser(initialSession.user);
-          // Wait for profile to be fetched before setting loading to false
           const userProfile = await fetchProfile(initialSession.user.id);
           if (mounted) {
             setProfile(userProfile);
@@ -129,7 +123,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } finally {
         if (mounted) {
           setLoading(false);
-          isInitialized = true;
         }
       }
     };
@@ -139,47 +132,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        console.log('Auth state changed:', event, newSession?.user?.id);
+        console.log('Auth state changed:', event);
 
         if (!mounted) return;
 
-        // Skip if this is the initial event and we haven't finished initializing
-        // This prevents race conditions with the initial getSession call
-        if (!isInitialized && event === 'INITIAL_SESSION') {
-          return;
-        }
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
 
-        // Handle sign out
-        if (event === 'SIGNED_OUT' || !newSession) {
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setLoading(false);
-          return;
-        }
-
-        // Handle sign in or token refresh
         if (newSession?.user) {
-          setSession(newSession);
-          setUser(newSession.user);
-
-          // For sign in events, wait for profile before setting loading false
-          if (event === 'SIGNED_IN') {
-            setLoading(true);
-            const userProfile = await fetchProfile(newSession.user.id);
+          // Fetch profile in background, don't block
+          fetchProfile(newSession.user.id).then(userProfile => {
             if (mounted) {
               setProfile(userProfile);
-              setLoading(false);
             }
-          } else {
-            // For token refresh, fetch profile in background
-            fetchProfile(newSession.user.id).then(userProfile => {
-              if (mounted) {
-                setProfile(userProfile);
-              }
-            });
-          }
+          });
+        } else {
+          setProfile(null);
         }
+
+        // Always ensure loading is false after auth change
+        setLoading(false);
       }
     );
 
