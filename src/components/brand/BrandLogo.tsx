@@ -141,11 +141,22 @@ export function BrandLogo({
             >
               {user ? (
                 <>
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden"
+                    style={{
+                      background: profile?.avatar_url
+                        ? 'transparent'
+                        : 'rgba(168, 85, 247, 0.15)',
+                      backdropFilter: 'blur(12px)',
+                      WebkitBackdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(168, 85, 247, 0.2)',
+                      boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                    }}
+                  >
                     {profile?.avatar_url ? (
                       <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <User className="w-4 h-4 text-white" />
+                      <User className="w-4 h-4 text-purple-400" />
                     )}
                   </div>
                   <div>
@@ -155,8 +166,17 @@ export function BrandLogo({
                 </>
               ) : (
                 <>
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                    <LogIn className="w-4 h-4 text-white" />
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{
+                      background: 'rgba(168, 85, 247, 0.15)',
+                      backdropFilter: 'blur(12px)',
+                      WebkitBackdropFilter: 'blur(12px)',
+                      border: '1px solid rgba(168, 85, 247, 0.2)',
+                      boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                    }}
+                  >
+                    <LogIn className="w-4 h-4 text-purple-400" />
                   </div>
                   <div>
                     <div className="font-bold text-sm">Sign In / Sign Up</div>

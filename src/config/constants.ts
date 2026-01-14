@@ -46,6 +46,11 @@ export const AI_PERSONAS = {
     initialMessage: "Hello!",
     color: 'orange'
   },
+  deepseek: {
+    name: 'DeepSeek',
+    initialMessage: "Hello!",
+    color: 'indigo'
+  },
   grok: {
     name: 'Grok',
     initialMessage: "Hello!",
