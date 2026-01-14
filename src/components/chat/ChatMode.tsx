@@ -40,18 +40,25 @@ export function ChatMode({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastUserMessageRef = useRef<HTMLDivElement>(null);
 
-  const scrollToMessage = () => {
+  // Smart scroll: positions user message at the top of viewport
+  // No auto-scroll for AI messages - they naturally fill below
+  const scrollUserMessageToTop = () => {
     const container = document.querySelector('.message-container');
-    if (container) {
-      const lastMessage = messages[messages.length - 1];
-      const isShortMessage = lastMessage.content.length < 350 && !lastMessage.content.includes('\n');
+    if (container && lastUserMessageRef.current) {
+      // Small delay to ensure DOM has updated
+      requestAnimationFrame(() => {
+        const containerRect = container.getBoundingClientRect();
+        const messageRect = lastUserMessageRef.current!.getBoundingClientRect();
 
-      if (!lastMessage.isAI || isShortMessage) {
-        const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 100;
-        if (isAtBottom) {
-          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }
-      }
+        // Calculate scroll position to put the message at the top
+        // Add a small offset (20px) for visual breathing room
+        const scrollOffset = messageRect.top - containerRect.top + container.scrollTop - 20;
+
+        container.scrollTo({
+          top: Math.max(0, scrollOffset),
+          behavior: 'smooth'
+        });
+      });
     }
   };
 
@@ -63,13 +70,14 @@ export function ChatMode({
     }
   }, []);
 
+  // Smart scroll effect: only scrolls for user messages
   useEffect(() => {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
+      // Only auto-scroll when user sends a message
+      // AI messages don't trigger scroll - they fill naturally below
       if (!lastMessage.isAI) {
-        lastUserMessageRef.current?.scrollIntoView({ behavior: "smooth" });
-      } else {
-        scrollToMessage();
+        scrollUserMessageToTop();
       }
     }
   }, [messages]);
