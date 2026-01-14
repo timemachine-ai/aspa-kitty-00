@@ -101,6 +101,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Track initialization state with ref (survives re-renders and closures)
   const initializingRef = useRef(false);
   const initializedRef = useRef(false);
+  const currentUserIdRef = useRef<string | null>(null);
 
   // Initialize auth state - only runs once
   useEffect(() => {
@@ -120,6 +121,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (!mounted) return;
 
         if (initialSession?.user) {
+          currentUserIdRef.current = initialSession.user.id;
           setSession(initialSession);
           setUser(initialSession.user);
           const userProfile = await fetchProfile(initialSession.user.id);
@@ -160,14 +162,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // Handle sign out
         if (event === 'SIGNED_OUT') {
+          currentUserIdRef.current = null;
           setSession(null);
           setUser(null);
           setProfile(null);
           return;
         }
 
-        // Handle sign in - fetch profile
+        // Handle sign in - but skip if same user already logged in
+        // (This happens on tab switch when Supabase re-validates the session)
         if (event === 'SIGNED_IN' && newSession?.user) {
+          // Skip if this is just a session refresh for the same user
+          if (currentUserIdRef.current === newSession.user.id) {
+            // Just update session silently without loading state
+            setSession(newSession);
+            return;
+          }
+
+          // New user signing in
+          currentUserIdRef.current = newSession.user.id;
           setLoading(true);
           setSession(newSession);
           setUser(newSession.user);
