@@ -81,26 +81,15 @@ function formatMessagesAsDialogue(messages: Message[]): Message[] {
 export function useChat(
   userId?: string | null,
   userProfile?: { nickname?: string | null; about_me?: string | null },
-  initialPersona?: keyof typeof AI_PERSONAS
+  initialPersona?: keyof typeof AI_PERSONAS,
+  authLoading?: boolean
 ) {
-  // Helper to clean emotion tags from content
-  const cleanInitialContent = (content: string): string => {
-    return content.replace(/<emotion>[a-z]+<\/emotion>/i, '').replace(/<reason>[\s\S]*?<\/reason>/i, '').trim();
-  };
-
-  // Determine starting persona and its cleaned initial message
-  const startingPersona = initialPersona || 'default';
-  const startingMessage = cleanInitialContent(AI_PERSONAS[startingPersona].initialMessage);
-
-  const [messages, setMessages] = useState<Message[]>([{
-    id: Date.now(),
-    content: startingMessage,
-    isAI: true,
-    hasAnimated: false
-  }]);
+  // Start with empty state - will be initialized once we know the persona
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isChatMode, setChatMode] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentPersona, setCurrentPersona] = useState<keyof typeof AI_PERSONAS>(startingPersona);
+  const [currentPersona, setCurrentPersona] = useState<keyof typeof AI_PERSONAS>('default');
+  const [isInitialized, setIsInitialized] = useState(false);
   const [currentProHeatLevel, setCurrentProHeatLevel] = useState<number>(2);
   const [currentEmotion, setCurrentEmotion] = useState<string>('joy');
   const [error, setError] = useState<string | null>(null);
@@ -399,29 +388,27 @@ export function useChat(
     }
   }, [currentSessionId]);
 
-  // When profile loads with a saved persona, update to that persona
-  const initialPersonaSetRef = useRef(false);
+  // Initialize chat once auth loading is complete
   useEffect(() => {
-    // Only run when initialPersona changes from undefined to a value (profile loaded)
-    if (initialPersona && !initialPersonaSetRef.current) {
-      initialPersonaSetRef.current = true;
-      // If saved persona is different from default, update everything
-      if (initialPersona !== 'default') {
-        setCurrentPersona(initialPersona);
-        setPersonaTheme(initialPersona);
-        const initialMessage = cleanContent(AI_PERSONAS[initialPersona].initialMessage);
-        setMessages([{
-          id: Date.now(),
-          content: initialMessage,
-          isAI: true,
-          hasAnimated: false
-        }]);
-      } else {
-        // Saved persona is default - just set theme (message already correct from initial state)
-        setPersonaTheme(initialPersona);
-      }
-    }
-  }, [initialPersona, setPersonaTheme]);
+    // Wait until auth is done loading before initializing
+    if (authLoading || isInitialized) return;
+
+    // Now we can safely determine the persona (either from profile or default)
+    const persona = initialPersona || 'default';
+    // Clean emotion tags from initial message
+    const rawMessage = AI_PERSONAS[persona].initialMessage;
+    const initialMessage = rawMessage.replace(/<emotion>[a-z]+<\/emotion>/i, '').replace(/<reason>[\s\S]*?<\/reason>/i, '').trim();
+
+    setCurrentPersona(persona);
+    setPersonaTheme(persona);
+    setMessages([{
+      id: Date.now(),
+      content: initialMessage,
+      isAI: true,
+      hasAnimated: false
+    }]);
+    setIsInitialized(true);
+  }, [authLoading, isInitialized, initialPersona, setPersonaTheme]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
