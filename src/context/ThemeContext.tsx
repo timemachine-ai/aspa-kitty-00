@@ -75,29 +75,47 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Load theme preferences from localStorage on mount and listen for auth changes
+  // Load theme preferences from localStorage on mount
   useEffect(() => {
     const savedMode = localStorage.getItem('themeMode') as ThemeMode;
     const savedSeason = localStorage.getItem('seasonTheme') as SeasonTheme;
 
     if (savedMode) setMode(savedMode);
     if (savedSeason && savedSeason in seasonThemes) setSeason(savedSeason);
+  }, []);
 
-    // Listen for auth state changes to load user theme
+  // Listen for auth state changes to load user theme - separate effect to avoid infinite loop
+  useEffect(() => {
+    let themeLoaded = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Only load theme once per session to avoid re-fetching
         if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-          await loadUserTheme(session.user.id);
+          if (!themeLoaded) {
+            themeLoaded = true;
+            await loadUserTheme(session.user.id);
+          }
         } else if (event === 'SIGNED_OUT') {
+          themeLoaded = false;
           setCurrentUserId(null);
           // Keep local theme preferences on sign out
         }
       }
     );
 
-    // Listen for theme change events (persona-driven)
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [loadUserTheme]);
+
+  // Listen for theme change events (persona-driven) - use ref to avoid re-subscribing
+  const defaultThemeRef = React.useRef(defaultTheme);
+  defaultThemeRef.current = defaultTheme;
+
+  useEffect(() => {
     const handleThemeChange = (event: CustomEvent<SeasonTheme>) => {
-      if (!defaultTheme && event.detail) {
+      if (!defaultThemeRef.current && event.detail) {
         setSeason(event.detail);
         setMode('dark');
         localStorage.setItem('seasonTheme', event.detail);
@@ -108,10 +126,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('themeChange', handleThemeChange as EventListener);
 
     return () => {
-      subscription.unsubscribe();
       window.removeEventListener('themeChange', handleThemeChange as EventListener);
     };
-  }, [defaultTheme, loadUserTheme]);
+  }, []);
 
   // Save theme preferences to localStorage
   useEffect(() => {
