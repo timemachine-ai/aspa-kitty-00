@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { ChatInput } from './components/chat/ChatInput';
 import { BrandLogo } from './components/brand/BrandLogo';
@@ -33,7 +33,6 @@ import {
 import { GroupChat } from './types/groupChat';
 import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './config/constants';
 import { ChatSession, getSupabaseSessions, getLocalSessions } from './services/chat/chatService';
-import { AI_PERSONAS } from './config/constants';
 
 // Chat by ID page component - defined OUTSIDE to prevent re-renders
 function ChatByIdPage() {
@@ -106,7 +105,7 @@ interface MainChatPageProps {
 
 function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
   const { theme } = useTheme();
-  const { user, profile, loading: authLoading, needsOnboarding, saveLastPersona } = useAuth();
+  const { user, profile, loading: authLoading, needsOnboarding } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -187,26 +186,6 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
       setShowOnboarding(true);
     }
   }, [authLoading, needsOnboarding]);
-
-  // Restore last used persona when user signs in
-  const hasRestoredPersona = useRef(false);
-  useEffect(() => {
-    if (!authLoading && profile?.last_persona && !hasRestoredPersona.current) {
-      const savedPersona = profile.last_persona as keyof typeof AI_PERSONAS;
-      if (AI_PERSONAS[savedPersona]) {
-        hasRestoredPersona.current = true;
-        handlePersonaChange(savedPersona);
-      }
-    }
-  }, [authLoading, profile?.last_persona, handlePersonaChange]);
-
-  // Wrapper for persona change that also saves to Supabase
-  const handlePersonaChangeWithSave = useCallback((persona: keyof typeof AI_PERSONAS) => {
-    handlePersonaChange(persona);
-    if (user) {
-      saveLastPersona(persona);
-    }
-  }, [handlePersonaChange, user, saveLastPersona]);
 
   // Group chat loading and subscription
   useEffect(() => {
@@ -424,7 +403,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <BrandLogo
               currentPersona={currentPersona}
-              onPersonaChange={handlePersonaChangeWithSave}
+              onPersonaChange={handlePersonaChange}
               onLoadChat={loadChat}
               onStartNewChat={startNewChat}
               onOpenAuth={handleOpenAuth}

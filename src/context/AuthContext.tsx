@@ -15,7 +15,6 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
-  saveLastPersona: (persona: string) => Promise<void>;
   isOnboarded: boolean;
   needsOnboarding: boolean;
 }
@@ -52,7 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle();
+        .maybeSingle(); // Use maybeSingle instead of single to avoid error when no rows
 
       if (error) {
         console.error('Error fetching profile:', error);
@@ -99,34 +98,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [user, fetchProfile]);
 
-  // Initialize auth state - simple and reliable
+  // Initialize auth state
   useEffect(() => {
-    // Set up auth state listener FIRST
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        // Get initial session
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+
+        if (!mounted) return;
+
+        if (initialSession?.user) {
+          setSession(initialSession);
+          setUser(initialSession.user);
+          const userProfile = await fetchProfile(initialSession.user.id);
+          if (mounted) {
+            setProfile(userProfile);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
+
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth event:', event);
+      async (event, newSession) => {
+        console.log('Auth state changed:', event);
 
-        // Update session and user synchronously
-        setSession(session);
-        setUser(session?.user ?? null);
+        if (!mounted) return;
 
-        // Fetch profile if we have a user
-        if (session?.user) {
-          const userProfile = await fetchProfile(session.user.id);
-          setProfile(userProfile);
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+
+        if (newSession?.user) {
+          // Fetch profile in background, don't block
+          fetchProfile(newSession.user.id).then(userProfile => {
+            if (mounted) {
+              setProfile(userProfile);
+            }
+          });
         } else {
           setProfile(null);
         }
 
-        // Always set loading to false after handling auth
+        // Always ensure loading is false after auth change
         setLoading(false);
       }
     );
 
-    // Then get the initial session (this will trigger onAuthStateChange with INITIAL_SESSION)
-    supabase.auth.getSession();
-
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
   }, [fetchProfile]);
@@ -207,20 +236,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Save last used persona (fire and forget, no await needed)
-  const saveLastPersona = async (persona: string) => {
-    if (!user) return;
-
-    try {
-      await supabase
-        .from('profiles')
-        .update({ last_persona: persona })
-        .eq('id', user.id);
-    } catch (error) {
-      console.error('Error saving last persona:', error);
-    }
-  };
-
   const value: AuthContextType = {
     user,
     session,
@@ -232,7 +247,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signOut,
     updateProfile,
     refreshProfile,
-    saveLastPersona,
     isOnboarded,
     needsOnboarding,
   };

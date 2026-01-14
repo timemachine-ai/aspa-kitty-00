@@ -22,7 +22,6 @@ export interface Database {
           birth_date: string | null;
           rate_limit_overrides: Json | null; // Custom rate limits per persona { "default": 100, "pro": 50 }
           default_theme: Json | null; // User's default theme preference { mode: 'dark', season: 'autumnDark' }
-          last_persona: string | null; // Last used persona to restore on sign in
           created_at: string;
           updated_at: string;
         };
@@ -38,7 +37,6 @@ export interface Database {
           birth_date?: string | null;
           rate_limit_overrides?: Json | null;
           default_theme?: Json | null;
-          last_persona?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -54,7 +52,6 @@ export interface Database {
           birth_date?: string | null;
           rate_limit_overrides?: Json | null;
           default_theme?: Json | null;
-          last_persona?: string | null;
           created_at?: string;
           updated_at?: string;
         };
