@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types/database';
@@ -40,6 +40,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Track if initial auth has completed to avoid race conditions
+  const initializedRef = useRef(false);
+
   // Check if user needs onboarding (has profile but no nickname)
   const needsOnboarding = !!user && !!profile && !profile.nickname;
   const isOnboarded = !!user && !!profile && !!profile.nickname;
@@ -52,7 +55,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle(); // Use maybeSingle instead of single to avoid error when no rows
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching profile:', error);
@@ -122,6 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('Error initializing auth:', error);
       } finally {
         if (mounted) {
+          initializedRef.current = true;
           setLoading(false);
         }
       }
@@ -129,28 +133,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     initializeAuth();
 
-    // Listen for auth changes
+    // Listen for auth changes (but skip INITIAL_SESSION since we handle it above)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log('Auth state changed:', event);
 
         if (!mounted) return;
 
+        // Skip INITIAL_SESSION - we handle initial state in initializeAuth
+        if (event === 'INITIAL_SESSION') {
+          return;
+        }
+
+        // Handle sign out
+        if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+
+        // Handle sign in or token refresh
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
         if (newSession?.user) {
-          // Fetch profile in background, don't block
-          fetchProfile(newSession.user.id).then(userProfile => {
-            if (mounted) {
-              setProfile(userProfile);
-            }
-          });
+          const userProfile = await fetchProfile(newSession.user.id);
+          if (mounted) {
+            setProfile(userProfile);
+          }
         } else {
           setProfile(null);
         }
 
-        // Always ensure loading is false after auth change
         setLoading(false);
       }
     );
