@@ -67,13 +67,27 @@ const extractMentionedPersona = (message: string | null): keyof typeof AI_PERSON
   return match ? match[1].toLowerCase() as keyof typeof AI_PERSONAS : null;
 };
 
-export function AIMessage({ 
-  content, 
+// Helper to process memory tags and marker from content
+const processMemoryContent = (content: string): { cleanContent: string; hasSavedMemory: boolean } => {
+  // Check for memory saved marker
+  const hasSavedMemory = content.includes('[MEMORY_SAVED]');
+
+  // Remove memory tags and marker
+  let cleanContent = content
+    .replace(/<memory>[\s\S]*?<\/memory>/gi, '') // Remove memory tags
+    .replace(/\[MEMORY_SAVED\]/g, '') // Remove marker
+    .trim();
+
+  return { cleanContent, hasSavedMemory };
+};
+
+export function AIMessage({
+  content,
   thinking: reasoning,
-  isChatMode, 
-  messageId, 
-  hasAnimated, 
-  onAnimationComplete, 
+  isChatMode,
+  messageId,
+  hasAnimated,
+  onAnimationComplete,
   currentPersona = 'default',
   previousMessage = null,
   isStreaming = false,
@@ -89,6 +103,9 @@ export function AIMessage({
   const shimmerColors = getPersonaShimmerColors(displayPersona);
   const contentEndRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
+
+  // Process content to handle memory tags
+  const { cleanContent, hasSavedMemory } = processMemoryContent(content);
 
   // Get persona-specific colors for reasoning display
   const getPersonaReasoningColors = (persona: keyof typeof AI_PERSONAS) => {
@@ -344,7 +361,7 @@ export function AIMessage({
         </div>
       )}
       {/* Show content when not generating or when generation is complete */}
-      {!isGeneratingImage && !isRecordingVoice && (content || isStreamingActive) && !audioUrl && (
+      {!isGeneratingImage && !isRecordingVoice && (cleanContent || isStreamingActive) && !audioUrl && (
         <>
           {isChatMode ? (
             <div className="flex flex-col gap-1">
@@ -360,14 +377,26 @@ export function AIMessage({
                 )}
               </div>
               <div className={`${theme.text} text-base leading-relaxed max-w-[85%]`}>
-                {content ? (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm, remarkBreaks]}
-                    components={MarkdownComponents}
-                    className="prose prose-invert prose-sm max-w-none"
-                  >
-                    {content}
-                  </ReactMarkdown>
+                {cleanContent ? (
+                  <>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkBreaks]}
+                      components={MarkdownComponents}
+                      className="prose prose-invert prose-sm max-w-none"
+                    >
+                      {cleanContent}
+                    </ReactMarkdown>
+                    {/* Saved to Memory indicator */}
+                    {hasSavedMemory && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-3 text-xs text-white/30 italic"
+                      >
+                        Saved to Memory
+                      </motion.div>
+                    )}
+                  </>
                 ) : isStreamingActive ? (
                   <div className="flex items-center gap-2 text-sm opacity-60">
                     <motion.div
@@ -382,18 +411,30 @@ export function AIMessage({
             </div>
           ) : (
             <div className={`${theme.text} ${
-              isChatMode 
-                ? 'text-base sm:text-lg' 
+              isChatMode
+                ? 'text-base sm:text-lg'
                 : 'text-xl sm:text-2xl md:text-3xl'
             } w-full max-w-4xl mx-auto text-center`}>
-              {content ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkBreaks]}
-                  components={MarkdownComponents}
-                  className="prose prose-invert max-w-none"
-                >
-                  {content}
-                </ReactMarkdown>
+              {cleanContent ? (
+                <>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkBreaks]}
+                    components={MarkdownComponents}
+                    className="prose prose-invert max-w-none"
+                  >
+                    {cleanContent}
+                  </ReactMarkdown>
+                  {/* Saved to Memory indicator */}
+                  {hasSavedMemory && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-4 text-sm text-white/30 italic"
+                    >
+                      Saved to Memory
+                    </motion.div>
+                  )}
+                </>
               ) : isStreamingActive ? (
                 <div className="flex items-center justify-center gap-3 text-lg opacity-60">
                   <motion.div
