@@ -100,6 +100,14 @@ export function ChatMode({
   // When chat has started, show all messages
   const displayMessages = showWelcomeText ? [] : messages;
 
+  // Persona-based colors for the animated words
+  const personaColors: Record<string, string> = {
+    default: 'text-purple-400',
+    girlie: 'text-pink-400',
+    pro: 'text-cyan-400'
+  };
+  const flipWordsColor = personaColors[currentPersona] || personaColors.default;
+
   return (
     <div className={`min-h-full pt-20 pb-48 ${theme.text}`}>
       <div className="w-full max-w-4xl mx-auto px-4">
@@ -125,7 +133,7 @@ export function ChatMode({
                   <FlipWords
                     words={["better", "brighter", "dream", '"my"']}
                     duration={2500}
-                    className="text-purple-400"
+                    className={flipWordsColor}
                   />
                 </div>
                 <div>future with TimeMachine.</div>
