@@ -14,6 +14,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
+  updateLastPersona: (persona: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
   isOnboarded: boolean;
   needsOnboarding: boolean;
@@ -283,6 +284,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Update last used persona (lightweight update, no profile refresh needed)
+  const updateLastPersona = async (persona: string) => {
+    if (!user) return;
+
+    try {
+      await supabase
+        .from('profiles')
+        .update({
+          last_persona: persona,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      // Update local profile state without full refresh
+      setProfile(prev => prev ? { ...prev, last_persona: persona } : prev);
+    } catch (error) {
+      console.error('Failed to update last persona:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     session,
@@ -293,6 +314,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signInWithGoogle,
     signOut,
     updateProfile,
+    updateLastPersona,
     refreshProfile,
     isOnboarded,
     needsOnboarding,

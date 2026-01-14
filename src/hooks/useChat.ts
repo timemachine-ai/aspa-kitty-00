@@ -78,11 +78,15 @@ function formatMessagesAsDialogue(messages: Message[]): Message[] {
   return formatted;
 }
 
-export function useChat(userId?: string | null, userProfile?: { nickname?: string | null; about_me?: string | null }) {
+export function useChat(
+  userId?: string | null,
+  userProfile?: { nickname?: string | null; about_me?: string | null },
+  initialPersona?: keyof typeof AI_PERSONAS
+) {
   const [messages, setMessages] = useState<Message[]>([{ ...INITIAL_MESSAGE, hasAnimated: false }]);
   const [isChatMode, setChatMode] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentPersona, setCurrentPersona] = useState<keyof typeof AI_PERSONAS>('default');
+  const [currentPersona, setCurrentPersona] = useState<keyof typeof AI_PERSONAS>(initialPersona || 'default');
   const [currentProHeatLevel, setCurrentProHeatLevel] = useState<number>(2);
   const [currentEmotion, setCurrentEmotion] = useState<string>('joy');
   const [error, setError] = useState<string | null>(null);
@@ -380,6 +384,24 @@ export function useChat(userId?: string | null, userProfile?: { nickname?: strin
       setCurrentSessionId(generateUUID());
     }
   }, [currentSessionId]);
+
+  // Initialize theme and message based on initial persona (runs once on mount)
+  const initialPersonaSetRef = useRef(false);
+  useEffect(() => {
+    if (initialPersona && !initialPersonaSetRef.current) {
+      initialPersonaSetRef.current = true;
+      // Set the theme for the initial persona
+      setPersonaTheme(initialPersona);
+      // Set the initial message for the persona
+      const initialMessage = cleanContent(AI_PERSONAS[initialPersona].initialMessage);
+      setMessages([{
+        id: Date.now(),
+        content: initialMessage,
+        isAI: true,
+        hasAnimated: false
+      }]);
+    }
+  }, [initialPersona, setPersonaTheme]);
 
   // Cleanup timeout on unmount
   useEffect(() => {
