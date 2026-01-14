@@ -385,11 +385,13 @@ export function useChat(
     }
   }, [currentSessionId]);
 
-  // Initialize theme and message based on initial persona (runs once on mount)
+  // Initialize theme and message based on initial persona (runs once when profile loads)
   const initialPersonaSetRef = useRef(false);
   useEffect(() => {
     if (initialPersona && !initialPersonaSetRef.current) {
       initialPersonaSetRef.current = true;
+      // Set the persona state
+      setCurrentPersona(initialPersona);
       // Set the theme for the initial persona
       setPersonaTheme(initialPersona);
       // Set the initial message for the persona
