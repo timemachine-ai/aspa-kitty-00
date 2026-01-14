@@ -15,6 +15,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   refreshProfile: () => Promise<void>;
+  saveLastPersona: (persona: string) => Promise<void>;
   isOnboarded: boolean;
   needsOnboarding: boolean;
 }
@@ -101,17 +102,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Initialize auth state
   useEffect(() => {
     let mounted = true;
+    let isInitialized = false;
 
     const initializeAuth = async () => {
       try {
         // Get initial session
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Error getting session:', error);
+        }
 
         if (!mounted) return;
 
         if (initialSession?.user) {
           setSession(initialSession);
           setUser(initialSession.user);
+          // Wait for profile to be fetched before setting loading to false
           const userProfile = await fetchProfile(initialSession.user.id);
           if (mounted) {
             setProfile(userProfile);
@@ -122,6 +129,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } finally {
         if (mounted) {
           setLoading(false);
+          isInitialized = true;
         }
       }
     };
@@ -131,26 +139,47 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
-        console.log('Auth state changed:', event);
+        console.log('Auth state changed:', event, newSession?.user?.id);
 
         if (!mounted) return;
 
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-
-        if (newSession?.user) {
-          // Fetch profile in background, don't block
-          fetchProfile(newSession.user.id).then(userProfile => {
-            if (mounted) {
-              setProfile(userProfile);
-            }
-          });
-        } else {
-          setProfile(null);
+        // Skip if this is the initial event and we haven't finished initializing
+        // This prevents race conditions with the initial getSession call
+        if (!isInitialized && event === 'INITIAL_SESSION') {
+          return;
         }
 
-        // Always ensure loading is false after auth change
-        setLoading(false);
+        // Handle sign out
+        if (event === 'SIGNED_OUT' || !newSession) {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+
+        // Handle sign in or token refresh
+        if (newSession?.user) {
+          setSession(newSession);
+          setUser(newSession.user);
+
+          // For sign in events, wait for profile before setting loading false
+          if (event === 'SIGNED_IN') {
+            setLoading(true);
+            const userProfile = await fetchProfile(newSession.user.id);
+            if (mounted) {
+              setProfile(userProfile);
+              setLoading(false);
+            }
+          } else {
+            // For token refresh, fetch profile in background
+            fetchProfile(newSession.user.id).then(userProfile => {
+              if (mounted) {
+                setProfile(userProfile);
+              }
+            });
+          }
+        }
       }
     );
 
@@ -236,6 +265,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Save last used persona (fire and forget, no await needed)
+  const saveLastPersona = async (persona: string) => {
+    if (!user) return;
+
+    try {
+      await supabase
+        .from('profiles')
+        .update({ last_persona: persona })
+        .eq('id', user.id);
+    } catch (error) {
+      console.error('Error saving last persona:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     session,
@@ -247,6 +290,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signOut,
     updateProfile,
     refreshProfile,
+    saveLastPersona,
     isOnboarded,
     needsOnboarding,
   };
