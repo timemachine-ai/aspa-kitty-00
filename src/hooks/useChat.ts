@@ -83,10 +83,24 @@ export function useChat(
   userProfile?: { nickname?: string | null; about_me?: string | null },
   initialPersona?: keyof typeof AI_PERSONAS
 ) {
-  const [messages, setMessages] = useState<Message[]>([{ ...INITIAL_MESSAGE, hasAnimated: false }]);
+  // Helper to clean emotion tags from content
+  const cleanInitialContent = (content: string): string => {
+    return content.replace(/<emotion>[a-z]+<\/emotion>/i, '').replace(/<reason>[\s\S]*?<\/reason>/i, '').trim();
+  };
+
+  // Determine starting persona and its cleaned initial message
+  const startingPersona = initialPersona || 'default';
+  const startingMessage = cleanInitialContent(AI_PERSONAS[startingPersona].initialMessage);
+
+  const [messages, setMessages] = useState<Message[]>([{
+    id: Date.now(),
+    content: startingMessage,
+    isAI: true,
+    hasAnimated: false
+  }]);
   const [isChatMode, setChatMode] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentPersona, setCurrentPersona] = useState<keyof typeof AI_PERSONAS>(initialPersona || 'default');
+  const [currentPersona, setCurrentPersona] = useState<keyof typeof AI_PERSONAS>(startingPersona);
   const [currentProHeatLevel, setCurrentProHeatLevel] = useState<number>(2);
   const [currentEmotion, setCurrentEmotion] = useState<string>('joy');
   const [error, setError] = useState<string | null>(null);
@@ -385,23 +399,27 @@ export function useChat(
     }
   }, [currentSessionId]);
 
-  // Initialize theme and message based on initial persona (runs once when profile loads)
+  // When profile loads with a saved persona, update to that persona
   const initialPersonaSetRef = useRef(false);
   useEffect(() => {
+    // Only run when initialPersona changes from undefined to a value (profile loaded)
     if (initialPersona && !initialPersonaSetRef.current) {
       initialPersonaSetRef.current = true;
-      // Set the persona state
-      setCurrentPersona(initialPersona);
-      // Set the theme for the initial persona
-      setPersonaTheme(initialPersona);
-      // Set the initial message for the persona
-      const initialMessage = cleanContent(AI_PERSONAS[initialPersona].initialMessage);
-      setMessages([{
-        id: Date.now(),
-        content: initialMessage,
-        isAI: true,
-        hasAnimated: false
-      }]);
+      // If saved persona is different from default, update everything
+      if (initialPersona !== 'default') {
+        setCurrentPersona(initialPersona);
+        setPersonaTheme(initialPersona);
+        const initialMessage = cleanContent(AI_PERSONAS[initialPersona].initialMessage);
+        setMessages([{
+          id: Date.now(),
+          content: initialMessage,
+          isAI: true,
+          hasAnimated: false
+        }]);
+      } else {
+        // Saved persona is default - just set theme (message already correct from initial state)
+        setPersonaTheme(initialPersona);
+      }
     }
   }, [initialPersona, setPersonaTheme]);
 
