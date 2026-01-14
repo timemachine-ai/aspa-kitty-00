@@ -31,7 +31,7 @@ import {
   toggleMessageReaction
 } from './services/groupChat/groupChatService';
 import { GroupChat } from './types/groupChat';
-import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS } from './config/constants';
+import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS, AI_PERSONAS } from './config/constants';
 import { ChatSession, getSupabaseSessions, getLocalSessions } from './services/chat/chatService';
 
 // Chat by ID page component - defined OUTSIDE to prevent re-renders
@@ -105,7 +105,7 @@ interface MainChatPageProps {
 
 function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
   const { theme } = useTheme();
-  const { user, profile, loading: authLoading, needsOnboarding } = useAuth();
+  const { user, profile, loading: authLoading, needsOnboarding, updateLastPersona } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -121,6 +121,10 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
 
   // Reply state for group chat
   const [replyTo, setReplyTo] = useState<{ id: number; content: string; sender_nickname?: string; isAI: boolean } | null>(null);
+
+  // Get initial persona from profile (validated against AI_PERSONAS)
+  const savedPersona = profile?.last_persona as keyof typeof AI_PERSONAS | null;
+  const initialPersona = savedPersona && savedPersona in AI_PERSONAS ? savedPersona : undefined;
 
   const {
     messages,
@@ -141,7 +145,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     participants,
     // Actions
     handleSendMessage,
-    handlePersonaChange,
+    handlePersonaChange: handlePersonaChangeInternal,
     setCurrentProHeatLevel,
     startNewChat,
     markMessageAsAnimated,
@@ -156,9 +160,16 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     pendingRemoteMusic,
     playPendingMusic,
     dismissPendingMusic
-  } = useChat(user?.id, profile || undefined);
+  } = useChat(user?.id, profile || undefined, initialPersona);
 
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
+
+  // Wrapper for persona change that also persists to profile
+  const handlePersonaChange = useCallback((persona: keyof typeof AI_PERSONAS) => {
+    handlePersonaChangeInternal(persona);
+    // Save to profile if user is logged in
+    updateLastPersona(persona);
+  }, [handlePersonaChangeInternal, updateLastPersona]);
 
   // Derive chat name from first user message - memoized to prevent recalculation
   const currentChatName = useMemo(() => {
