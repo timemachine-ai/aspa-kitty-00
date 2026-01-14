@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types/database';
@@ -98,10 +98,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [user, fetchProfile]);
 
-  // Initialize auth state
+  // Track initialization state with ref (survives re-renders and closures)
+  const initializingRef = useRef(false);
+  const initializedRef = useRef(false);
+
+  // Initialize auth state - only runs once
   useEffect(() => {
+    // Prevent double initialization (React StrictMode or fast refresh)
+    if (initializingRef.current || initializedRef.current) {
+      return;
+    }
+    initializingRef.current = true;
+
     let mounted = true;
-    let initialLoadComplete = false;
 
     const initializeAuth = async () => {
       try {
@@ -122,7 +131,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('Error initializing auth:', error);
       } finally {
         if (mounted) {
-          initialLoadComplete = true;
+          initializedRef.current = true;
+          initializingRef.current = false;
           setLoading(false);
         }
       }
@@ -130,48 +140,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     initializeAuth();
 
-    // Listen for auth changes
+    // Listen for auth changes - only handle actual sign in/out, not initial session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log('Auth state changed:', event);
 
         if (!mounted) return;
 
-        // Skip INITIAL_SESSION event - initializeAuth handles the initial load
-        // This prevents a race condition where the listener fires before initializeAuth completes
-        if (event === 'INITIAL_SESSION') {
+        // Skip events during initialization or for initial session setup
+        // initializeAuth handles the initial load via getSession()
+        if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
           return;
         }
 
-        // For actual auth changes (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, etc.)
-        // Set loading true while we fetch the profile
-        if (!initialLoadComplete) {
-          // Still initializing, let initializeAuth handle it
+        // Only handle actual auth changes after initialization is complete
+        if (!initializedRef.current) {
           return;
         }
 
-        setLoading(true);
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
+        // Handle sign out
+        if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          return;
+        }
 
-        if (newSession?.user) {
-          // CRITICAL: Await profile fetch before setting loading to false
-          // This ensures profile is available when components render
+        // Handle sign in - fetch profile
+        if (event === 'SIGNED_IN' && newSession?.user) {
+          setLoading(true);
+          setSession(newSession);
+          setUser(newSession.user);
+
           try {
             const userProfile = await fetchProfile(newSession.user.id);
             if (mounted) {
               setProfile(userProfile);
             }
           } catch (error) {
-            console.error('Error fetching profile on auth change:', error);
+            console.error('Error fetching profile on sign in:', error);
+          } finally {
+            if (mounted) {
+              setLoading(false);
+            }
           }
-        } else {
-          setProfile(null);
-        }
-
-        // Only set loading false AFTER profile is loaded
-        if (mounted) {
-          setLoading(false);
         }
       }
     );

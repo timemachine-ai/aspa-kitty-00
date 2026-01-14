@@ -84,30 +84,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (savedSeason && savedSeason in seasonThemes) setSeason(savedSeason);
   }, []);
 
-  // Listen for auth state changes to load user theme - separate effect to avoid infinite loop
-  useEffect(() => {
-    let themeLoaded = false;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // Only load theme once per session to avoid re-fetching
-        if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-          if (!themeLoaded) {
-            themeLoaded = true;
-            await loadUserTheme(session.user.id);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          themeLoaded = false;
-          setCurrentUserId(null);
-          // Keep local theme preferences on sign out
-        }
-      }
-    );
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [loadUserTheme]);
+  // NOTE: Auth listener removed - theme loading from server should be triggered
+  // by the component that needs it (e.g., after profile loads) to avoid race conditions
+  // with multiple onAuthStateChange listeners competing
 
   // Listen for theme change events (persona-driven) - use ref to avoid re-subscribing
   const defaultThemeRef = React.useRef(defaultTheme);
