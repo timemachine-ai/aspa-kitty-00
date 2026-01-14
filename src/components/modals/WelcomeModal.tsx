@@ -56,28 +56,28 @@ export function WelcomeModal({ isOpen, onAccessGranted }: WelcomeModalProps) {
 
             <Dialog.Content asChild>
               <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-                className="fixed inset-0 flex items-center justify-center p-4 z-50"
-                style={{ 
+                className="fixed inset-0 z-50"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   minHeight: '100vh',
-                  minHeight: '100dvh', // Dynamic viewport height for mobile
+                  minHeight: '100dvh',
+                  padding: '1rem',
                 }}
               >
                 <div
-                  className="relative w-full max-w-md mx-auto p-8 rounded-2xl
+                  className="relative w-full max-w-md p-8 rounded-2xl
                     bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-3xl
                     border border-white/20 shadow-[0_8px_32px_rgba(139,92,246,0.2)]
                     overflow-hidden
-                    min-h-fit max-h-[90vh] overflow-y-auto"
+                    max-h-[90vh] max-h-[90dvh] overflow-y-auto"
                   style={{
-                    // Ensure proper centering on mobile
-                    position: 'relative',
-                    top: 'auto',
-                    left: 'auto',
-                    transform: 'none',
+                    margin: 'auto',
                   }}
                 >
                   {/* Animated background elements */}
