@@ -101,6 +101,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Initialize auth state
   useEffect(() => {
     let mounted = true;
+    let initialLoadComplete = false;
 
     const initializeAuth = async () => {
       try {
@@ -121,6 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('Error initializing auth:', error);
       } finally {
         if (mounted) {
+          initialLoadComplete = true;
           setLoading(false);
         }
       }
@@ -135,22 +137,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         if (!mounted) return;
 
+        // Skip INITIAL_SESSION event - initializeAuth handles the initial load
+        // This prevents a race condition where the listener fires before initializeAuth completes
+        if (event === 'INITIAL_SESSION') {
+          return;
+        }
+
+        // For actual auth changes (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, etc.)
+        // Set loading true while we fetch the profile
+        if (!initialLoadComplete) {
+          // Still initializing, let initializeAuth handle it
+          return;
+        }
+
+        setLoading(true);
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
         if (newSession?.user) {
-          // Fetch profile in background, don't block
-          fetchProfile(newSession.user.id).then(userProfile => {
+          // CRITICAL: Await profile fetch before setting loading to false
+          // This ensures profile is available when components render
+          try {
+            const userProfile = await fetchProfile(newSession.user.id);
             if (mounted) {
               setProfile(userProfile);
             }
-          });
+          } catch (error) {
+            console.error('Error fetching profile on auth change:', error);
+          }
         } else {
           setProfile(null);
         }
 
-        // Always ensure loading is false after auth change
-        setLoading(false);
+        // Only set loading false AFTER profile is loaded
+        if (mounted) {
+          setLoading(false);
+        }
       }
     );
 
