@@ -26,11 +26,14 @@ export const SettingsModal = React.memo(({ isOpen, onClose }: SettingsModalProps
   const handleModeChange = (newMode: 'light' | 'dark' | 'monochrome') => {
     setMode(newMode);
     // When switching to light/dark mode, we need to update season too for visual effect
+    // Light themes: spring, summer, autumn, winter (white backgrounds)
+    // Dark themes: springDark, summerDark, autumnDark, winterDark (black backgrounds)
     if (newMode === 'light') {
-      setSeason('springLight');
+      setSeason('autumn'); // Light theme with purple tones
     } else if (newMode === 'dark') {
-      setSeason('autumnDark');
+      setSeason('autumnDark'); // Dark theme with purple tones
     }
+    // Monochrome is handled separately by setMode
   };
 
   // Memoized season buttons to prevent re-renders

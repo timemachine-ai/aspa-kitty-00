@@ -140,8 +140,15 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
   };
 
   const handleSignOut = async () => {
-    await signOut();
-    onBack();
+    try {
+      await signOut();
+      // Force navigation to home page after sign out
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Sign out error:', error);
+      // Still navigate even if there's an error
+      window.location.href = '/';
+    }
   };
 
   const handleOpenHistory = () => {
