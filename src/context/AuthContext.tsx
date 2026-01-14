@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../types/database';
@@ -39,9 +39,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Track if initial auth has completed to avoid race conditions
-  const initializedRef = useRef(false);
 
   // Check if user needs onboarding (has profile but no nickname)
   const needsOnboarding = !!user && !!profile && !profile.nickname;
@@ -102,77 +99,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [user, fetchProfile]);
 
-  // Initialize auth state
+  // Initialize auth state - simple and reliable
   useEffect(() => {
-    let mounted = true;
-
-    const initializeAuth = async () => {
-      try {
-        // Get initial session
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-
-        if (!mounted) return;
-
-        if (initialSession?.user) {
-          setSession(initialSession);
-          setUser(initialSession.user);
-          const userProfile = await fetchProfile(initialSession.user.id);
-          if (mounted) {
-            setProfile(userProfile);
-          }
-        }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-      } finally {
-        if (mounted) {
-          initializedRef.current = true;
-          setLoading(false);
-        }
-      }
-    };
-
-    initializeAuth();
-
-    // Listen for auth changes (but skip INITIAL_SESSION since we handle it above)
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log('Auth state changed:', event);
+      async (event, session) => {
+        console.log('Auth event:', event);
 
-        if (!mounted) return;
+        // Update session and user synchronously
+        setSession(session);
+        setUser(session?.user ?? null);
 
-        // Skip INITIAL_SESSION - we handle initial state in initializeAuth
-        if (event === 'INITIAL_SESSION') {
-          return;
-        }
-
-        // Handle sign out
-        if (event === 'SIGNED_OUT') {
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setLoading(false);
-          return;
-        }
-
-        // Handle sign in or token refresh
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-
-        if (newSession?.user) {
-          const userProfile = await fetchProfile(newSession.user.id);
-          if (mounted) {
-            setProfile(userProfile);
-          }
+        // Fetch profile if we have a user
+        if (session?.user) {
+          const userProfile = await fetchProfile(session.user.id);
+          setProfile(userProfile);
         } else {
           setProfile(null);
         }
 
+        // Always set loading to false after handling auth
         setLoading(false);
       }
     );
 
+    // Then get the initial session (this will trigger onAuthStateChange with INITIAL_SESSION)
+    supabase.auth.getSession();
+
     return () => {
-      mounted = false;
       subscription.unsubscribe();
     };
   }, [fetchProfile]);
