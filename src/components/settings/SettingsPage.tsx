@@ -50,7 +50,7 @@ export function SettingsPage() {
   );
 
   return (
-    <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
+    <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-y-auto`}>
       {/* Ambient background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-purple-500/20 rounded-full blur-[120px] animate-pulse" />

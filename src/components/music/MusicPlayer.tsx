@@ -23,6 +23,7 @@ export function MusicPlayer({ currentPersona = 'default' }: MusicPlayerProps) {
   const [videoIds, setVideoIds] = useState<string[]>(FALLBACK_VIDEO_IDS);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [iframeLoading, setIframeLoading] = useState(true);
 
   // Fetch video IDs from Supabase
   useEffect(() => {
@@ -60,6 +61,7 @@ export function MusicPlayer({ currentPersona = 'default' }: MusicPlayerProps) {
       // Open the popup
       setShowPlaylist(true);
       setIsMinimized(false);
+      setIframeLoading(true);
     }
   };
 
@@ -72,15 +74,21 @@ export function MusicPlayer({ currentPersona = 'default' }: MusicPlayerProps) {
   };
 
   const handlePrevious = () => {
+    setIframeLoading(true);
     setCurrentVideoIndex(prev =>
       prev === 0 ? videoIds.length - 1 : prev - 1
     );
   };
 
   const handleNext = () => {
+    setIframeLoading(true);
     setCurrentVideoIndex(prev =>
       prev === videoIds.length - 1 ? 0 : prev + 1
     );
+  };
+
+  const handleIframeLoad = () => {
+    setIframeLoading(false);
   };
 
   // Waveform visualizer for when popup is closed but was playing
@@ -191,11 +199,16 @@ export function MusicPlayer({ currentPersona = 'default' }: MusicPlayerProps) {
 
               {/* YouTube Embed */}
               <div className="relative" style={{ paddingBottom: '56.25%' }}>
-                {isLoading ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                    <div className="text-white/60 text-sm">Loading...</div>
+                {/* Loading Spinner Overlay */}
+                {(isLoading || iframeLoading) && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-10">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      <span className="text-white/60 text-sm">Loading...</span>
+                    </div>
                   </div>
-                ) : (
+                )}
+                {!isLoading && (
                   <iframe
                     key={currentVideoId}
                     className="absolute inset-0 w-full h-full"
@@ -204,6 +217,7 @@ export function MusicPlayer({ currentPersona = 'default' }: MusicPlayerProps) {
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
+                    onLoad={handleIframeLoad}
                   />
                 )}
               </div>
