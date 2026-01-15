@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Message, ImageDimensions } from '../types/chat';
 import { generateAIResponse, generateAIResponseStreaming, YouTubeMusicData, UserMemoryContext } from '../services/ai/aiProxyService';
-import { INITIAL_MESSAGE, AI_PERSONAS } from '../config/constants';
+import { AI_PERSONAS } from '../config/constants';
 import { chatService, ChatSession } from '../services/chat/chatService';
 import { processGeneratedImages } from '../services/image/imageService';
 import {
@@ -203,7 +203,7 @@ export function useChat(
     }
 
     // Save current session immediately before switching (only if not streaming)
-    if (currentSessionId && messages.length > 1 && !isStreamingRef.current) {
+    if (currentSessionId && messages.length > 0 && !isStreamingRef.current) {
       saveChatSession(currentSessionId, messages, currentPersona, true); // Force immediate save
     }
 
@@ -225,13 +225,8 @@ export function useChat(
     const newSessionId = generateUUID();
     setCurrentSessionId(newSessionId);
 
-    const initialMessage = cleanContent(AI_PERSONAS[persona].initialMessage);
-    setMessages([{
-      id: Date.now(),
-      content: initialMessage,
-      isAI: true,
-      hasAnimated: false
-    }]);
+    // Start with empty messages - user's message will be first in UI
+    setMessages([]);
 
     // Set theme based on the new persona
     setPersonaTheme(persona);
@@ -246,7 +241,7 @@ export function useChat(
     }
 
     // Save current session immediately before starting new one (only if not streaming)
-    if (currentSessionId && messages.length > 1 && !isStreamingRef.current) {
+    if (currentSessionId && messages.length > 0 && !isStreamingRef.current) {
       saveChatSession(currentSessionId, messages, currentPersona, true); // Force immediate save
     }
 
@@ -259,13 +254,8 @@ export function useChat(
     const newSessionId = generateUUID();
     setCurrentSessionId(newSessionId);
 
-    const initialMessage = cleanContent(AI_PERSONAS[currentPersona].initialMessage);
-    setMessages([{
-      id: Date.now(),
-      content: initialMessage,
-      isAI: true,
-      hasAnimated: false
-    }]);
+    // Start with empty messages - user's message will be first in UI
+    setMessages([]);
 
     setError(null);
   }, [currentSessionId, messages, currentPersona, saveChatSession]);
@@ -376,7 +366,7 @@ export function useChat(
     // - No session ID
     // - Currently streaming (AI message is incomplete)
     // - In collaborative mode (messages are stored in group_chat_messages table)
-    if (messages.length > 1 && currentSessionId && !isStreamingRef.current && !isCollaborative) {
+    if (messages.length > 0 && currentSessionId && !isStreamingRef.current && !isCollaborative) {
       saveChatSession(currentSessionId, messages, currentPersona);
     }
   }, [messages, currentSessionId, currentPersona, saveChatSession, isCollaborative]);
@@ -395,18 +385,11 @@ export function useChat(
 
     // Now we can safely determine the persona (either from profile or default)
     const persona = initialPersona || 'default';
-    // Clean emotion tags from initial message
-    const rawMessage = AI_PERSONAS[persona].initialMessage;
-    const initialMessage = rawMessage.replace(/<emotion>[a-z]+<\/emotion>/i, '').replace(/<reason>[\s\S]*?<\/reason>/i, '').trim();
 
     setCurrentPersona(persona);
     setPersonaTheme(persona);
-    setMessages([{
-      id: Date.now(),
-      content: initialMessage,
-      isAI: true,
-      hasAnimated: false
-    }]);
+    // Start with empty messages - user's message will be first in UI
+    setMessages([]);
     setIsInitialized(true);
   }, [authLoading, isInitialized, initialPersona, setPersonaTheme]);
 
@@ -431,7 +414,7 @@ export function useChat(
     let messageContent = content;
 
     // Check for @persona mentions (case-insensitive)
-    const mentionMatch = content.match(/^@(chatgpt|gemini|claude|grok|girlie|pro)\s+(.+)$/i);
+    const mentionMatch = content.match(/^@(chatgpt|gemini|claude|grok|deepseek|girlie|pro)\s+(.+)$/i);
     if (mentionMatch) {
       const mentionedModel = mentionMatch[1].toLowerCase();
       messagePersona = mentionedModel as keyof typeof AI_PERSONAS;
@@ -521,8 +504,8 @@ export function useChat(
     setStreamingMessageId(aiMessageId);
     isStreamingRef.current = true; // Mark streaming as started
 
-    // Filter out initial welcome message (ID: 1) - it's just for UI aesthetics
-    let apiMessages = [...messages, apiUserMessage].filter(msg => msg.id !== 1);
+    // Prepare messages for API call
+    let apiMessages = [...messages, apiUserMessage];
 
     // In collaborative mode, format user messages as dialogue for AI context
     if (isCollaborative) {
@@ -647,7 +630,7 @@ export function useChat(
     }
 
     // Save current session immediately before loading new one (only if not streaming)
-    if (currentSessionId && messages.length > 1 && !isStreamingRef.current) {
+    if (currentSessionId && messages.length > 0 && !isStreamingRef.current) {
       saveChatSession(currentSessionId, messages, currentPersona, true); // Force immediate save
     }
 
@@ -659,10 +642,8 @@ export function useChat(
     // Filter out any empty messages from the loaded session
     const validMessages = session.messages.filter(msg => msg.content && msg.content.trim() !== '');
 
-    // Ensure we have at least the initial message if all messages were empty
-    const messagesToLoad = validMessages.length > 0
-      ? validMessages
-      : [{ id: Date.now(), content: cleanContent(AI_PERSONAS[session.persona].initialMessage), isAI: true, hasAnimated: false }];
+    // Load valid messages or start with empty array
+    const messagesToLoad = validMessages;
 
     // Update all state together
     setCurrentPersona(session.persona);
@@ -702,8 +683,7 @@ export function useChat(
       }]);
 
       // Push existing messages to group_chat_messages table
-      // Skip the initial welcome message (id: 1)
-      const messagesToSync = messages.filter(m => m.id !== 1);
+      const messagesToSync = messages;
       for (const msg of messagesToSync) {
         await sendGroupChatMessage(
           shareId,
@@ -796,21 +776,19 @@ export function useChat(
     setParticipants(chat.participants);
 
     // Map messages with sender info - use snake_case to match Message type
-    const loadedMessages = chat.messages.length > 0
-      ? chat.messages.map(m => ({
-        id: m.id,
-        content: m.content,
-        isAI: m.isAI,
-        hasAnimated: m.hasAnimated ?? true,
-        thinking: m.thinking,
-        audioUrl: m.audioUrl,
-        inputImageUrls: m.inputImageUrls,
-        sender_id: m.sender_id,
-        sender_nickname: m.sender_nickname,
-        sender_avatar: m.sender_avatar,
-        reactions: m.reactions
-      }))
-      : [{ ...INITIAL_MESSAGE, hasAnimated: true }];
+    const loadedMessages = chat.messages.map(m => ({
+      id: m.id,
+      content: m.content,
+      isAI: m.isAI,
+      hasAnimated: m.hasAnimated ?? true,
+      thinking: m.thinking,
+      audioUrl: m.audioUrl,
+      inputImageUrls: m.inputImageUrls,
+      sender_id: m.sender_id,
+      sender_nickname: m.sender_nickname,
+      sender_avatar: m.sender_avatar,
+      reactions: m.reactions
+    }));
 
     setMessages(loadedMessages);
     // Don't set currentSessionId to shareId - it's not a UUID and will break chat_sessions table
