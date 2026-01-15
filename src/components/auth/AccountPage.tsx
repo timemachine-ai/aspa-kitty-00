@@ -16,6 +16,10 @@ import {
   ChevronRight,
   Sparkles,
   Calendar,
+  Lock,
+  Eye,
+  EyeOff,
+  Key,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase, uploadImage } from '../../lib/supabase';
@@ -39,7 +43,7 @@ const TimeMachineLogo = () => (
 
 export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
   const navigate = useNavigate();
-  const { user, profile, updateProfile, signOut } = useAuth();
+  const { user, profile, updateProfile, signOut, changePassword } = useAuth();
   const [nickname, setNickname] = useState(profile?.nickname || '');
   const [aboutMe, setAboutMe] = useState(profile?.about_me || '');
   const [gender, setGender] = useState((profile as any)?.gender || '');
@@ -51,6 +55,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showMemories, setShowMemories] = useState(false);
   const [showImages, setShowImages] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showPasswordFields, setShowPasswordFields] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
   const [stats, setStats] = useState<{
     chatCount: number;
     messageCount: number;
@@ -153,6 +165,40 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
 
   const handleOpenHistory = () => {
     navigate('/history');
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters');
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    const { error } = await changePassword(oldPassword, newPassword);
+
+    if (error) {
+      setPasswordError(error.message);
+    } else {
+      setPasswordSuccess('Password changed successfully!');
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setTimeout(() => {
+        setShowChangePassword(false);
+        setPasswordSuccess('');
+      }, 2000);
+    }
+
+    setPasswordLoading(false);
   };
 
   // Stat card component
@@ -543,6 +589,27 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
             </div>
           </motion.div>
 
+          {/* Change Password Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+            onClick={() => setShowChangePassword(true)}
+            className="w-full py-4 rounded-2xl text-white/80 font-medium flex items-center justify-center gap-2 mb-3"
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <Key size={18} />
+            Change Password
+          </motion.button>
+
           {/* Sign Out Button */}
           <motion.button
             initial={{ opacity: 0, y: 20 }}
@@ -586,6 +653,173 @@ export const AccountPage: React.FC<AccountPageProps> = ({ onBack }) => {
         isOpen={showImages}
         onClose={() => setShowImages(false)}
       />
+
+      {/* Change Password Modal */}
+      <AnimatePresence>
+        {showChangePassword && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-md z-50"
+              onClick={() => {
+                setShowChangePassword(false);
+                setPasswordError('');
+                setPasswordSuccess('');
+                setOldPassword('');
+                setNewPassword('');
+                setConfirmNewPassword('');
+              }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <div
+                className="relative w-full max-w-[400px] rounded-3xl p-6"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                }}
+              >
+                {/* Close button */}
+                <button
+                  onClick={() => {
+                    setShowChangePassword(false);
+                    setPasswordError('');
+                    setPasswordSuccess('');
+                    setOldPassword('');
+                    setNewPassword('');
+                    setConfirmNewPassword('');
+                  }}
+                  className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 transition-colors"
+                >
+                  <X size={20} className="text-white/50" />
+                </button>
+
+                {/* Header */}
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-purple-500/20 flex items-center justify-center">
+                    <Lock size={24} className="text-purple-400" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-1">Change Password</h3>
+                  <p className="text-white/50 text-sm">Enter your current and new password</p>
+                </div>
+
+                {/* Form */}
+                <div className="space-y-4">
+                  {/* Current Password */}
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
+                      <Lock size={18} />
+                    </div>
+                    <input
+                      type={showPasswordFields ? 'text' : 'password'}
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      placeholder="Current password"
+                      className="w-full pl-12 pr-12 py-3.5 rounded-xl text-white placeholder-white/30 focus:outline-none transition-all text-[15px]"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordFields(!showPasswordFields)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/50 transition-colors"
+                    >
+                      {showPasswordFields ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+
+                  {/* New Password */}
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
+                      <Key size={18} />
+                    </div>
+                    <input
+                      type={showPasswordFields ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="New password"
+                      className="w-full pl-12 pr-4 py-3.5 rounded-xl text-white placeholder-white/30 focus:outline-none transition-all text-[15px]"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                      }}
+                    />
+                  </div>
+
+                  {/* Confirm New Password */}
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
+                      <Key size={18} />
+                    </div>
+                    <input
+                      type={showPasswordFields ? 'text' : 'password'}
+                      value={confirmNewPassword}
+                      onChange={(e) => setConfirmNewPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className="w-full pl-12 pr-4 py-3.5 rounded-xl text-white placeholder-white/30 focus:outline-none transition-all text-[15px]"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                      }}
+                    />
+                  </div>
+
+                  {/* Error/Success Messages */}
+                  {passwordError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm"
+                    >
+                      {passwordError}
+                    </motion.div>
+                  )}
+                  {passwordSuccess && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm"
+                    >
+                      {passwordSuccess}
+                    </motion.div>
+                  )}
+
+                  {/* Submit Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={handleChangePassword}
+                    disabled={passwordLoading || !oldPassword || !newPassword || !confirmNewPassword}
+                    className="w-full py-3.5 rounded-xl text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[15px]"
+                    style={{
+                      background: 'rgba(168, 85, 247, 0.3)',
+                      border: '1px solid rgba(168, 85, 247, 0.5)',
+                      boxShadow: '0 4px 12px rgba(168, 85, 247, 0.2)'
+                    }}
+                  >
+                    {passwordLoading ? (
+                      <div className="w-5 h-5 border-2 border-white/20 border-t-white/70 rounded-full animate-spin mx-auto" />
+                    ) : (
+                      'Update Password'
+                    )}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

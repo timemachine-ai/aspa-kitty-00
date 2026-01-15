@@ -18,6 +18,12 @@ interface AuthContextType {
   refreshProfile: () => Promise<void>;
   isOnboarded: boolean;
   needsOnboarding: boolean;
+  // New OTP and password functions
+  signUpWithOtp: (email: string) => Promise<{ error: AuthError | null }>;
+  verifyOtp: (email: string, token: string) => Promise<{ error: AuthError | null }>;
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: AuthError | null }>;
+  changePassword: (oldPassword: string, newPassword: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -240,6 +246,71 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return { error };
   };
 
+  // Sign up with OTP (sends verification code to email)
+  const signUpWithOtp = async (email: string) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+      },
+    });
+    return { error };
+  };
+
+  // Verify OTP code
+  const verifyOtp = async (email: string, token: string) => {
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email',
+    });
+    return { error };
+  };
+
+  // Reset password (sends reset link to email)
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { error };
+  };
+
+  // Update password (for logged in users or after reset)
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    return { error };
+  };
+
+  // Change password (with old password verification)
+  const changePassword = async (oldPassword: string, newPassword: string) => {
+    if (!user?.email) {
+      return { error: new Error('No user logged in') };
+    }
+
+    // First verify the old password by signing in
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: oldPassword,
+    });
+
+    if (signInError) {
+      return { error: new Error('Current password is incorrect') };
+    }
+
+    // Then update to the new password
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (updateError) {
+      return { error: new Error(updateError.message) };
+    }
+
+    return { error: null };
+  };
+
   // Sign out
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -318,6 +389,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshProfile,
     isOnboarded,
     needsOnboarding,
+    // New OTP and password functions
+    signUpWithOtp,
+    verifyOtp,
+    resetPassword,
+    updatePassword,
+    changePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
