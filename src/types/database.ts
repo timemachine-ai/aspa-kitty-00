@@ -237,6 +237,29 @@ export interface Database {
           created_at?: string;
         };
       };
+      youtube_music: {
+        Row: {
+          id: string;
+          video_id: string;
+          title: string | null;
+          order_index: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          video_id: string;
+          title?: string | null;
+          order_index?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          video_id?: string;
+          title?: string | null;
+          order_index?: number;
+          created_at?: string;
+        };
+      };
     };
   };
 }
@@ -248,3 +271,4 @@ export type ChatMessage = Database['public']['Tables']['chat_messages']['Row'];
 export type AiMemory = Database['public']['Tables']['ai_memories']['Row'];
 export type UserImage = Database['public']['Tables']['user_images']['Row'];
 export type RateLimit = Database['public']['Tables']['rate_limits']['Row'];
+export type YouTubeMusic = Database['public']['Tables']['youtube_music']['Row'];
