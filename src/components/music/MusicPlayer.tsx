@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Minus, Maximize2 } from 'lucide-react';
+import { Minus, Maximize2, X } from 'lucide-react';
 import PlayIcon from '../icons/PlayIcon';
 import { AI_PERSONAS } from '../../config/constants';
 import { supabase } from '../../lib/supabase';
@@ -52,8 +52,15 @@ export function MusicPlayer({ currentPersona = 'default' }: MusicPlayerProps) {
   }, []);
 
   const handleClick = () => {
-    setShowPlaylist(true);
-    setIsMinimized(false);
+    if (showPlaylist) {
+      // Close the popup
+      setShowPlaylist(false);
+      setIsMinimized(false);
+    } else {
+      // Open the popup
+      setShowPlaylist(true);
+      setIsMinimized(false);
+    }
   };
 
   const handleMinimize = () => {
@@ -232,7 +239,7 @@ export function MusicPlayer({ currentPersona = 'default' }: MusicPlayerProps) {
           )}
         </AnimatePresence>
 
-        {/* Play Button */}
+        {/* Play/Close Button */}
         <motion.div className="relative">
           <motion.button
             whileHover={{ scale: 1.05 }}
@@ -242,7 +249,7 @@ export function MusicPlayer({ currentPersona = 'default' }: MusicPlayerProps) {
             style={glassStyle}
           >
             {showPlaylist ? (
-              <MusicVisualizer />
+              <X className="w-5 h-5 text-white/80 relative z-10" />
             ) : (
               <PlayIcon className="w-5 h-5 relative z-10" />
             )}
