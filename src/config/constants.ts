@@ -18,34 +18,42 @@ export const PERSONA_LIMITS = {
 export const AI_PERSONAS = {
   default: {
     name: 'TimeMachine Air',
+    initialMessage: "Hey there, from future",
     color: 'purple'
   },
   girlie: {
     name: 'TimeMachine Girlie',
+    initialMessage: "Hiee✨ from future~",
     color: 'pink'
   },
   pro: {
     name: 'TimeMachine PRO',
+    initialMessage: "From future. Let's cure cancer.",
     color: 'cyan'
   },
   chatgpt: {
     name: 'ChatGPT',
+    initialMessage: "Hello!",
     color: 'green'
   },
   gemini: {
     name: 'Gemini',
+    initialMessage: "Hello!",
     color: 'blue'
   },
   claude: {
     name: 'Claude',
+    initialMessage: "Hello!",
     color: 'orange'
   },
   deepseek: {
     name: 'DeepSeek',
+    initialMessage: "Hello!",
     color: 'indigo'
   },
   grok: {
     name: 'Grok',
+    initialMessage: "Hello!",
     color: 'gray'
   }
 };
@@ -67,6 +75,11 @@ export const LOADING_WORDS = [
   { text: 'AGI', color: 'text-cyan-400' }
 ] as const;
 
+export const INITIAL_MESSAGE = {
+  id: 1,
+  content: AI_PERSONAS.default.initialMessage,
+  isAI: true,
+};
 
 // Pro Heat Levels configuration
 export const PRO_HEAT_LEVELS = {
