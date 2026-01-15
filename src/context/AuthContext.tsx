@@ -11,14 +11,13 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
   updateLastPersona: (persona: string) => Promise<void>;
   refreshProfile: () => Promise<void>;
   isOnboarded: boolean;
   needsOnboarding: boolean;
-  // New OTP and password functions
+  // OTP and password functions
   signUpWithOtp: (email: string) => Promise<{ error: AuthError | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: AuthError | null }>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
@@ -235,17 +234,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return { error };
   };
 
-  // Sign in with Google
-  const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
-    return { error };
-  };
-
   // Sign up with OTP (sends verification code to email)
   const signUpWithOtp = async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({
@@ -382,14 +370,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     signUp,
     signIn,
-    signInWithGoogle,
     signOut,
     updateProfile,
     updateLastPersona,
     refreshProfile,
     isOnboarded,
     needsOnboarding,
-    // New OTP and password functions
+    // OTP and password functions
     signUpWithOtp,
     verifyOtp,
     resetPassword,

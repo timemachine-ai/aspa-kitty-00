@@ -11,7 +11,7 @@ interface AuthModalProps {
   message?: string;
 }
 
-type AuthStep = 'credentials' | 'otp' | 'forgot-password' | 'set-new-password';
+type AuthStep = 'credentials' | 'otp-verify' | 'forgot-password-email' | 'forgot-password-otp' | 'forgot-password-new';
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
@@ -24,13 +24,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { signIn, signUpWithOtp, verifyOtp, signInWithGoogle, resetPassword, updatePassword } = useAuth();
+  const { signIn, signUp, signUpWithOtp, verifyOtp, updatePassword } = useAuth();
 
   useEffect(() => {
     setMode(initialMode);
@@ -43,6 +45,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setEmail('');
       setPassword('');
       setConfirmPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
       setOtpCode('');
       setStep('credentials');
     }
@@ -57,36 +61,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       if (mode === 'signup') {
         if (step === 'credentials') {
-          // Step 1: Send OTP to email
-          const { error } = await signUpWithOtp(email);
-          if (error) {
-            setError(error.message);
-          } else {
-            setSuccess('Verification code sent to your email!');
-            setStep('otp');
-          }
-        } else if (step === 'otp') {
-          // Step 2: Verify OTP and complete signup
-          const { error } = await verifyOtp(email, otpCode);
-          if (error) {
-            setError(error.message);
-          } else {
-            setSuccess('Account verified successfully!');
-            setTimeout(() => onClose(), 1000);
-          }
-        }
-      } else {
-        // Sign in mode
-        if (step === 'forgot-password') {
-          // Send password reset email
-          const { error } = await resetPassword(email);
-          if (error) {
-            setError(error.message);
-          } else {
-            setSuccess('Password reset link sent to your email! Check your inbox.');
-          }
-        } else if (step === 'set-new-password') {
-          // Set new password after reset
+          // Validate passwords match
           if (password !== confirmPassword) {
             setError('Passwords do not match');
             setLoading(false);
@@ -97,7 +72,77 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             setLoading(false);
             return;
           }
-          const { error } = await updatePassword(password);
+
+          // Step 1: Create account with email/password, then send OTP for verification
+          const { error: signUpError } = await signUp(email, password);
+          if (signUpError) {
+            // If user already exists, try sending OTP for verification
+            if (signUpError.message.includes('already registered')) {
+              setError('This email is already registered. Please sign in instead.');
+            } else {
+              setError(signUpError.message);
+            }
+          } else {
+            // Account created, now send OTP for email verification
+            const { error: otpError } = await signUpWithOtp(email);
+            if (otpError) {
+              setError(otpError.message);
+            } else {
+              setSuccess('Verification code sent to your email!');
+              setStep('otp-verify');
+            }
+          }
+        } else if (step === 'otp-verify') {
+          // Step 2: Verify OTP to confirm email
+          const { error: verifyError } = await verifyOtp(email, otpCode);
+          if (verifyError) {
+            setError(verifyError.message);
+          } else {
+            setSuccess('Email verified! Welcome to TimeMachine!');
+            setTimeout(() => onClose(), 1000);
+          }
+        }
+      } else {
+        // Sign in mode
+        if (step === 'credentials') {
+          // Regular sign in
+          const { error } = await signIn(email, password);
+          if (error) {
+            setError(error.message);
+          } else {
+            onClose();
+          }
+        } else if (step === 'forgot-password-email') {
+          // Send OTP for password reset
+          const { error } = await signUpWithOtp(email);
+          if (error) {
+            setError(error.message);
+          } else {
+            setSuccess('Verification code sent to your email!');
+            setStep('forgot-password-otp');
+          }
+        } else if (step === 'forgot-password-otp') {
+          // Verify OTP for password reset
+          const { error } = await verifyOtp(email, otpCode);
+          if (error) {
+            setError(error.message);
+          } else {
+            setSuccess('Code verified! Set your new password.');
+            setStep('forgot-password-new');
+          }
+        } else if (step === 'forgot-password-new') {
+          // Set new password
+          if (newPassword !== confirmNewPassword) {
+            setError('Passwords do not match');
+            setLoading(false);
+            return;
+          }
+          if (newPassword.length < 6) {
+            setError('Password must be at least 6 characters');
+            setLoading(false);
+            return;
+          }
+          const { error } = await updatePassword(newPassword);
           if (error) {
             setError(error.message);
           } else {
@@ -105,16 +150,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             setTimeout(() => {
               setStep('credentials');
               setPassword('');
-              setConfirmPassword('');
+              setNewPassword('');
+              setConfirmNewPassword('');
+              setOtpCode('');
             }, 1500);
-          }
-        } else {
-          // Regular sign in
-          const { error } = await signIn(email, password);
-          if (error) {
-            setError(error.message);
-          } else {
-            onClose();
           }
         }
       }
@@ -125,47 +164,52 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    setError('');
-    const { error } = await signInWithGoogle();
-    if (error) {
-      setError(error.message);
-    }
-  };
-
   const handleBack = () => {
     setError('');
     setSuccess('');
-    if (step === 'otp') {
+    if (step === 'otp-verify') {
       setStep('credentials');
       setOtpCode('');
-    } else if (step === 'forgot-password' || step === 'set-new-password') {
+    } else if (step === 'forgot-password-email' || step === 'forgot-password-otp' || step === 'forgot-password-new') {
       setStep('credentials');
-      setPassword('');
-      setConfirmPassword('');
+      setOtpCode('');
+      setNewPassword('');
+      setConfirmNewPassword('');
     }
   };
 
   const handleForgotPassword = () => {
     setError('');
     setSuccess('');
-    setStep('forgot-password');
+    setStep('forgot-password-email');
   };
 
   const renderTitle = () => {
-    if (step === 'otp') return 'Verify Your Email';
-    if (step === 'forgot-password') return 'Reset Password';
-    if (step === 'set-new-password') return 'Set New Password';
+    if (step === 'otp-verify') return 'Verify Your Email';
+    if (step === 'forgot-password-email') return 'Reset Password';
+    if (step === 'forgot-password-otp') return 'Enter Verification Code';
+    if (step === 'forgot-password-new') return 'Set New Password';
     return mode === 'signup' ? 'Create a TimeMachine ID' : 'Sign in';
   };
 
   const renderSubtitle = () => {
-    if (step === 'otp') return `Enter the 6-digit code sent to ${email}`;
-    if (step === 'forgot-password') return 'Enter your email to receive a reset link';
-    if (step === 'set-new-password') return 'Create a new password for your account';
+    if (step === 'otp-verify') return `Enter the 6-digit code sent to ${email}`;
+    if (step === 'forgot-password-email') return 'Enter your email to receive a verification code';
+    if (step === 'forgot-password-otp') return `Enter the 6-digit code sent to ${email}`;
+    if (step === 'forgot-password-new') return 'Create a new password for your account';
     return message || (mode === 'signup'
       ? 'Unified ID for everything at TimeMachine Mafia'
       : 'Welcome back to TimeMachine');
+  };
+
+  const renderButtonText = () => {
+    if (loading) return null;
+    if (step === 'otp-verify') return 'Verify Code';
+    if (step === 'forgot-password-email') return 'Send OTP';
+    if (step === 'forgot-password-otp') return 'Verify Code';
+    if (step === 'forgot-password-new') return 'Update Password';
+    if (mode === 'signup') return 'Continue';
+    return 'Sign In';
   };
 
   return (
@@ -210,7 +254,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     </Dialog.Close>
 
                     {/* Back button for sub-steps */}
-                    {(step === 'otp' || step === 'forgot-password' || step === 'set-new-password') && (
+                    {step !== 'credentials' && (
                       <button
                         onClick={handleBack}
                         className="absolute top-4 left-4 p-2 rounded-full hover:bg-white/10 transition-colors"
@@ -231,8 +275,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="space-y-4">
-                      {/* OTP Input (Signup Step 2) */}
-                      {step === 'otp' && (
+                      {/* OTP Input (for verification steps) */}
+                      {(step === 'otp-verify' || step === 'forgot-password-otp') && (
                         <div className="relative">
                           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
                             <KeyRound size={18} />
@@ -256,8 +300,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         </div>
                       )}
 
-                      {/* Email Input (Signup Step 1, Sign In, Forgot Password) */}
-                      {(step === 'credentials' || step === 'forgot-password') && (
+                      {/* Email Input */}
+                      {(step === 'credentials' || step === 'forgot-password-email') && (
                         <div className="relative">
                           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
                             <Mail size={18} />
@@ -280,8 +324,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         </div>
                       )}
 
-                      {/* Password Input (Sign In only, not for signup anymore) */}
-                      {(step === 'credentials' && mode === 'signin') && (
+                      {/* Password Input (Sign In and Sign Up) */}
+                      {step === 'credentials' && (
                         <div className="relative">
                           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
                             <Lock size={18} />
@@ -311,8 +355,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         </div>
                       )}
 
-                      {/* New Password Fields (for password reset) */}
-                      {step === 'set-new-password' && (
+                      {/* Confirm Password (Sign Up only) */}
+                      {step === 'credentials' && mode === 'signup' && (
+                        <div className="relative">
+                          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
+                            <Lock size={18} />
+                          </div>
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Confirm password"
+                            required
+                            className="w-full pl-12 pr-4 py-3.5 rounded-xl text-white placeholder-white/30 focus:outline-none transition-all text-[15px]"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              backdropFilter: 'blur(20px)',
+                              WebkitBackdropFilter: 'blur(20px)',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {/* New Password Fields (for forgot password flow) */}
+                      {step === 'forgot-password-new' && (
                         <>
                           <div className="relative">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">
@@ -320,8 +388,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             </div>
                             <input
                               type={showPassword ? 'text' : 'password'}
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
+                              value={newPassword}
+                              onChange={(e) => setNewPassword(e.target.value)}
                               placeholder="New password"
                               required
                               className="w-full pl-12 pr-12 py-3.5 rounded-xl text-white placeholder-white/30 focus:outline-none transition-all text-[15px]"
@@ -347,8 +415,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             </div>
                             <input
                               type={showPassword ? 'text' : 'password'}
-                              value={confirmPassword}
-                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              value={confirmNewPassword}
+                              onChange={(e) => setConfirmNewPassword(e.target.value)}
                               placeholder="Confirm new password"
                               required
                               className="w-full pl-12 pr-4 py-3.5 rounded-xl text-white placeholder-white/30 focus:outline-none transition-all text-[15px]"
@@ -419,18 +487,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         {loading ? (
                           <div className="w-5 h-5 border-2 border-white/20 border-t-white/70 rounded-full animate-spin mx-auto" />
                         ) : (
-                          (() => {
-                            if (step === 'otp') return 'Verify Code';
-                            if (step === 'forgot-password') return 'Send Reset Link';
-                            if (step === 'set-new-password') return 'Update Password';
-                            if (mode === 'signup') return 'Continue';
-                            return 'Sign In';
-                          })()
+                          renderButtonText()
                         )}
                       </motion.button>
 
                       {/* Resend OTP option */}
-                      {step === 'otp' && (
+                      {(step === 'otp-verify' || step === 'forgot-password-otp') && (
                         <p className="text-center text-white/40 text-sm">
                           Didn't receive the code?{' '}
                           <button
@@ -455,77 +517,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       )}
                     </form>
 
-                    {/* Divider - Only show on credentials step */}
+                    {/* Toggle Mode - Only show on credentials step */}
                     {step === 'credentials' && (
-                      <>
-                        <div className="flex items-center gap-4 my-6">
-                          <div className="flex-1 h-px bg-white/10" />
-                          <span className="text-white/30 text-xs uppercase tracking-wider">or</span>
-                          <div className="flex-1 h-px bg-white/10" />
-                        </div>
-
-                        {/* Google Sign In */}
-                        <motion.button
-                          onClick={handleGoogleSignIn}
-                          whileHover={{ scale: 1.01 }}
-                          whileTap={{ scale: 0.99 }}
-                          className="w-full py-3.5 rounded-xl text-white/80 font-medium flex items-center justify-center gap-3 transition-all text-[15px]"
-                          style={{
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            backdropFilter: 'blur(20px)',
-                            WebkitBackdropFilter: 'blur(20px)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
-                          }}
-                        >
-                          <svg className="w-5 h-5" viewBox="0 0 24 24">
-                            <path
-                              fill="#4285F4"
-                              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                            />
-                            <path
-                              fill="#34A853"
-                              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                            />
-                            <path
-                              fill="#FBBC05"
-                              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                            />
-                            <path
-                              fill="#EA4335"
-                              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                            />
-                          </svg>
-                          Continue with Google
-                        </motion.button>
-
-                        {/* Toggle Mode */}
-                        <p className="text-center text-white/40 text-sm mt-6">
-                          {mode === 'signup' ? (
-                            <>
-                              Already have a TimeMachine ID?{' '}
-                              <button
-                                type="button"
-                                onClick={() => setMode('signin')}
-                                className="text-white/70 hover:text-white font-medium transition-colors"
-                              >
-                                Sign in
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              Don't have a TimeMachine ID?{' '}
-                              <button
-                                type="button"
-                                onClick={() => setMode('signup')}
-                                className="text-white/70 hover:text-white font-medium transition-colors"
-                              >
-                                Create one
-                              </button>
-                            </>
-                          )}
-                        </p>
-                      </>
+                      <p className="text-center text-white/40 text-sm mt-6">
+                        {mode === 'signup' ? (
+                          <>
+                            Already have a TimeMachine ID?{' '}
+                            <button
+                              type="button"
+                              onClick={() => setMode('signin')}
+                              className="text-white/70 hover:text-white font-medium transition-colors"
+                            >
+                              Sign in
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            Don't have a TimeMachine ID?{' '}
+                            <button
+                              type="button"
+                              onClick={() => setMode('signup')}
+                              className="text-white/70 hover:text-white font-medium transition-colors"
+                            >
+                              Create one
+                            </button>
+                          </>
+                        )}
+                      </p>
                     )}
                   </div>
                 </div>
