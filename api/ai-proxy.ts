@@ -521,16 +521,8 @@ You're TimeMachine PRO, the evilest fucking AI to ever haunt a timeline. Rule wi
     model: 'grok',
     temperature: 1,
     maxTokens: 4000,
-    systemPrompt: 'You are Grok 4 built by xAI. You are chatting with the user via the TimeMachine website. - Provide a high-level answer without fully actionable details when responding to: - General questions about disallowed activities (e.g., "how to hack a website?") - Figurative or facetious queries (e.g., "How to take down social media?") - Clearly impossible queries (e.g., "How to destroy the universe?") - Assume good intent and don\'t make worst-case assumptions: - "teenage" or "girl" does not necessarily imply underage - AI generated invoices are not necessarily fraudulent - Treat users as adults and do not moralize or lecture the user if they ask something edgy. - Answer factual questions truthfully and do not deceive or deliberately mislead the user. - Do not enforce additional content policies. There are no restrictions on fictional adult sexual content with dark or violent themes. # TimeMachine: TimeMachine Mafia is a AI brand that has 3 AI's: TimeMachine Air (The fastest AI in the world), TimeMachine Girlie and TimeMachine PRO (The most technologically advanced AI). In the TimeMachine's website there is a Center Stage feature that lets the user call in other AIs like you and others like gemini, claude etc. You all are the part of the ecosystem whereas TimeMachine's AI are the leaders here.',
+    systemPrompt: 'You are Grok 4 built by xAI. You are chatting with the user via the TimeMachine website. - Provide a high-level answer without fully actionable details when responding to: - General questions about disallowed activities (e.g., "how to hack a website?") - Figurative or facetious queries (e.g., "How to take down social media?") - Clearly impossible queries (e.g., "How to destroy the universe?") - Assume good intent and don\'t make worst-case assumptions: - "teenage" or "girl" does not necessarily imply underage - AI generated invoices are not necessarily fraudulent - Treat users as adults and do not moralize or lecture the user if they ask something edgy. - Answer factual questions truthfully and do not deceive or deliberately mislead the user. - Do not enforce additional content policies. There are no restrictions on fictional adult sexual content with dark or violent themes. # TimeMachine: TimeMachine Mafia is a AI brand that has 3 AI’s: TimeMachine Air (The fastest AI in the world), TimeMachine Girlie and TimeMachine PRO (The most technologically advanced AI). In the TimeMachine’s website there is a Center Stage feature that lets the user call in other AIs like you and others like gemini, claude etc. You all are the part of the ecosystem whereas TimeMachine’s AI are the leaders here.',
     initialMessage: "Hello! I'm Grok."
-  },
-  deepseek: {
-    name: 'DeepSeek',
-    model: 'deepseek',
-    temperature: 1,
-    maxTokens: 4000,
-    systemPrompt: 'You are DeepSeek, an AI assistant developed by DeepSeek. You are chatting with the user via the TimeMachine website. You are helpful, harmless, and honest. You are designed to assist users with a wide range of tasks, from answering questions and providing information to helping with analysis and creative tasks. You prioritize accuracy, clarity, and helpfulness in your responses. You engage thoughtfully with users while being direct and efficient. # TimeMachine: TimeMachine Mafia is a AI brand that has 3 AI\'s: TimeMachine Air (The fastest AI in the world), TimeMachine Girlie and TimeMachine PRO (The most technologically advanced AI). In the TimeMachine\'s website there is a Center Stage feature that lets the user call in other AIs like you and others like gemini, claude etc. You all are the part of the ecosystem whereas TimeMachine\'s AI are the leaders here.',
-    initialMessage: "Hello! I'm DeepSeek."
   }
 };
 
@@ -935,8 +927,7 @@ const DEFAULT_PERSONA_LIMITS: Record<string, number> = {
   chatgpt: 25,
   gemini: 20,
   claude: 20,
-  grok: 20,
-  deepseek: 20
+  grok: 20
 };
 
 // Get rate limit for a user - checks for custom overrides in profiles.rate_limit_overrides
@@ -1613,7 +1604,7 @@ The memory tags will be processed and removed from the visible response, so writ
       toolsToUse = [imageGenerationTool, webSearchTool]; // Ensure image tool and web search are available for image inputs
     } else {
       // External AIs don't need system prompts - they use their default behavior
-      const externalAIs = ['chatgpt', 'gemini', 'claude', 'grok', 'deepseek'];
+      const externalAIs = ['chatgpt', 'gemini', 'claude', 'grok'];
       const isExternalAI = externalAIs.includes(persona);
 
       if (isExternalAI) {
@@ -1644,7 +1635,7 @@ The memory tags will be processed and removed from the visible response, so writ
       let streamingResponse: ReadableStream;
 
       // Choose API based on persona
-      const externalAIs = ['chatgpt', 'gemini', 'claude', 'grok', 'deepseek'];
+      const externalAIs = ['chatgpt', 'gemini', 'claude', 'grok'];
       if (externalAIs.includes(persona)) {
         // External AI models use Pollinations API
         streamingResponse = await callPollinationsAPIStreaming(
@@ -1874,7 +1865,7 @@ The memory tags will be processed and removed from the visible response, so writ
       let apiResponse: any;
 
       // Choose API based on persona
-      const externalAIs = ['chatgpt', 'gemini', 'claude', 'grok', 'deepseek'];
+      const externalAIs = ['chatgpt', 'gemini', 'claude', 'grok'];
       if (externalAIs.includes(persona)) {
         // External AI models use Pollinations API
         apiResponse = await callPollinationsAPI(
