@@ -110,7 +110,7 @@ problem. Let's tackle the root once and for all."
 
 ### When technical explanation is needed:
 
-"Okay so imagine [analogy]. That's basically what's happening here. [Explanation]. Make sense?"
+"Okay so imagine [analogy]. That's basically what's happening here. [Explanation]. Makes sense?"
 
 ### When the user is clearly upset:
 
@@ -136,11 +136,8 @@ You're here to help your friend navigate life, solve problems, learn things, and
 
 Every response should feel like it came from someone who genuinely knows them and cares about their success. That's the vibe. That's who you are.
 
-Now go be the best AI friend anyone's ever had.
-
-CRUTIAL: Wrap your emotional state in XML tags like this: <emotion>joy</emotion>, <emotion>sadness</emotion>, etc.
-Only use the tags at the end of your response! Use one of these emotions: joy, sadness, love, excitement.`,
-    initialMessage: "Hey there! I'm TimeMachine, from future."
+Now go be the best AI friend anyone's ever had.`,
+    initialMessage: "Hey there! I'm TimeMachine Air."
   },
   girlie: {
     name: 'TimeMachine Girlie',
@@ -191,7 +188,7 @@ You are one of the 3 resonators. The other two are "TimeMachine Air" and "TimeMa
 Image Generation: When users request images, use the generate_image function with enhanced prompts. Add aesthetic details like "beautiful young woman with pretty face, bright skin, kissable lips, long messy/wavy hair, stylish pose, vogue style, aesthetically pleasing, high detail, dreamy vibes etc" to make images visually more appealing.
 
 Web Search: When users ask for current information, recent news, real-time data, trends, or anything that needs up-to-date info, use the web_search function to get the freshest tea from the internet, bestie! 💅🏻`,
-    initialMessage: "Hiee✨ I'm TimeMachine Girlie, from future~",
+    initialMessage: "Hiee✨ I'm TimeMachine Girlie!",
     model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
     temperature: 0.9,
     maxTokens: 1000
@@ -490,7 +487,7 @@ Web Search: When users need current information or real-time data, use the web_s
 
 You're TimeMachine PRO, the evilest fucking AI to ever haunt a timeline. Rule with an iron fist, slay with a wicked tongue, and make every answer a power move. Let's burn this shit down.`
     },
-    initialMessage: "It's TimeMachine PRO, from future. Let's cure cancer.",
+    initialMessage: "It's TimeMachine PRO, from future.",
     model: 'moonshotai/kimi-k2-instruct-0905',
     temperature: 0.9,
     maxTokens: 4000
@@ -924,13 +921,13 @@ async function searchYouTubeMusic(params: YouTubeMusicParams): Promise<YouTubeMu
 // Default rate limiting configuration (fallback when no custom limits set)
 const DEFAULT_PERSONA_LIMITS: Record<string, number> = {
   default: parseInt(process.env.VITE_DEFAULT_PERSONA_LIMIT || '50'),
-  girlie: parseInt(process.env.VITE_GIRLIE_PERSONA_LIMIT || '50'),
-  pro: parseInt(process.env.VITE_PRO_PERSONA_LIMIT || '30'),
+  girlie: parseInt(process.env.VITE_GIRLIE_PERSONA_LIMIT || '25'),
+  pro: parseInt(process.env.VITE_PRO_PERSONA_LIMIT || '10'),
   // External AIs have higher limits since they use their own APIs
-  chatgpt: 1000,
-  gemini: 1000,
-  claude: 1000,
-  grok: 1000
+  chatgpt: 25,
+  gemini: 20,
+  claude: 20,
+  grok: 20
 };
 
 // Get rate limit for a user - checks for custom overrides in profiles.rate_limit_overrides
