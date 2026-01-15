@@ -96,9 +96,9 @@ export function ChatMode({
   const hasUserMessages = messages.some(m => !m.isAI);
   const showWelcomeText = !hasUserMessages && messages.length > 0;
 
-  // When showing welcome text, don't display the AI's initial greeting
-  // When chat has started, show all messages
-  const displayMessages = showWelcomeText ? [] : messages;
+  // When showing welcome text, don't display any messages
+  // When chat has started, show all messages except the initial AI greeting (first message)
+  const displayMessages = showWelcomeText ? [] : messages.slice(1);
 
   // Persona-based colors for the animated words
   const personaColors: Record<string, string> = {
