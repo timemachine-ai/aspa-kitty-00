@@ -59,9 +59,9 @@ export function AboutPage() {
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
             }}
           >
-            <h2 className="text-3xl font-bold text-white mb-4">TimeMachine</h2>
+            <h2 className="text-3xl font-bold text-white mb-4">TimeMachine Chat</h2>
             <p className="text-white/70 leading-relaxed">
-              The fastest AI in the world. Built for everyone, by TimeMachine Engineering.
+              Fastest intelligence build with you in mind, by TimeMachine Mafia.
             </p>
           </div>
 
@@ -99,7 +99,7 @@ export function AboutPage() {
               <Zap className="w-6 h-6 text-purple-400 mb-3" />
               <h4 className="text-sm font-semibold text-white mb-2">Lightning Fast</h4>
               <p className="text-xs text-white/50">
-                The fastest AI response times in the industry
+                The fastest AI response times in the industry. While TimeMachine Air is the Super Computer Speed in your pocket. 
               </p>
             </div>
 
@@ -116,7 +116,7 @@ export function AboutPage() {
               <Shield className="w-6 h-6 text-purple-400 mb-3" />
               <h4 className="text-sm font-semibold text-white mb-2">Privacy First</h4>
               <p className="text-xs text-white/50">
-                Your data is yours. We prioritize safety and privacy.
+                Your data is only yours. We prioritize safety and privacy over everything and never sell or train on your data.
               </p>
             </div>
 
@@ -133,7 +133,7 @@ export function AboutPage() {
               <Heart className="w-6 h-6 text-pink-400 mb-3" />
               <h4 className="text-sm font-semibold text-white mb-2">Built with Care</h4>
               <p className="text-xs text-white/50">
-                Every feature designed with you in mind
+                Made with love🤍. A lot of care goes into making you the main character of our story.
               </p>
             </div>
 
@@ -148,9 +148,9 @@ export function AboutPage() {
               }}
             >
               <Sparkles className="w-6 h-6 text-cyan-400 mb-3" />
-              <h4 className="text-sm font-semibold text-white mb-2">3 Personas</h4>
+              <h4 className="text-sm font-semibold text-white mb-2">3 Resonators</h4>
               <p className="text-xs text-white/50">
-                Air, Girlie, and PRO - choose your vibe
+                Air, Girlie, and PRO - choose your vibe.
               </p>
             </div>
           </div>
@@ -166,10 +166,10 @@ export function AboutPage() {
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
             }}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">TimeMachine Engineering</h3>
+            <h3 className="text-lg font-semibold text-white mb-4">TimeMachine Mafia</h3>
             <p className="text-white/60 leading-relaxed">
-              Founded by Tanzim, TimeMachine Engineering is on a mission to revolutionize
-              how people interact with AI. We're building the future of intelligent companions.
+              Founded by Tanzim Ibne Mahboob, TimeMachine Mafia is on a mission to revolutionize
+              how people interact with tech. We're building the future of intelligent companions keeping our standards and privacy at top.
             </p>
           </div>
 
@@ -180,7 +180,7 @@ export function AboutPage() {
             transition={{ delay: 0.5 }}
             className="text-center text-white/20 text-xs mt-8"
           >
-            TimeMachine v1.0
+            TimeMachine Chat v1.0
           </motion.p>
         </motion.div>
       </div>
