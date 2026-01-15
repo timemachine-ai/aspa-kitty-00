@@ -8,7 +8,8 @@ import { Star, Users, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useChat } from './hooks/useChat';
 import { useAnonymousRateLimit } from './hooks/useAnonymousRateLimit';
-import { AboutUsToast } from './components/about/AboutUsToast';
+import { AboutUsToast, AboutPage } from './components/about';
+import { ContactPage } from './components/contact';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ChatMode } from './components/chat/ChatMode';
@@ -824,6 +825,8 @@ function AppContent() {
         }} />
       } />
       <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route path="/album" element={<AlbumPage />} />
       <Route path="/memories" element={<MemoriesPage />} />
       <Route path="/help" element={<HelpPage />} />

@@ -654,7 +654,7 @@ Avoid:
 Your responses should be optimized for a quick, back-and-forth voice conversation experience.`;
 
 // Pollinations API configuration
-const POLLINATIONS_API_KEY = 'sk_Hdfia0UMfFw0d4bwhiyXTjJSry6u6tbU';
+const POLLINATIONS_API_KEY = process.env.POLLINATIONS_API_KEY || '';
 const POLLINATIONS_API_URL = 'https://enter.pollinations.ai/api/generate/v1/chat/completions';
 
 interface ImageGenerationParams {
@@ -710,9 +710,8 @@ interface WebSearchParams {
 async function fetchWebSearchResults(params: WebSearchParams): Promise<string> {
   const { query } = params;
   const encodedQuery = encodeURIComponent(query);
-  const hardcodedToken = "sk_Hdfia0UMfFw0d4bwhiyXTjJSry6u6tbU";
 
-  const url = `https://enter.pollinations.ai/api/generate/text/${encodedQuery}?model=gemini-search&key=${hardcodedToken}`;
+  const url = `https://enter.pollinations.ai/api/generate/text/${encodedQuery}?model=gemini-search&key=${POLLINATIONS_API_KEY}`;
 
   try {
     const response = await fetch(url);
@@ -1831,8 +1830,27 @@ The memory tags will be processed and removed from the visible response, so writ
               .trim();
 
             const encodedText = encodeURIComponent(cleanContent);
-            const hardcodedToken = "Cf5zT0TTvLLEskfY";
-            const audioUrl = `https://text.pollinations.ai/Repeat%20this%20exact%20text%20in%20a%20soothing%20cute%20voice%3A%20${encodedText}?model=openai-audio&voice=nova&token=${hardcodedToken}`;
+            const audioToken = process.env.POLLINATIONS_API_KEY || '';
+
+            // Persona-specific voice configurations
+            const voiceConfigs: Record<string, { voice: string; prompt: string }> = {
+              default: {
+                voice: 'onyx',
+                prompt: 'Repeat this text in a friendly conversational male voice:'
+              },
+              girlie: {
+                voice: 'nova',
+                prompt: 'Repeat this exact text in a cute bubbly feminine voice:'
+              },
+              pro: {
+                voice: 'echo',
+                prompt: 'Repeat this text in a professional confident voice:'
+              }
+            };
+
+            const config = voiceConfigs[persona] || voiceConfigs.default;
+            const encodedPrompt = encodeURIComponent(`${config.prompt} ${cleanContent}`);
+            const audioUrl = `https://text.pollinations.ai/${encodedPrompt}?model=openai-audio&voice=${config.voice}&token=${audioToken}`;
 
             res.write(`\n\n[AUDIO_URL]${audioUrl}[/AUDIO_URL]`);
           } catch (error) {
@@ -1985,11 +2003,28 @@ The memory tags will be processed and removed from the visible response, so writ
             .replace(/[*_`#]/g, '') // Remove markdown formatting
             .replace(/\n+/g, ' ') // Replace newlines with spaces
             .trim();
-          
-          // Construct Pollinations.ai TTS URL
-          const encodedText = encodeURIComponent(cleanContent);
-          const hardcodedToken = "Cf5zT0TTvLLEskfY";
-          audioUrl = `https://text.pollinations.ai/${encodedText}?model=openai-audio&voice=nova&token=${hardcodedToken}`;
+
+          const audioToken = process.env.POLLINATIONS_API_KEY || '';
+
+          // Persona-specific voice configurations
+          const voiceConfigs: Record<string, { voice: string; prompt: string }> = {
+            default: {
+              voice: 'onyx',
+              prompt: 'Repeat this text in a friendly conversational male voice:'
+            },
+            girlie: {
+              voice: 'nova',
+              prompt: 'Repeat this exact text in a cute bubbly feminine voice:'
+            },
+            pro: {
+              voice: 'echo',
+              prompt: 'Repeat this text in a professional confident voice:'
+            }
+          };
+
+          const config = voiceConfigs[persona] || voiceConfigs.default;
+          const encodedPrompt = encodeURIComponent(`${config.prompt} ${cleanContent}`);
+          audioUrl = `https://text.pollinations.ai/${encodedPrompt}?model=openai-audio&voice=${config.voice}&token=${audioToken}`;
         } catch (error) {
           console.error('Error generating audio URL:', error);
           // Continue without audio URL if there's an error

@@ -112,7 +112,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 transition={{ duration: 0.2, ease: 'easeOut' }}
                 className="fixed inset-0 z-50 flex items-center justify-center p-4"
               >
-                <div className="relative w-full max-w-[420px] overflow-hidden rounded-2xl border border-white/10 bg-black/40 backdrop-blur-2xl">
+                <div
+                  className="relative w-full max-w-[420px] overflow-hidden rounded-3xl"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                  }}
+                >
                   {/* Content */}
                   <div className="p-8">
                     {/* Close button */}
@@ -147,7 +156,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="Email"
                           required
-                          className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-white/25 focus:bg-white/[0.07] transition-all text-[15px]"
+                          className="w-full pl-12 pr-4 py-3.5 rounded-xl text-white placeholder-white/30 focus:outline-none transition-all text-[15px]"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                          }}
                         />
                       </div>
 
@@ -162,7 +178,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Password"
                           required
-                          className="w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-white/25 focus:bg-white/[0.07] transition-all text-[15px]"
+                          className="w-full pl-12 pr-12 py-3.5 rounded-xl text-white placeholder-white/30 focus:outline-none transition-all text-[15px]"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                          }}
                         />
                         <button
                           type="button"
@@ -193,7 +216,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 placeholder="Confirm password"
                                 required={mode === 'signup'}
-                                className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-white/25 focus:bg-white/[0.07] transition-all text-[15px]"
+                                className="w-full pl-12 pr-4 py-3.5 rounded-xl text-white placeholder-white/30 focus:outline-none transition-all text-[15px]"
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.05)',
+                                  backdropFilter: 'blur(20px)',
+                                  WebkitBackdropFilter: 'blur(20px)',
+                                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                                  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                                }}
                               />
                             </div>
                           </motion.div>
@@ -230,7 +260,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         disabled={loading}
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.99 }}
-                        className="w-full py-3.5 rounded-xl bg-white/10 border border-white/10 text-white font-medium hover:bg-white/15 hover:border-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[15px]"
+                        className="w-full py-3.5 rounded-xl text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed text-[15px]"
+                        style={{
+                          background: 'rgba(168, 85, 247, 0.3)',
+                          backdropFilter: 'blur(20px)',
+                          WebkitBackdropFilter: 'blur(20px)',
+                          border: '1px solid rgba(168, 85, 247, 0.5)',
+                          boxShadow: '0 4px 12px rgba(168, 85, 247, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                        }}
                       >
                         {loading ? (
                           <div className="w-5 h-5 border-2 border-white/20 border-t-white/70 rounded-full animate-spin mx-auto" />
@@ -252,7 +289,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       onClick={handleGoogleSignIn}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
-                      className="w-full py-3.5 rounded-xl bg-white/5 border border-white/10 text-white/80 font-medium flex items-center justify-center gap-3 hover:bg-white/10 hover:border-white/15 transition-all text-[15px]"
+                      className="w-full py-3.5 rounded-xl text-white/80 font-medium flex items-center justify-center gap-3 transition-all text-[15px]"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                      }}
                     >
                       <svg className="w-5 h-5" viewBox="0 0 24 24">
                         <path

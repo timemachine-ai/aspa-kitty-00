@@ -265,7 +265,7 @@ export function BrandLogo({
               className={`w-full px-4 py-3 text-left transition-all duration-300 ${theme.text} flex items-center gap-2 last:rounded-b-3xl`}
             >
               <Settings className="w-4 h-4" />
-              <div className="font-bold text-sm">Themes</div>
+              <div className="font-bold text-sm">Settings & Theme</div>
             </motion.button>
           </motion.div>
         )}

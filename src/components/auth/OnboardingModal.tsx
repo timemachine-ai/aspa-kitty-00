@@ -83,7 +83,16 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                 transition={{ duration: 0.2, ease: 'easeOut' }}
                 className="fixed inset-0 z-50 flex items-center justify-center p-4"
               >
-                <div className="relative w-full max-w-[440px] overflow-hidden rounded-2xl border border-white/10 bg-black/40 backdrop-blur-2xl">
+                <div
+                  className="relative w-full max-w-[440px] overflow-hidden rounded-3xl"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                  }}
+                >
                   {/* Content */}
                   <div className="p-8">
                     {/* Progress indicator */}
@@ -127,7 +136,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                                   onChange={(e) => setNickname(e.target.value)}
                                   placeholder="Enter your nickname"
                                   maxLength={30}
-                                  className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white text-[15px] placeholder-white/30 focus:outline-none focus:border-white/25 focus:bg-white/[0.07] transition-all"
+                                  className="w-full pl-12 pr-4 py-3.5 rounded-xl text-white text-[15px] placeholder-white/30 focus:outline-none transition-all"
+                                  style={{
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    backdropFilter: 'blur(20px)',
+                                    WebkitBackdropFilter: 'blur(20px)',
+                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                                  }}
                                   autoFocus
                                 />
                               </div>
@@ -145,7 +161,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
                             <button
                               onClick={handleNext}
-                              className="w-full py-3.5 rounded-xl bg-white/10 border border-white/10 text-white font-medium flex items-center justify-center gap-2 hover:bg-white/15 hover:border-white/20 transition-all mt-6"
+                              className="w-full py-3.5 rounded-xl text-white font-medium flex items-center justify-center gap-2 transition-all mt-6"
+                              style={{
+                                background: 'rgba(168, 85, 247, 0.3)',
+                                backdropFilter: 'blur(20px)',
+                                WebkitBackdropFilter: 'blur(20px)',
+                                border: '1px solid rgba(168, 85, 247, 0.5)',
+                                boxShadow: '0 4px 12px rgba(168, 85, 247, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                              }}
                             >
                               Continue
                               <ArrowRight size={18} />
@@ -178,7 +201,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                               placeholder="Things you'd like TimeMachine to know about you..."
                               rows={4}
                               maxLength={500}
-                              className="w-full px-4 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white text-[15px] placeholder-white/30 focus:outline-none focus:border-white/25 focus:bg-white/[0.07] transition-all resize-none"
+                              className="w-full px-4 py-3.5 rounded-xl text-white text-[15px] placeholder-white/30 focus:outline-none transition-all resize-none"
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                backdropFilter: 'blur(20px)',
+                                WebkitBackdropFilter: 'blur(20px)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                              }}
                             />
                             <p className="text-white/30 text-xs text-right">
                               {aboutMe.length}/500
@@ -194,7 +224,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                                   <button
                                     key={i}
                                     onClick={() => setAboutMe(suggestion)}
-                                    className="px-3 py-1.5 text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/50 hover:text-white/70 transition-all"
+                                    className="px-3 py-1.5 text-xs rounded-full text-white/50 hover:text-white/70 transition-all"
+                                    style={{
+                                      background: 'rgba(255, 255, 255, 0.05)',
+                                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                                    }}
                                   >
                                     {suggestion}
                                   </button>
@@ -215,14 +249,28 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                             <div className="flex gap-3 mt-6">
                               <button
                                 onClick={() => setStep(1)}
-                                className="flex-1 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white/70 font-medium hover:bg-white/10 hover:text-white transition-all"
+                                className="flex-1 py-3.5 rounded-xl text-white/70 font-medium hover:text-white transition-all"
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.05)',
+                                  backdropFilter: 'blur(20px)',
+                                  WebkitBackdropFilter: 'blur(20px)',
+                                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                                }}
                               >
                                 Back
                               </button>
                               <button
                                 onClick={handleComplete}
                                 disabled={loading}
-                                className="flex-[2] py-3.5 rounded-xl bg-white/10 border border-white/10 text-white font-medium flex items-center justify-center gap-2 hover:bg-white/15 hover:border-white/20 transition-all disabled:opacity-50"
+                                className="flex-[2] py-3.5 rounded-xl text-white font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                                style={{
+                                  background: 'rgba(168, 85, 247, 0.3)',
+                                  backdropFilter: 'blur(20px)',
+                                  WebkitBackdropFilter: 'blur(20px)',
+                                  border: '1px solid rgba(168, 85, 247, 0.5)',
+                                  boxShadow: '0 4px 12px rgba(168, 85, 247, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                                }}
                               >
                                 {loading ? (
                                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
