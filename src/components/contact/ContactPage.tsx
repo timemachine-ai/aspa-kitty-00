@@ -99,7 +99,7 @@ export function ContactPage() {
           >
             <h2 className="text-2xl font-bold text-white mb-4">Get in Touch</h2>
             <p className="text-white/70 leading-relaxed">
-              Have questions, feedback, or just want to say hi? We'd love to hear from you.
+              Have questions, feedback, suggestion, or just want to say hi? We'd love to hear from you.
             </p>
           </div>
 
@@ -226,7 +226,7 @@ export function ContactPage() {
                 <Mail className="w-5 h-5 text-purple-400" />
                 <div>
                   <p className="text-sm text-white">Email</p>
-                  <p className="text-xs text-white/50">hello@timemachine.ai</p>
+                  <p className="text-xs text-white/50">team@timemachinechat.com</p>
                 </div>
               </a>
             </div>
@@ -239,7 +239,7 @@ export function ContactPage() {
             transition={{ delay: 0.5 }}
             className="text-center text-white/20 text-xs mt-8"
           >
-            TimeMachine v1.0
+            TimeMachine Chat v1.0
           </motion.p>
         </motion.div>
       </div>
