@@ -59,15 +59,6 @@ export function AboutPage() {
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
             }}
           >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="inline-flex p-4 rounded-2xl bg-purple-500/20 mb-6"
-            >
-              <Sparkles className="w-8 h-8 text-purple-400" />
-            </motion.div>
-
             <h2 className="text-3xl font-bold text-white mb-4">TimeMachine</h2>
             <p className="text-white/70 leading-relaxed">
               The fastest AI in the world. Built for everyone, by TimeMachine Engineering.

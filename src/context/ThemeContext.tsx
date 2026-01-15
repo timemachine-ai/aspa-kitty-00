@@ -40,6 +40,7 @@ const ThemeContext = createContext<ThemeContextType>({
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>('dark');
   const [season, setSeason] = useState<SeasonTheme>('autumnDark');
+  const [previousSeason, setPreviousSeason] = useState<SeasonTheme>('autumnDark');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [defaultTheme, setDefaultTheme] = useState<DefaultThemeType | null>(() => {
     const saved = localStorage.getItem('defaultTheme');
@@ -119,8 +120,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const handleSetMode = (newMode: ThemeMode) => {
     setMode(newMode);
     if (newMode === 'monochrome') {
+      // Save current season before switching to monochrome
+      if (season !== 'monochrome') {
+        setPreviousSeason(season);
+        localStorage.setItem('previousSeasonTheme', season);
+      }
       setSeason('monochrome');
       localStorage.setItem('seasonTheme', 'monochrome');
+    } else {
+      // Restore previous season when turning off monochrome
+      const savedPreviousSeason = localStorage.getItem('previousSeasonTheme') as SeasonTheme;
+      const restoredSeason = savedPreviousSeason || previousSeason || 'autumnDark';
+      setSeason(restoredSeason);
+      localStorage.setItem('seasonTheme', restoredSeason);
     }
     localStorage.setItem('themeMode', newMode);
   };

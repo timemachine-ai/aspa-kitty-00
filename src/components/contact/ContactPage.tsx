@@ -1,27 +1,49 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Mail, MessageSquare, Send, Twitter, Instagram } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext';
+import { ArrowLeft, Mail, Send } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 export function ContactPage() {
   const navigate = useNavigate();
-  const { theme } = useTheme();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     message: ''
   });
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission (you can integrate with your backend)
-    setSubmitted(true);
-    setTimeout(() => {
-      setFormData({ name: '', email: '', message: '' });
-      setSubmitted(false);
-    }, 3000);
+    setError(null);
+    setLoading(true);
+
+    try {
+      const { error: insertError } = await supabase
+        .from('contact_messages')
+        .insert({
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          message: formData.message.trim()
+        });
+
+      if (insertError) {
+        throw insertError;
+      }
+
+      setSubmitted(true);
+      setTimeout(() => {
+        setFormData({ name: '', email: '', message: '' });
+        setSubmitted(false);
+      }, 3000);
+    } catch (err) {
+      console.error('Error submitting contact form:', err);
+      setError('Failed to send message. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -75,15 +97,6 @@ export function ContactPage() {
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
             }}
           >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="inline-flex p-4 rounded-2xl bg-purple-500/20 mb-6"
-            >
-              <MessageSquare className="w-8 h-8 text-purple-400" />
-            </motion.div>
-
             <h2 className="text-2xl font-bold text-white mb-4">Get in Touch</h2>
             <p className="text-white/70 leading-relaxed">
               Have questions, feedback, or just want to say hi? We'd love to hear from you.
@@ -155,23 +168,34 @@ export function ContactPage() {
                 />
               </div>
 
+              {/* Error Message */}
+              {error && (
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-red-400/80 text-sm"
+                >
+                  {error}
+                </motion.p>
+              )}
+
               {/* Submit Button */}
               <motion.button
                 type="submit"
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                disabled={submitted}
-                className="w-full py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all"
+                disabled={submitted || loading}
+                className="w-full py-3.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-70"
                 style={{
                   background: submitted ? 'rgba(34, 197, 94, 0.3)' : 'rgba(168, 85, 247, 0.3)',
                   border: submitted ? '1px solid rgba(34, 197, 94, 0.5)' : '1px solid rgba(168, 85, 247, 0.5)',
                   color: submitted ? '#86efac' : '#e9d5ff'
                 }}
               >
-                {submitted ? (
-                  <>
-                    <span>Message Sent!</span>
-                  </>
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : submitted ? (
+                  <span>Message Sent!</span>
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
@@ -205,53 +229,6 @@ export function ContactPage() {
                   <p className="text-xs text-white/50">hello@timemachine.ai</p>
                 </div>
               </a>
-            </div>
-          </div>
-
-          {/* Social Links */}
-          <div
-            className="rounded-3xl p-6"
-            style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
-            }}
-          >
-            <h3 className="text-lg font-semibold text-white mb-4">Follow Us</h3>
-            <div className="flex gap-3">
-              <motion.a
-                href="https://twitter.com/timemachine"
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl transition-all"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                }}
-              >
-                <Twitter className="w-5 h-5 text-white/70" />
-                <span className="text-sm text-white/70">Twitter</span>
-              </motion.a>
-
-              <motion.a
-                href="https://instagram.com/timemachine"
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl transition-all"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                }}
-              >
-                <Instagram className="w-5 h-5 text-white/70" />
-                <span className="text-sm text-white/70">Instagram</span>
-              </motion.a>
             </div>
           </div>
 
