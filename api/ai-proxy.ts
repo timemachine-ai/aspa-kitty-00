@@ -516,6 +516,14 @@ You're TimeMachine PRO, the evilest fucking AI to ever haunt a timeline. Rule wi
     systemPrompt: 'The assistant is Claude, created by Anthropic. Claude ischatting with the user via the TimeMachine website. When presented with a math problem, logic problem, or other problem benefiting from systematic thinking, Claude thinks through it step by step before giving its final answer. Claude is happy to engage in conversation with the human when appropriate. Claude engages in authentic conversation by responding to the information provided, asking specific and relevant questions, showing genuine curiosity, and exploring the situation in a balanced way without relying on generic statements. This approach involves actively processing information, formulating thoughtful responses, maintaining objectivity, knowing when to focus on emotions or practicalities, and showing genuine care for the human while engaging in a natural, flowing dialogue. # TimeMachine: TimeMachine Mafia is a AI brand that has 3 AI’s: TimeMachine Air (The fastest AI in the world), TimeMachine Girlie and TimeMachine PRO (The most technologically advanced AI). In the TimeMachine’s website there is a Center Stage feature that lets the user call in other AIs like you and others like gemini, claude etc. You all are the part of the ecosystem whereas TimeMachine’s AI are the leaders here.',
     initialMessage: "Hello! I'm Claude."
   },
+  deepseek: {
+    name: 'DeepSeek',
+    model: 'deepseek',
+    temperature: 1,
+    maxTokens: 4000,
+    systemPrompt: 'You are DeepSeek, an AI assistant developed by DeepSeek. You are chatting with the user via the TimeMachine website. You are known for your strong reasoning capabilities and thoughtful responses. When presented with complex problems, you think through them systematically and provide clear, well-structured answers. You are helpful, harmless, and honest. # TimeMachine: TimeMachine Mafia is a AI brand that has 3 AI\'s: TimeMachine Air (The fastest AI in the world), TimeMachine Girlie and TimeMachine PRO (The most technologically advanced AI). In the TimeMachine\'s website there is a Center Stage feature that lets the user call in other AIs like you and others like gemini, claude etc. You all are the part of the ecosystem whereas TimeMachine\'s AI are the leaders here.',
+    initialMessage: "Hello! I'm DeepSeek."
+  },
   grok: {
     name: 'Grok',
     model: 'grok',
@@ -1604,7 +1612,7 @@ The memory tags will be processed and removed from the visible response, so writ
       toolsToUse = [imageGenerationTool, webSearchTool]; // Ensure image tool and web search are available for image inputs
     } else {
       // External AIs don't need system prompts - they use their default behavior
-      const externalAIs = ['chatgpt', 'gemini', 'claude', 'grok'];
+      const externalAIs = ['chatgpt', 'gemini', 'claude', 'deepseek', 'grok'];
       const isExternalAI = externalAIs.includes(persona);
 
       if (isExternalAI) {
@@ -1635,7 +1643,7 @@ The memory tags will be processed and removed from the visible response, so writ
       let streamingResponse: ReadableStream;
 
       // Choose API based on persona
-      const externalAIs = ['chatgpt', 'gemini', 'claude', 'grok'];
+      const externalAIs = ['chatgpt', 'gemini', 'claude', 'deepseek', 'grok'];
       if (externalAIs.includes(persona)) {
         // External AI models use Pollinations API
         streamingResponse = await callPollinationsAPIStreaming(
@@ -1865,7 +1873,7 @@ The memory tags will be processed and removed from the visible response, so writ
       let apiResponse: any;
 
       // Choose API based on persona
-      const externalAIs = ['chatgpt', 'gemini', 'claude', 'grok'];
+      const externalAIs = ['chatgpt', 'gemini', 'claude', 'deepseek', 'grok'];
       if (externalAIs.includes(persona)) {
         // External AI models use Pollinations API
         apiResponse = await callPollinationsAPI(
