@@ -164,12 +164,12 @@ export function MusicPlayer({ currentPersona = 'default' }: MusicPlayerProps) {
                       </button>
                     </div>
 
-                    {/* Notification Banner - YouTube Red */}
-                    <div className="px-3 py-2.5 bg-[#FF0000]">
-                      <p className="text-white font-medium text-sm">
+                    {/* Notification Banner - Glass Style */}
+                    <div className="px-3 py-2.5 border-b border-white/10">
+                      <p className="text-white/90 font-medium text-sm">
                         Ask TimeMachine to Play Any Song
                       </p>
-                      <p className="text-white/90 text-xs mt-0.5">
+                      <p className="text-white/50 text-xs mt-0.5">
                         You can now ask TimeMachine to play any song! Example: "Play Shape of You"
                       </p>
                     </div>
