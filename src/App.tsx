@@ -16,7 +16,7 @@ import { ChatMode } from './components/chat/ChatMode';
 import { StageMode } from './components/chat/StageMode';
 import { RateLimitModal } from './components/modals/RateLimitModal';
 import { WelcomeModal } from './components/modals/WelcomeModal';
-import { AuthModal, OnboardingModal, AccountPage } from './components/auth';
+import { AuthModal, OnboardingModal, AccountPage, ResetPasswordPage } from './components/auth';
 import { ChatHistoryPage } from './components/chat/ChatHistoryPage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { AlbumPage } from './components/album/AlbumPage';
@@ -830,6 +830,7 @@ function AppContent() {
       <Route path="/album" element={<AlbumPage />} />
       <Route path="/memories" element={<MemoriesPage />} />
       <Route path="/help" element={<HelpPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/chat/:id" element={<ChatByIdPage />} />
       <Route path="/groupchat/:id" element={<GroupChatWrapper />} />
       <Route path="/groupchat/:id/settings" element={<GroupSettingsPage />} />
