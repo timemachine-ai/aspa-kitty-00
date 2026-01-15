@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Sun, Moon, Palette } from 'lucide-react';
+import { ArrowLeft, Palette, Info, Mail } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { seasonThemes } from '../../themes/seasons';
 
@@ -111,30 +111,43 @@ export function SettingsPage() {
             <div className="space-y-4">
               <h2 className="text-lg font-semibold text-white">Appearance</h2>
 
-              {/* Theme Mode Selector */}
+              {/* Monochrome Toggle */}
               <div className="space-y-3">
-                <label className="text-sm font-medium text-white/60">Theme Mode</label>
-                <div className="flex gap-2">
-                  {['light', 'dark', 'monochrome'].map((option) => (
-                    <motion.button
-                      key={option}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setMode(option as 'light' | 'dark' | 'monochrome')}
-                      className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium
-                        ${mode === option
-                          ? 'bg-purple-500/30 border-purple-500/50 text-purple-200'
-                          : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
-                        }
-                        border transition-all duration-200
-                        flex items-center justify-center gap-2`}
-                    >
-                      {option === 'light' && <Sun className="w-4 h-4" />}
-                      {option === 'dark' && <Moon className="w-4 h-4" />}
-                      {option === 'monochrome' && <Palette className="w-4 h-4" />}
-                      <span className="capitalize">{option}</span>
-                    </motion.button>
-                  ))}
+                <div
+                  className="flex items-center justify-between p-4 rounded-xl"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <Palette className="w-5 h-5 text-white/60" />
+                    <div>
+                      <p className="text-sm font-medium text-white">Monochrome Mode</p>
+                      <p className="text-xs text-white/50">Black and white theme</p>
+                    </div>
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setMode(mode === 'monochrome' ? 'dark' : 'monochrome')}
+                    className={`relative w-12 h-7 rounded-full transition-colors duration-300 ${
+                      mode === 'monochrome' ? 'bg-purple-500' : 'bg-white/20'
+                    }`}
+                    style={{
+                      boxShadow: mode === 'monochrome'
+                        ? '0 0 20px rgba(168, 85, 247, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                        : 'inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                    }}
+                  >
+                    <motion.div
+                      className="absolute top-1 w-5 h-5 rounded-full bg-white shadow-lg"
+                      animate={{ left: mode === 'monochrome' ? '26px' : '4px' }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    />
+                  </motion.button>
                 </div>
               </div>
 
@@ -192,6 +205,52 @@ export function SettingsPage() {
               <h2 className="text-lg font-semibold text-white">Seasons</h2>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 p-4 rounded-xl bg-white/5 border border-white/10">
                 {seasonButtons}
+              </div>
+            </div>
+
+            {/* About & Contact Section */}
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-white">More</h2>
+              <div className="space-y-3">
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => navigate('/about')}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl text-left transition-all"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                  }}
+                >
+                  <Info className="w-5 h-5 text-purple-400" />
+                  <div>
+                    <p className="text-sm font-medium text-white">About Us</p>
+                    <p className="text-xs text-white/50">Learn more about TimeMachine</p>
+                  </div>
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={() => navigate('/contact')}
+                  className="w-full flex items-center gap-3 p-4 rounded-xl text-left transition-all"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)'
+                  }}
+                >
+                  <Mail className="w-5 h-5 text-purple-400" />
+                  <div>
+                    <p className="text-sm font-medium text-white">Contact with Us</p>
+                    <p className="text-xs text-white/50">Get in touch with our team</p>
+                  </div>
+                </motion.button>
               </div>
             </div>
           </div>

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// Pollinations API secret key - NEVER expose this to the client
-const POLLINATIONS_API_KEY = 'sk_Hdfia0UMfFw0d4bwhiyXTjJSry6u6tbU';
+// Pollinations API key from environment variable
+const POLLINATIONS_API_KEY = process.env.POLLINATIONS_API_KEY || '';
 
 type Persona = 'default' | 'girlie' | 'pro' | 'chatgpt' | 'gemini' | 'claude' | 'grok';
 type Process = 'create' | 'edit';
