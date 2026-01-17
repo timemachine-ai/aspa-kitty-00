@@ -49,10 +49,16 @@ function constructPollinationsUrl(params: ImageParams): URL {
   url.searchParams.set('key', POLLINATIONS_API_KEY);
 
   if (process === 'edit') {
-    // For edit process: use original image dimensions if provided
+    // For edit process: use original image dimensions if provided, otherwise use defaults based on orientation
     if (originalWidth && originalHeight) {
       url.searchParams.set('width', String(originalWidth));
       url.searchParams.set('height', String(originalHeight));
+    } else {
+      // Default dimensions for edit when not provided
+      const defaultWidth = orientation === 'landscape' ? 1920 : 1080;
+      const defaultHeight = orientation === 'landscape' ? 1080 : 1920;
+      url.searchParams.set('width', String(defaultWidth));
+      url.searchParams.set('height', String(defaultHeight));
     }
   } else {
     // For create process: include width/height based on orientation
