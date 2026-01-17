@@ -165,19 +165,24 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     dismissPendingMusic
   } = useChat(user?.id, profile || undefined, initialPersona, authLoading);
 
-  // Track if we've already processed the session to prevent infinite loops
+  // Use a ref for loadChat to avoid it being a dependency that causes re-runs
+  const loadChatRef = useRef(loadChat);
+  loadChatRef.current = loadChat;
+
+  // Track if we've already processed the session to prevent duplicate loads
   const sessionLoadedRef = useRef<string | null>(null);
 
   // Load chat session from navigation state (when coming from history page)
+  // Only runs once when location.state changes, not when loadChat is recreated
   useEffect(() => {
     const sessionToLoad = location.state?.sessionToLoad as ChatSession | undefined;
     if (sessionToLoad && sessionLoadedRef.current !== sessionToLoad.id) {
       sessionLoadedRef.current = sessionToLoad.id;
-      loadChat(sessionToLoad);
+      loadChatRef.current(sessionToLoad);
       // Clear the navigation state to prevent reloading on refresh
       window.history.replaceState({}, '', '/');
     }
-  }, [location.state, loadChat]);
+  }, [location.state]); // Intentionally excluding loadChat - using ref instead
 
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
 
