@@ -108,6 +108,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
   const { theme } = useTheme();
   const { user, profile, loading: authLoading, needsOnboarding, updateLastPersona } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Group chat mode detection
@@ -163,6 +164,16 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     playPendingMusic,
     dismissPendingMusic
   } = useChat(user?.id, profile || undefined, initialPersona, authLoading);
+
+  // Load chat session from navigation state (when coming from history page)
+  useEffect(() => {
+    const sessionToLoad = location.state?.sessionToLoad as ChatSession | undefined;
+    if (sessionToLoad) {
+      loadChat(sessionToLoad);
+      // Clear the navigation state to prevent reloading on refresh
+      navigate('/', { replace: true, state: {} });
+    }
+  }, [location.state, loadChat, navigate]);
 
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
 
@@ -805,10 +816,6 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
 function AppContent() {
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const { user } = useAuth();
-
-  // Get loadChat function for history page
-  const { loadChat } = useChat(user?.id);
 
   return (
     <Routes>
@@ -820,8 +827,8 @@ function AppContent() {
       } />
       <Route path="/history" element={
         <ChatHistoryPage onLoadChat={(session) => {
-          loadChat(session);
-          navigate('/');
+          // Pass session via navigation state so MainChatPage can load it
+          navigate('/', { state: { sessionToLoad: session } });
         }} />
       } />
       <Route path="/settings" element={<SettingsPage />} />
