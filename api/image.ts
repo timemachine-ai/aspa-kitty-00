@@ -152,7 +152,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const errorText = await imageResponse.text().catch(() => '');
       console.error('Pollinations API error:', imageResponse.status, errorText);
       console.error('Request URL was:', debugUrl);
-      return res.status(502).json({ error: 'Failed to generate image', details: errorText });
+      return res.status(502).json({
+        error: 'Failed to generate image',
+        pollinationsStatus: imageResponse.status,
+        pollinationsError: errorText,
+        requestUrl: debugUrl
+      });
     }
 
     // Get the image as a buffer
