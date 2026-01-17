@@ -295,14 +295,29 @@ export function useChat(
       }
     }
 
-    setMessages(prev => prev.map(msg =>
-      msg.id === messageId
-        ? { ...msg, content: processedContent, thinking, audioUrl, hasAnimated: false }
-        : msg
-    ));
+    // Update the message with final content
+    setMessages(prev => {
+      const updatedMessages = prev.map(msg =>
+        msg.id === messageId
+          ? { ...msg, content: processedContent, thinking, audioUrl, hasAnimated: false }
+          : msg
+      );
+
+      // Force immediate save after streaming completes to prevent data loss
+      // This is critical - debounced saves can be cancelled if user navigates away
+      if (currentSessionId && !isCollaborative) {
+        // Use setTimeout(0) to ensure this runs after state update is applied
+        setTimeout(() => {
+          saveChatSession(currentSessionId, updatedMessages, currentPersona, true);
+        }, 0);
+      }
+
+      return updatedMessages;
+    });
+
     setStreamingMessageId(null);
     setIsLoading(false);
-    isStreamingRef.current = false; // Mark streaming as complete - now it's safe to save
+    isStreamingRef.current = false; // Mark streaming as complete
 
     // If in collaborative mode, sync AI message to group_chat_messages table
     if (isCollaborative && collaborativeId && userId && userProfile?.nickname) {
@@ -318,7 +333,7 @@ export function useChat(
         thinking
       );
     }
-  }, [userId, isCollaborative, collaborativeId, userProfile]);
+  }, [userId, isCollaborative, collaborativeId, userProfile, currentSessionId, currentPersona, saveChatSession]);
 
   const extractEmotion = (content: string): string | null => {
     const match = content.match(/<emotion>([a-z]+)<\/emotion>/i);
