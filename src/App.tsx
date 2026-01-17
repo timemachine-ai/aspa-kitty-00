@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { ChatInput } from './components/chat/ChatInput';
 import { BrandLogo } from './components/brand/BrandLogo';
@@ -165,15 +165,19 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     dismissPendingMusic
   } = useChat(user?.id, profile || undefined, initialPersona, authLoading);
 
+  // Track if we've already processed the session to prevent infinite loops
+  const sessionLoadedRef = useRef<string | null>(null);
+
   // Load chat session from navigation state (when coming from history page)
   useEffect(() => {
     const sessionToLoad = location.state?.sessionToLoad as ChatSession | undefined;
-    if (sessionToLoad) {
+    if (sessionToLoad && sessionLoadedRef.current !== sessionToLoad.id) {
+      sessionLoadedRef.current = sessionToLoad.id;
       loadChat(sessionToLoad);
       // Clear the navigation state to prevent reloading on refresh
-      navigate('/', { replace: true, state: {} });
+      window.history.replaceState({}, '', '/');
     }
-  }, [location.state, loadChat, navigate]);
+  }, [location.state, loadChat]);
 
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
 
