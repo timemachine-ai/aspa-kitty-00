@@ -17,7 +17,7 @@ interface ImageParams {
   height?: number; // Original image height for edit operations
 }
 
-function constructPollinationsUrl(params: ImageParams): string {
+function constructPollinationsUrl(params: ImageParams): URL {
   const {
     prompt,
     orientation = 'portrait',
@@ -38,7 +38,7 @@ function constructPollinationsUrl(params: ImageParams): string {
     model = persona === 'girlie' ? 'zimage' : 'seedream-pro';
   }
 
-  // Use WHATWG URL API for base URL construction
+  // Use WHATWG URL API to avoid url.parse() deprecation warning
   const url = new URL(`https://enter.pollinations.ai/api/generate/image/${encodeURIComponent(prompt)}`);
 
   // Add common parameters
@@ -68,15 +68,14 @@ function constructPollinationsUrl(params: ImageParams): string {
     url.searchParams.set('height', String(height));
   }
 
-  // IMPORTANT: Pollinations expects the image URL to be RAW/unencoded
-  // searchParams.set() would encode it, breaking the request
-  // So we manually append it to the URL string
+  // Handle multiple reference images (up to 4)
+  // Note: Don't use encodeURIComponent here - searchParams.set() handles encoding automatically
   if (inputImageUrls && inputImageUrls.length > 0) {
     const imageUrls = inputImageUrls.slice(0, 4).join(',');
-    return url.toString() + '&image=' + imageUrls;
+    url.searchParams.set('image', imageUrls);
   }
 
-  return url.toString();
+  return url;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -135,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     // Log the URL for debugging (mask the API key)
-    const debugUrl = pollinationsUrl.replace(/key=[^&]+/, 'key=***');
+    const debugUrl = pollinationsUrl.toString().replace(/key=[^&]+/, 'key=***');
     console.log('Pollinations request URL:', debugUrl);
     console.log('Parsed image URLs:', parsedImageUrls);
 
