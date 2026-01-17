@@ -83,14 +83,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setError(signUpError.message);
             }
           } else {
-            // Account created, now send OTP for email verification
-            const { error: otpError } = await signUpWithOtp(email);
-            if (otpError) {
-              setError(otpError.message);
-            } else {
-              setSuccess('Verification code sent to your email!');
-              setStep('otp-verify');
-            }
+            // Account created, Supabase sends the verification email automatically
+            setSuccess('Verification code sent to your email!');
+            setStep('otp-verify');
           }
         } else if (step === 'otp-verify') {
           // Step 2: Verify OTP to confirm email
