@@ -111,6 +111,10 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Check if we're loading a session from history BEFORE useChat initialization
+  // This prevents the init effect from overwriting loaded messages
+  const sessionToLoad = location.state?.sessionToLoad as ChatSession | undefined;
+
   // Group chat mode detection
   const isGroupMode = !!groupChatId;
 
@@ -125,9 +129,11 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
   const [replyTo, setReplyTo] = useState<{ id: number; content: string; sender_nickname?: string; isAI: boolean } | null>(null);
 
   // Get initial persona from profile (validated against AI_PERSONAS)
-  // Only set initialPersona once auth is done loading to avoid flash of default persona
+  // If loading from history, use the session's persona instead
   const savedPersona = profile?.last_persona as keyof typeof AI_PERSONAS | null;
-  const initialPersona = !authLoading && savedPersona && savedPersona in AI_PERSONAS ? savedPersona : undefined;
+  const initialPersona = sessionToLoad
+    ? sessionToLoad.persona
+    : (!authLoading && savedPersona && savedPersona in AI_PERSONAS ? savedPersona : undefined);
 
   const {
     messages,
@@ -163,26 +169,25 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     pendingRemoteMusic,
     playPendingMusic,
     dismissPendingMusic
-  } = useChat(user?.id, profile || undefined, initialPersona, authLoading);
+  } = useChat(
+    user?.id,
+    profile || undefined,
+    initialPersona,
+    authLoading,
+    // Pass session to load directly so it's available immediately on mount
+    sessionToLoad ? {
+      messages: sessionToLoad.messages.filter(msg => msg.content && msg.content.trim() !== ''),
+      id: sessionToLoad.id,
+      heat_level: sessionToLoad.heat_level
+    } : null
+  );
 
-  // Use a ref for loadChat to avoid it being a dependency that causes re-runs
-  const loadChatRef = useRef(loadChat);
-  loadChatRef.current = loadChat;
-
-  // Track if we've already processed the session to prevent duplicate loads
-  const sessionLoadedRef = useRef<string | null>(null);
-
-  // Load chat session from navigation state (when coming from history page)
-  // Only runs once when location.state changes, not when loadChat is recreated
+  // Clear navigation state after loading session to prevent reload on refresh
   useEffect(() => {
-    const sessionToLoad = location.state?.sessionToLoad as ChatSession | undefined;
-    if (sessionToLoad && sessionLoadedRef.current !== sessionToLoad.id) {
-      sessionLoadedRef.current = sessionToLoad.id;
-      loadChatRef.current(sessionToLoad);
-      // Clear the navigation state to prevent reloading on refresh
+    if (sessionToLoad) {
       window.history.replaceState({}, '', '/');
     }
-  }, [location.state]); // Intentionally excluding loadChat - using ref instead
+  }, []); // Only run once on mount
 
   const { isRateLimited, getRemainingMessages, incrementCount, isAnonymous } = useAnonymousRateLimit();
 
