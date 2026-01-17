@@ -63,8 +63,9 @@ function constructPollinationsUrl(params: ImageParams): URL {
   }
 
   // Handle multiple reference images (up to 4)
+  // Note: Don't use encodeURIComponent here - searchParams.set() handles encoding automatically
   if (inputImageUrls && inputImageUrls.length > 0) {
-    const imageUrls = inputImageUrls.slice(0, 4).map(encodeURIComponent).join(',');
+    const imageUrls = inputImageUrls.slice(0, 4).join(',');
     url.searchParams.set('image', imageUrls);
   }
 
