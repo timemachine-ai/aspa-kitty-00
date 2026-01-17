@@ -127,6 +127,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       height: parsedHeight
     });
 
+    // Log the URL for debugging (mask the API key)
+    const debugUrl = pollinationsUrl.toString().replace(/key=[^&]+/, 'key=***');
+    console.log('Pollinations request URL:', debugUrl);
+    console.log('Parsed image URLs:', parsedImageUrls);
+
     // Fetch the image from Pollinations server-side
     const imageResponse = await fetch(pollinationsUrl, {
       method: 'GET',
@@ -136,8 +141,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     if (!imageResponse.ok) {
-      console.error('Pollinations API error:', imageResponse.status, await imageResponse.text().catch(() => ''));
-      return res.status(502).json({ error: 'Failed to generate image' });
+      const errorText = await imageResponse.text().catch(() => '');
+      console.error('Pollinations API error:', imageResponse.status, errorText);
+      console.error('Request URL was:', debugUrl);
+      return res.status(502).json({ error: 'Failed to generate image', details: errorText });
     }
 
     // Get the image as a buffer
