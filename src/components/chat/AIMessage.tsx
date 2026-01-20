@@ -235,8 +235,19 @@ export function AIMessage({
       </pre>
     ),
     img: ({ src, alt }: { src?: string; alt?: string }) => {
-      // Check if this is a generated image (proxy URL or legacy Pollinations URL)
-      if (src && (src.startsWith('/api/image?') || src.includes('enter.pollinations.ai'))) {
+      // Check if this is a generated image:
+      // 1. Alt text is "Generated Image" (preserved after URL replacement to Supabase)
+      // 2. OR proxy URL (/api/image?)
+      // 3. OR legacy Pollinations URL
+      // 4. OR Supabase storage URL (permanent storage for generated images)
+      const isGeneratedImage = alt === 'Generated Image' ||
+        (src && (
+          src.startsWith('/api/image?') ||
+          src.includes('enter.pollinations.ai') ||
+          src.includes('.supabase.co/storage/')
+        ));
+
+      if (src && isGeneratedImage) {
         return <GeneratedImage src={src} alt={alt || 'Generated image'} persona={displayPersona} />;
       }
 
