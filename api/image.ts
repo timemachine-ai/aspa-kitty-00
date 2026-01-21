@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Pollinations API key from environment variable
-const POLLINATIONS_API_KEY = process.env.POLLINATIONS_API_KEY || '';
+const POLLINATIONS_API_KEY = process.env.POLLINATIONS_API_KEY || 'sk_GOR3NDUo0aeq7ETRuYBgB2tFVsDYmsly';
 
 type Persona = 'default' | 'girlie' | 'pro' | 'chatgpt' | 'gemini' | 'claude' | 'grok';
 type Process = 'create' | 'edit';
