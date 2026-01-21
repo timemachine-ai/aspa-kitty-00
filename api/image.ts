@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Pollinations API key from environment variable
-const POLLINATIONS_API_KEY = process.env.POLLINATIONS_API_KEY || 'sk_GOR3NDUo0aeq7ETRuYBgB2tFVsDYmsly';
+const POLLINATIONS_API_KEY = process.env.POLLINATIONS_API_KEY || '';
 
 type Persona = 'default' | 'girlie' | 'pro' | 'chatgpt' | 'gemini' | 'claude' | 'grok';
 type Process = 'create' | 'edit';
@@ -69,12 +69,12 @@ function constructPollinationsUrl(params: ImageParams): URL {
   }
 
   // Handle multiple reference images (up to 4)
-  // IMPORTANT: The image parameter must be last in the URL and the value must be URL-encoded
-  // as per Pollinations API requirements
+  // IMPORTANT: Pollinations expects image URLs WITHOUT percent-encoding for : and /
+  // URLSearchParams.set() encodes these (https%3A%2F%2F), but Pollinations needs (https://)
+  // So we manually append the image parameter to preserve the raw URL format
   if (inputImageUrls && inputImageUrls.length > 0) {
     const imageUrls = inputImageUrls.slice(0, 4).join(',');
-    // URL-encode the image URLs value and append as the last parameter
-    url.searchParams.set('image', imageUrls);
+    return new URL(url.toString() + '&image=' + imageUrls);
   }
 
   return url;
