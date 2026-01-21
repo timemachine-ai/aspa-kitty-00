@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, X, ZoomIn } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
@@ -11,63 +11,62 @@ interface GeneratedImageProps {
   persona?: keyof typeof AI_PERSONAS;
 }
 
-const getPersonaShimmerColors = (persona: keyof typeof AI_PERSONAS = 'default') => {
-  switch (persona) {
-    case 'girlie':
-      return { baseColor: '#ec4899', shimmerColor: '#ffffff' }; // Pink
-    case 'pro':
-      return { baseColor: '#06b6d4', shimmerColor: '#ffffff' }; // Cyan
-    case 'chatgpt':
-      return { baseColor: '#22c55e', shimmerColor: '#ffffff' }; // Green
-    case 'gemini':
-      return { baseColor: '#3b82f6', shimmerColor: '#ffffff' }; // Blue
-    case 'claude':
-      return { baseColor: '#f97316', shimmerColor: '#ffffff' }; // Orange
-    case 'grok':
-      return { baseColor: '#9ca3af', shimmerColor: '#ffffff' }; // Gray
-    default:
-      return { baseColor: '#a855f7', shimmerColor: '#ffffff' }; // Purple (Air)
-  }
+// Memoized shimmer colors lookup - defined outside component to avoid recreation
+const PERSONA_SHIMMER_COLORS: Record<string, { baseColor: string; shimmerColor: string }> = {
+  girlie: { baseColor: '#ec4899', shimmerColor: '#ffffff' }, // Pink
+  pro: { baseColor: '#06b6d4', shimmerColor: '#ffffff' }, // Cyan
+  chatgpt: { baseColor: '#22c55e', shimmerColor: '#ffffff' }, // Green
+  gemini: { baseColor: '#3b82f6', shimmerColor: '#ffffff' }, // Blue
+  claude: { baseColor: '#f97316', shimmerColor: '#ffffff' }, // Orange
+  grok: { baseColor: '#9ca3af', shimmerColor: '#ffffff' }, // Gray
+  default: { baseColor: '#a855f7', shimmerColor: '#ffffff' }, // Purple (Air)
 };
 
-export function GeneratedImage({ src, alt, persona = 'default' }: GeneratedImageProps) {
+const getPersonaShimmerColors = (persona: keyof typeof AI_PERSONAS = 'default') => {
+  return PERSONA_SHIMMER_COLORS[persona] || PERSONA_SHIMMER_COLORS.default;
+};
+
+function GeneratedImageComponent({ src, alt, persona = 'default' }: GeneratedImageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showFullView, setShowFullView] = useState(false);
   const { theme } = useTheme();
 
-  const handleImageLoad = () => {
+  // Memoize shimmer colors to prevent object recreation
+  const shimmerColors = useMemo(() => getPersonaShimmerColors(persona), [persona]);
+
+  const handleImageLoad = useCallback(() => {
     setIsLoading(false);
     setHasError(false);
-  };
+  }, []);
 
-  const handleImageError = () => {
+  const handleImageError = useCallback(() => {
     setIsLoading(false);
     setHasError(true);
-  };
+  }, []);
 
-  const handleDownload = async (e: React.MouseEvent) => {
+  const handleDownload = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       setIsDownloading(true);
-      
+
       const response = await fetch(src);
       if (!response.ok) throw new Error('Failed to fetch image');
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      
-      const filename = alt 
+
+      const filename = alt
         ? `${alt.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`
         : 'generated_image.png';
-      
+
       link.download = filename;
       document.body.appendChild(link);
       link.click();
-      
+
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
@@ -75,13 +74,23 @@ export function GeneratedImage({ src, alt, persona = 'default' }: GeneratedImage
     } finally {
       setIsDownloading(false);
     }
-  };
+  }, [src, alt]);
 
-  const handleImageClick = () => {
+  const handleImageClick = useCallback(() => {
     if (!isLoading && !hasError) {
       setShowFullView(true);
     }
-  };
+  }, [isLoading, hasError]);
+
+  const handleRetry = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setHasError(false);
+    setIsLoading(true);
+  }, []);
+
+  const handleCloseFullView = useCallback(() => {
+    setShowFullView(false);
+  }, []);
 
   return (
     <>
@@ -99,8 +108,8 @@ export function GeneratedImage({ src, alt, persona = 'default' }: GeneratedImage
               <AnimatedShinyText
                 text="Let me cook"
                 useShimmer={true}
-                baseColor={getPersonaShimmerColors(persona).baseColor}
-                shimmerColor={getPersonaShimmerColors(persona).shimmerColor}
+                baseColor={shimmerColors.baseColor}
+                shimmerColor={shimmerColors.shimmerColor}
                 gradientAnimationDuration={2}
                 textClassName="text-base"
                 className="py-2"
@@ -116,11 +125,7 @@ export function GeneratedImage({ src, alt, persona = 'default' }: GeneratedImage
                 Failed to load generated image
               </p>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setHasError(false);
-                  setIsLoading(true);
-                }}
+                onClick={handleRetry}
                 className={`px-4 py-2 rounded-xl text-sm
                   bg-white/10 hover:bg-white/20
                   ${theme.text} transition-colors`}
@@ -201,7 +206,7 @@ export function GeneratedImage({ src, alt, persona = 'default' }: GeneratedImage
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 flex items-center justify-center p-4"
-            onClick={() => setShowFullView(false)}
+            onClick={handleCloseFullView}
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -219,7 +224,7 @@ export function GeneratedImage({ src, alt, persona = 'default' }: GeneratedImage
               
               {/* Close button */}
               <button
-                onClick={() => setShowFullView(false)}
+                onClick={handleCloseFullView}
                 className="absolute top-4 right-4 p-3 rounded-full
                   bg-black/60 hover:bg-black/80
                   backdrop-blur-md border border-white/20
@@ -262,3 +267,6 @@ export function GeneratedImage({ src, alt, persona = 'default' }: GeneratedImage
     </>
   );
 }
+
+// Memoize the component to prevent unnecessary re-renders when parent re-renders
+export const GeneratedImage = memo(GeneratedImageComponent);

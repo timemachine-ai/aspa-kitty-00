@@ -5,7 +5,7 @@ import { slideInFromRight, slideInFromLeft } from '../../utils/animations';
 import { useTheme } from '../../context/ThemeContext';
 import { AudioPlayerBubble } from './AudioPlayerBubble';
 
-export function UserMessage({ content, imageData, audioData, sender_nickname, sender_avatar, isGroupMode }: MessageProps) {
+export function UserMessage({ content, imageData, audioData, inputImageUrls, sender_nickname, sender_avatar, isGroupMode }: MessageProps) {
   const { theme } = useTheme();
 
   // Check if this is another user's message in group mode
@@ -53,8 +53,29 @@ export function UserMessage({ content, imageData, audioData, sender_nickname, se
             backdrop-blur-sm border
             ${theme.text} text-base`}
           >
-          {/* Display images if present */}
-          {imageData && (
+          {/* Display images if present - prefer inputImageUrls (persistent URLs) over imageData (base64) */}
+          {(inputImageUrls && inputImageUrls.length > 0) ? (
+            <div className="mb-3">
+              {inputImageUrls.length > 1 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {inputImageUrls.map((url, index) => (
+                    <img
+                      key={index}
+                      src={url}
+                      alt={`Uploaded image ${index + 1}`}
+                      className="max-w-full h-auto rounded-lg object-cover max-h-48"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <img
+                  src={inputImageUrls[0]}
+                  alt="Uploaded image"
+                  className="max-w-full h-auto rounded-lg object-cover max-h-48"
+                />
+              )}
+            </div>
+          ) : imageData && (
             <div className="mb-3">
               {Array.isArray(imageData) ? (
                 <div className="grid grid-cols-2 gap-2">

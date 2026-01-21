@@ -65,6 +65,7 @@ export interface MessageProps {
   thinking?: string;
   imageData?: string | string[];
   audioData?: string;
+  inputImageUrls?: string[]; // URLs of uploaded images (for persistence)
   // Group chat sender info
   sender_nickname?: string;
   sender_avatar?: string;
