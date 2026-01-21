@@ -35,6 +35,7 @@ export function ChatMessage({
   imageData,
   audioData,
   audioUrl,
+  inputImageUrls,
   isStreaming,
   streamingMessageId,
   isGroupMode,
@@ -266,6 +267,7 @@ export function ChatMessage({
         content={content}
         imageData={imageData}
         audioData={audioData}
+        inputImageUrls={inputImageUrls}
         sender_nickname={isOtherUserMessage ? sender_nickname : undefined}
         sender_avatar={isOtherUserMessage ? sender_avatar : undefined}
         isGroupMode={isGroupMode}
