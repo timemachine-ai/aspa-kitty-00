@@ -69,12 +69,12 @@ function constructPollinationsUrl(params: ImageParams): URL {
   }
 
   // Handle multiple reference images (up to 4)
-  // IMPORTANT: Pollinations expects image URLs WITHOUT percent-encoding for : and /
-  // URLSearchParams.set() encodes these (https%3A%2F%2F), but Pollinations needs (https://)
-  // So we manually append the image parameter to preserve the raw URL format
+  // IMPORTANT: The image parameter must be last in the URL and the value must be URL-encoded
+  // as per Pollinations API requirements
   if (inputImageUrls && inputImageUrls.length > 0) {
     const imageUrls = inputImageUrls.slice(0, 4).join(',');
-    return new URL(url.toString() + '&image=' + imageUrls);
+    // URL-encode the image URLs value and append as the last parameter
+    url.searchParams.set('image', imageUrls);
   }
 
   return url;
