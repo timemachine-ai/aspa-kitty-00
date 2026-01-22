@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -81,7 +81,7 @@ const processMemoryContent = (content: string): { cleanContent: string; hasSaved
   return { cleanContent, hasSavedMemory };
 };
 
-export function AIMessage({
+function AIMessageComponent({
   content,
   thinking: reasoning,
   isChatMode,
@@ -266,7 +266,9 @@ export function AIMessage({
     },
   }), [theme.text, personaColor, displayPersona]);
 
-  const MessageContent = () => (
+  // Inline the message content JSX - DO NOT use a function component here
+  // as it would cause remounting on every parent re-render
+  const messageContent = (
     <>
       {reasoning && (
         <div className="w-full max-w-4xl mx-auto mb-6">
@@ -471,14 +473,17 @@ export function AIMessage({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ 
+      transition={{
         duration: 0.6,
         ease: [0.25, 0.1, 0.25, 1],
       }}
       onAnimationComplete={() => !hasAnimated && onAnimationComplete(messageId)}
       className={`w-full`}
     >
-      <MessageContent />
+      {messageContent}
     </motion.div>
   );
 }
+
+// Memoize AIMessage to prevent re-renders when parent hover state changes
+export const AIMessage = memo(AIMessageComponent);
