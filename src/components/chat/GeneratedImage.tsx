@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, memo } from 'react';
+import React, { useState, useCallback, useMemo, memo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, X, ZoomIn } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
@@ -31,7 +31,40 @@ function GeneratedImageComponent({ src, alt, persona = 'default' }: GeneratedIma
   const [hasError, setHasError] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showFullView, setShowFullView] = useState(false);
+  const [displaySrc, setDisplaySrc] = useState(src);
   const { theme } = useTheme();
+
+  // Track if we've successfully loaded at least once - used to prevent showing
+  // loading state again when URL changes (e.g., proxy URL -> Supabase URL)
+  const hasLoadedOnceRef = useRef(false);
+  const previousSrcRef = useRef(src);
+
+  // Handle URL changes silently - preload new image in background
+  useEffect(() => {
+    // If src hasn't changed, do nothing
+    if (src === previousSrcRef.current) return;
+
+    previousSrcRef.current = src;
+
+    // If we've already loaded successfully, preload the new URL silently
+    if (hasLoadedOnceRef.current && !hasError) {
+      const img = new Image();
+      img.onload = () => {
+        // Silently swap to the new URL once it's loaded
+        setDisplaySrc(src);
+      };
+      img.onerror = () => {
+        // If new URL fails, keep showing the old one
+        console.warn('Failed to preload new image URL, keeping current');
+      };
+      img.src = src;
+    } else {
+      // First load or after error - show loading state
+      setDisplaySrc(src);
+      setIsLoading(true);
+      setHasError(false);
+    }
+  }, [src, hasError]);
 
   // Memoize shimmer colors to prevent object recreation
   const shimmerColors = useMemo(() => getPersonaShimmerColors(persona), [persona]);
@@ -39,6 +72,7 @@ function GeneratedImageComponent({ src, alt, persona = 'default' }: GeneratedIma
   const handleImageLoad = useCallback(() => {
     setIsLoading(false);
     setHasError(false);
+    hasLoadedOnceRef.current = true;
   }, []);
 
   const handleImageError = useCallback(() => {
@@ -51,6 +85,7 @@ function GeneratedImageComponent({ src, alt, persona = 'default' }: GeneratedIma
     try {
       setIsDownloading(true);
 
+      // Use the latest src (which may be the Supabase URL) for download
       const response = await fetch(src);
       if (!response.ok) throw new Error('Failed to fetch image');
 
@@ -138,7 +173,7 @@ function GeneratedImageComponent({ src, alt, persona = 'default' }: GeneratedIma
           {/* Image */}
           {!hasError && (
             <img
-              src={src}
+              src={displaySrc}
               alt={alt}
               onLoad={handleImageLoad}
               onError={handleImageError}
@@ -217,7 +252,7 @@ function GeneratedImageComponent({ src, alt, persona = 'default' }: GeneratedIma
               onClick={(e) => e.stopPropagation()}
             >
               <img
-                src={src}
+                src={displaySrc}
                 alt={alt}
                 className="w-full h-full object-contain rounded-2xl shadow-2xl"
               />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -191,7 +191,10 @@ export function AIMessage({
       setIsRecordingVoice(false);
     }
   }, [audioUrl, content]);
-  const MarkdownComponents = {
+
+  // Memoize MarkdownComponents to prevent re-creating on every render
+  // This is critical to prevent GeneratedImage from re-mounting on parent re-renders
+  const MarkdownComponents = useMemo(() => ({
     h1: ({ children }: { children: React.ReactNode }) => (
       <h1 className={`text-2xl font-bold mt-6 mb-4 ${theme.text}`}>{children}</h1>
     ),
@@ -261,7 +264,7 @@ export function AIMessage({
         />
       );
     },
-  };
+  }), [theme.text, personaColor, displayPersona]);
 
   const MessageContent = () => (
     <>
