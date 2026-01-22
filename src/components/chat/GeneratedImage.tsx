@@ -13,13 +13,13 @@ interface GeneratedImageProps {
 
 // Memoized shimmer colors lookup - defined outside component to avoid recreation
 const PERSONA_SHIMMER_COLORS: Record<string, { baseColor: string; shimmerColor: string }> = {
-  girlie: { baseColor: '#ec4899', shimmerColor: '#ffffff' }, // Pink
-  pro: { baseColor: '#06b6d4', shimmerColor: '#ffffff' }, // Cyan
-  chatgpt: { baseColor: '#22c55e', shimmerColor: '#ffffff' }, // Green
-  gemini: { baseColor: '#3b82f6', shimmerColor: '#ffffff' }, // Blue
-  claude: { baseColor: '#f97316', shimmerColor: '#ffffff' }, // Orange
-  grok: { baseColor: '#9ca3af', shimmerColor: '#ffffff' }, // Gray
-  default: { baseColor: '#a855f7', shimmerColor: '#ffffff' }, // Purple (Air)
+  girlie: { baseColor: '#ec4899', shimmerColor: '#ffffff' },
+  pro: { baseColor: '#06b6d4', shimmerColor: '#ffffff' },
+  chatgpt: { baseColor: '#22c55e', shimmerColor: '#ffffff' },
+  gemini: { baseColor: '#3b82f6', shimmerColor: '#ffffff' },
+  claude: { baseColor: '#f97316', shimmerColor: '#ffffff' },
+  grok: { baseColor: '#9ca3af', shimmerColor: '#ffffff' },
+  default: { baseColor: '#a855f7', shimmerColor: '#ffffff' },
 };
 
 const getPersonaShimmerColors = (persona: keyof typeof AI_PERSONAS = 'default') => {
@@ -31,48 +31,26 @@ function GeneratedImageComponent({ src, alt, persona = 'default' }: GeneratedIma
   const [hasError, setHasError] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showFullView, setShowFullView] = useState(false);
-  const [displaySrc, setDisplaySrc] = useState(src);
   const { theme } = useTheme();
 
-  // Track if we've successfully loaded at least once - used to prevent showing
-  // loading state again when URL changes (e.g., proxy URL -> Supabase URL)
-  const hasLoadedOnceRef = useRef(false);
-  const previousSrcRef = useRef(src);
+  // Store the first successfully loaded URL - NEVER change it after initial load
+  // This prevents any flicker when URL swaps from proxy to Supabase
+  const loadedSrcRef = useRef<string | null>(null);
+  const initialSrcRef = useRef(src);
 
-  // Handle URL changes silently - preload new image in background
-  useEffect(() => {
-    // If src hasn't changed, do nothing
-    if (src === previousSrcRef.current) return;
-
-    previousSrcRef.current = src;
-
-    // If we've already loaded successfully, preload the new URL silently
-    if (hasLoadedOnceRef.current && !hasError) {
-      const img = new Image();
-      img.onload = () => {
-        // Silently swap to the new URL once it's loaded
-        setDisplaySrc(src);
-      };
-      img.onerror = () => {
-        // If new URL fails, keep showing the old one
-        console.warn('Failed to preload new image URL, keeping current');
-      };
-      img.src = src;
-    } else {
-      // First load or after error - show loading state
-      setDisplaySrc(src);
-      setIsLoading(true);
-      setHasError(false);
-    }
-  }, [src, hasError]);
+  // The URL to actually display - either the successfully loaded one, or the initial one
+  const displaySrc = loadedSrcRef.current || initialSrcRef.current;
 
   // Memoize shimmer colors to prevent object recreation
   const shimmerColors = useMemo(() => getPersonaShimmerColors(persona), [persona]);
 
   const handleImageLoad = useCallback(() => {
+    // Lock in the current src as the loaded source - never change after this
+    if (!loadedSrcRef.current) {
+      loadedSrcRef.current = initialSrcRef.current;
+    }
     setIsLoading(false);
     setHasError(false);
-    hasLoadedOnceRef.current = true;
   }, []);
 
   const handleImageError = useCallback(() => {
@@ -85,7 +63,7 @@ function GeneratedImageComponent({ src, alt, persona = 'default' }: GeneratedIma
     try {
       setIsDownloading(true);
 
-      // Use the latest src (which may be the Supabase URL) for download
+      // Use the latest src prop for download (may be Supabase URL for better persistence)
       const response = await fetch(src);
       if (!response.ok) throw new Error('Failed to fetch image');
 

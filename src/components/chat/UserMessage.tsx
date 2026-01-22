@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { MessageProps } from '../../types/chat';
 import { slideInFromRight, slideInFromLeft } from '../../utils/animations';
 import { useTheme } from '../../context/ThemeContext';
 import { AudioPlayerBubble } from './AudioPlayerBubble';
 
-export function UserMessage({ content, imageData, audioData, inputImageUrls, sender_nickname, sender_avatar, isGroupMode }: MessageProps) {
+function UserMessageComponent({ content, imageData, audioData, inputImageUrls, sender_nickname, sender_avatar, isGroupMode }: MessageProps) {
   const { theme } = useTheme();
 
   // Check if this is another user's message in group mode
@@ -106,3 +106,6 @@ export function UserMessage({ content, imageData, audioData, inputImageUrls, sen
     </motion.div>
   );
 }
+
+// Memoize to prevent re-renders when parent hover state changes
+export const UserMessage = memo(UserMessageComponent);
