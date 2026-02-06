@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Plus, X, CornerDownRight } from 'lucide-react';
+import { Send, Plus, X, CornerDownRight, ImagePlus, Code, Music, MessageSquare } from 'lucide-react';
 import { VoiceRecorder } from './VoiceRecorder';
 import { ChatInputProps, ImageDimensions } from '../../types/chat';
 import { LoadingSpinner } from '../loading/LoadingSpinner';
@@ -9,6 +9,7 @@ import { AI_PERSONAS } from '../../config/constants';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { MentionCall } from './MentionCall';
+import { PlusMenu, PlusMenuOption } from './PlusMenu';
 import { uploadImage } from '../../services/image/imageService';
 import { GroupChatParticipant } from '../../types/groupChat';
 
@@ -88,7 +89,10 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
   const [isUploading, setIsUploading] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   const [showMentionCall, setShowMentionCall] = useState(false);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [selectedPlusOption, setSelectedPlusOption] = useState<PlusMenuOption | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const plusMenuRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { theme } = useTheme();
   const { user } = useAuth();
@@ -122,6 +126,18 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
       textarea.scrollTop = scrollTop;
     }
   }, [message]);
+
+  // Close plus menu on outside click
+  useEffect(() => {
+    if (!showPlusMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (plusMenuRef.current && !plusMenuRef.current.contains(e.target as Node)) {
+        setShowPlusMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showPlusMenu]);
 
   // Global keydown listener for type-to-chat functionality
   useEffect(() => {
@@ -205,8 +221,9 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
-    } else if (e.key === 'Escape' && showMentionCall) {
-      setShowMentionCall(false);
+    } else if (e.key === 'Escape') {
+      if (showPlusMenu) setShowPlusMenu(false);
+      if (showMentionCall) setShowMentionCall(false);
     }
   };
 
@@ -234,6 +251,33 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
       textareaRef.current.focus();
       const newCursorPosition = cursorPosition + command.length;
       textareaRef.current.setSelectionRange(newCursorPosition, newCursorPosition);
+    }
+  };
+
+  const plusOptionIcons: Record<PlusMenuOption, React.ComponentType<{ className?: string }>> = {
+    'upload-photos': ImagePlus,
+    'web-coding': Code,
+    'music-compose': Music,
+    'chat-with-apps': MessageSquare,
+  };
+
+  const handlePlusButtonClick = () => {
+    if (selectedPlusOption) {
+      // Already has a selected option — reset and show card
+      setSelectedPlusOption(null);
+      setShowPlusMenu(true);
+    } else {
+      // Toggle the card
+      setShowPlusMenu(prev => !prev);
+    }
+  };
+
+  const handlePlusMenuSelect = (option: PlusMenuOption) => {
+    setSelectedPlusOption(option);
+    setShowPlusMenu(false);
+
+    if (option === 'upload-photos') {
+      fileInputRef.current?.click();
     }
   };
 
@@ -357,23 +401,37 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
             multiple
           />
           
-          <motion.button
-            type="button"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isLoading || isUploading || selectedImages.length >= 4}
-            className={`p-3 rounded-full ${theme.text} disabled:opacity-50 relative group transition-all duration-300`}
-            style={{
-              background: `linear-gradient(135deg, ${personaStyles.tintColors[currentPersona]}, rgba(255, 255, 255, 0.05))`,
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: `1px solid ${personaStyles.borderColors[currentPersona]}`,
-              boxShadow: `${personaStyles.glowShadow[currentPersona]}, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
-            }}
-          >
-            <Plus className="w-5 h-5 relative z-10" />
-          </motion.button>
+          <div className="relative" ref={plusMenuRef}>
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handlePlusButtonClick}
+              disabled={isLoading || isUploading}
+              className={`p-3 rounded-full ${theme.text} disabled:opacity-50 relative group transition-all duration-300`}
+              style={{
+                background: `linear-gradient(135deg, ${personaStyles.tintColors[currentPersona]}, rgba(255, 255, 255, 0.05))`,
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: `1px solid ${personaStyles.borderColors[currentPersona]}`,
+                boxShadow: `${personaStyles.glowShadow[currentPersona]}, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
+              }}
+            >
+              {selectedPlusOption ? (
+                (() => {
+                  const IconComponent = plusOptionIcons[selectedPlusOption];
+                  return <IconComponent className="w-5 h-5 relative z-10" />;
+                })()
+              ) : (
+                <Plus className="w-5 h-5 relative z-10" />
+              )}
+            </motion.button>
+
+            <PlusMenu
+              isVisible={showPlusMenu}
+              onSelect={handlePlusMenuSelect}
+            />
+          </div>
 
           <div className="relative flex-1">
             <div className="relative flex items-center">
