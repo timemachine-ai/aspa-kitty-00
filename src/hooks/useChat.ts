@@ -450,7 +450,8 @@ export function useChat(
     audioData?: string,
     inputImageUrls?: string[],
     imageDimensions?: ImageDimensions,
-    replyTo?: { id: number; content: string; sender_nickname?: string; isAI: boolean }
+    replyTo?: { id: number; content: string; sender_nickname?: string; isAI: boolean },
+    specialMode?: string
   ) => {
     let messagePersona = currentPersona;
     let messageContent = content;
@@ -609,7 +610,8 @@ export function useChat(
           isStreamingRef.current = false; // Clear streaming flag on error
         },
         userId || undefined,
-        userMemoryContext
+        userMemoryContext,
+        specialMode
       );
     } else {
       // Use non-streaming response (fallback) - send API messages (without @mention in content and without initial message)
@@ -624,7 +626,8 @@ export function useChat(
           inputImageUrls,
           imageDimensions,
           userId || undefined,
-          userMemoryContext
+          userMemoryContext,
+          specialMode
         );
 
         const emotion = extractEmotion(aiResponse.content);

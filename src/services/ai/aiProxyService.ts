@@ -46,7 +46,8 @@ export async function generateAIResponseStreaming(
   onComplete?: (response: AIResponse) => void,
   onError?: (error: Error) => void,
   userId?: string,
-  userMemories?: UserMemoryContext
+  userMemories?: UserMemoryContext,
+  specialMode?: string
 ): Promise<void> {
   try {
     // Call the Vercel API route with streaming enabled
@@ -68,7 +69,8 @@ export async function generateAIResponseStreaming(
         imageDimensions,
         stream: true,
         userId,
-        userMemories
+        userMemories,
+        specialMode
       })
     });
 
@@ -173,7 +175,8 @@ export async function generateAIResponse(
   inputImageUrls?: string[],
   imageDimensions?: ImageDimensions,
   userId?: string,
-  userMemories?: UserMemoryContext
+  userMemories?: UserMemoryContext,
+  specialMode?: string
 ): Promise<AIResponse> {
   try {
     // Call the Vercel API route without streaming
@@ -195,7 +198,8 @@ export async function generateAIResponse(
         imageDimensions,
         stream: false,
         userId,
-        userMemories
+        userMemories,
+        specialMode
       })
     });
 
