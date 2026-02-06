@@ -28,7 +28,7 @@ export function PlusMenu({ isVisible, onSelect }: PlusMenuProps) {
           className="absolute bottom-full left-0 mb-2 z-50"
         >
           <div
-            className="p-2 rounded-full"
+            className="p-2 rounded-[20px]"
             style={{
               background: 'rgba(255, 255, 255, 0.05)',
               backdropFilter: 'blur(20px)',
