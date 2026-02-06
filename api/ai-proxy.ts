@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { SPECIAL_MODE_PROMPTS } from './specialModePrompts';
+import { SPECIAL_MODE_CONFIGS } from './specialModePrompts';
 
 // Initialize Supabase client for server-side operations
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://etpehiyzlkhknzceizar.supabase.co';
@@ -1071,7 +1071,10 @@ async function incrementRateLimit(userId: string | null, ip: string, persona: st
 // Streaming function for Air persona - CEREBRAS API
 async function callCerebrasAirAPIStreaming(
   messages: any[],
-  tools?: any[]
+  tools?: any[],
+  model: string = 'gpt-oss-120b',
+  temperature: number = 0.9,
+  maxTokens: number = 2000
 ): Promise<ReadableStream> {
   const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY;
 
@@ -1080,10 +1083,10 @@ async function callCerebrasAirAPIStreaming(
   }
 
   const requestBody: any = {
-    model: "gpt-oss-120b",
+    model,
     messages,
-    temperature: 0.9,
-    max_completion_tokens: 2000,
+    temperature,
+    max_completion_tokens: maxTokens,
     top_p: 1,
     stream: true,
     reasoning_effort: "low"
@@ -1475,11 +1478,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Invalid persona' });
     }
 
+    // Resolve special mode per-persona config (if active)
+    const toolMap: Record<string, any> = {
+      imageGeneration: imageGenerationTool,
+      webSearch: webSearchTool,
+      youtubeMusic: youtubeMusicTool
+    };
+
+    // Map persona key to the 3 base personas used in special mode configs
+    const basePersona = (['default', 'girlie', 'pro'].includes(persona) ? persona : 'default') as 'default' | 'girlie' | 'pro';
+    const specialModeConfig = specialMode && SPECIAL_MODE_CONFIGS[specialMode]
+      ? SPECIAL_MODE_CONFIGS[specialMode][basePersona]
+      : null;
+
     // Get the appropriate system prompt
     let systemPrompt: string;
-    if (specialMode && SPECIAL_MODE_PROMPTS[specialMode]) {
-      // Special mode overrides persona system prompt
-      systemPrompt = SPECIAL_MODE_PROMPTS[specialMode];
+    if (specialModeConfig) {
+      systemPrompt = specialModeConfig.systemPrompt;
     } else if (persona === 'pro' && 'systemPromptsByHeatLevel' in personaConfig) {
       // Validate heat level and default to 2 if invalid
       const validHeatLevel = (heatLevel >= 1 && heatLevel <= 5) ? heatLevel : 2;
@@ -1513,11 +1528,16 @@ The memory tags will be processed and removed from the visible response, so writ
 
 .`;
 
-    // Initialize model, system prompt, and tools with defaults
-    let modelToUse = personaConfig.model;
+    // Initialize model, system prompt, and tools — apply special mode overrides
+    let modelToUse = specialModeConfig?.model || personaConfig.model;
     let systemPromptToUse = enhancedSystemPrompt;
-    // Tools (memory is now handled via XML tags, not as a tool)
-    let toolsToUse: any[] = [imageGenerationTool, webSearchTool, youtubeMusicTool];
+    let toolsToUse: any[] = specialModeConfig?.tools
+      ? specialModeConfig.tools.map(t => toolMap[t]).filter(Boolean)
+      : [imageGenerationTool, webSearchTool, youtubeMusicTool];
+
+    // Apply temperature and maxTokens overrides from special mode (used later in API calls)
+    const temperatureToUse = specialModeConfig?.temperature ?? personaConfig.temperature;
+    const maxTokensToUse = specialModeConfig?.maxTokens ?? personaConfig.maxTokens;
 
     // Handle audio transcription if audioData is provided
     let processedMessages = [...messages];
@@ -1658,15 +1678,18 @@ The memory tags will be processed and removed from the visible response, so writ
         // Air persona uses Cerebras gpt-oss-120b
         streamingResponse = await callCerebrasAirAPIStreaming(
           apiMessages,
-          toolsToUse
+          toolsToUse,
+          modelToUse,
+          temperatureToUse,
+          maxTokensToUse
         );
       } else {
         // Girlie and Pro personas use standard Groq API
         streamingResponse = await callGroqStandardAPIStreaming(
           apiMessages,
           modelToUse,
-          personaConfig.temperature,
-          personaConfig.maxTokens,
+          temperatureToUse,
+          maxTokensToUse,
           toolsToUse
         );
       }
@@ -1887,10 +1910,10 @@ The memory tags will be processed and removed from the visible response, so writ
       } else if (persona === 'default' && !imageData && !audioData) {
         // Air persona uses Cerebras gpt-oss-120b
         const requestBody: any = {
-          model: "gpt-oss-120b",
+          model: modelToUse,
           messages: apiMessages,
-          temperature: 0.9,
-          max_completion_tokens: 2000,
+          temperature: temperatureToUse,
+          max_completion_tokens: maxTokensToUse,
           top_p: 1,
           stream: false,
           reasoning_effort: "low"
@@ -1935,8 +1958,8 @@ The memory tags will be processed and removed from the visible response, so writ
           body: JSON.stringify({
             messages: apiMessages,
             model: modelToUse,
-            temperature: personaConfig.temperature,
-            max_tokens: personaConfig.maxTokens,
+            temperature: temperatureToUse,
+            max_tokens: maxTokensToUse,
             tools: toolsToUse,
             tool_choice: "auto",
             stream: false
