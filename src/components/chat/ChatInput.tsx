@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Plus, X, CornerDownRight, ImagePlus, Code, Music, MessageSquare } from 'lucide-react';
+import { Send, Plus, X, CornerDownRight, ImagePlus, Code, Music, HeartPulse } from 'lucide-react';
 import { VoiceRecorder } from './VoiceRecorder';
 import { ChatInputProps, ImageDimensions } from '../../types/chat';
 import { LoadingSpinner } from '../loading/LoadingSpinner';
@@ -200,7 +200,8 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
           const publicUrls = successfulUploads.map(result => result.url);
           setUploadedImageUrls(publicUrls);
 
-          await onSendMessage(message, base64Images, undefined, publicUrls, firstImageDimensions);
+          const activeMode = selectedPlusOption && selectedPlusOption !== 'upload-photos' ? selectedPlusOption : undefined;
+          await onSendMessage(message, base64Images, undefined, publicUrls, firstImageDimensions, undefined, activeMode);
           setSelectedImages([]);
           setImagePreviewUrls([]);
           setUploadedImageUrls([]);
@@ -211,7 +212,8 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
           setIsUploading(false);
         }
       } else {
-        await onSendMessage(message);
+        const activeMode = selectedPlusOption && selectedPlusOption !== 'upload-photos' ? selectedPlusOption : undefined;
+        await onSendMessage(message, undefined, undefined, undefined, undefined, undefined, activeMode);
       }
       setMessage('');
     }
@@ -258,7 +260,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     'upload-photos': ImagePlus,
     'web-coding': Code,
     'music-compose': Music,
-    'chat-with-apps': MessageSquare,
+    'tm-healthcare': HeartPulse,
   };
 
   const handlePlusButtonClick = () => {

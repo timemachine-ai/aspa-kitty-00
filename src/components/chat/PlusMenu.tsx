@@ -1,14 +1,14 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ImagePlus, Code, Music, MessageSquare } from 'lucide-react';
+import { ImagePlus, Code, Music, HeartPulse } from 'lucide-react';
 
-export type PlusMenuOption = 'upload-photos' | 'web-coding' | 'music-compose' | 'chat-with-apps';
+export type PlusMenuOption = 'upload-photos' | 'web-coding' | 'music-compose' | 'tm-healthcare';
 
 export const plusMenuItems: { key: PlusMenuOption; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'upload-photos', label: 'Upload Photos', icon: ImagePlus },
   { key: 'web-coding', label: 'Web Coding', icon: Code },
   { key: 'music-compose', label: 'Music Compose', icon: Music },
-  { key: 'chat-with-apps', label: 'Chat with Apps', icon: MessageSquare },
+  { key: 'tm-healthcare', label: 'TM Healthcare', icon: HeartPulse },
 ];
 
 interface PlusMenuProps {
@@ -28,7 +28,7 @@ export function PlusMenu({ isVisible, onSelect }: PlusMenuProps) {
           className="absolute bottom-full left-0 mb-2 z-50"
         >
           <div
-            className="p-2 rounded-2xl"
+            className="p-2 rounded-full"
             style={{
               background: 'rgba(255, 255, 255, 0.05)',
               backdropFilter: 'blur(20px)',
