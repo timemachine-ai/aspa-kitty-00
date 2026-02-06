@@ -11,6 +11,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { GeneratedImage } from './GeneratedImage';
 import { AnimatedShinyText } from '../ui/AnimatedShinyText';
 import { AudioPlayerBubble } from './AudioPlayerBubble';
+import { CodeBlock } from './CodeBlock';
 
 interface AIMessageProps extends MessageProps {
   isChatMode: boolean;
@@ -227,16 +228,34 @@ function AIMessageComponent({
         {children}
       </blockquote>
     ),
-    code: ({ children }: { children: React.ReactNode }) => (
-      <code className={`bg-white/10 rounded px-1.5 py-0.5 text-sm font-mono ${theme.text}`}>
-        {children}
-      </code>
-    ),
-    pre: ({ children }: { children: React.ReactNode }) => (
-      <pre className={`bg-white/10 rounded-lg p-4 mb-4 overflow-x-auto font-mono text-sm ${theme.text}`}>
-        {children}
-      </pre>
-    ),
+    code: ({ className, children }: { className?: string; children: React.ReactNode }) => {
+      // Inline code only — block code is handled by the pre component
+      if (className) return <code className={className}>{children}</code>;
+      return (
+        <code className={`bg-white/10 rounded px-1.5 py-0.5 text-sm font-mono ${theme.text}`}>
+          {children}
+        </code>
+      );
+    },
+    pre: ({ children }: { children: React.ReactNode }) => {
+      // Extract language and code from the child <code> element
+      const child = React.Children.toArray(children)[0] as React.ReactElement<{
+        className?: string;
+        children?: React.ReactNode;
+      }> | undefined;
+      if (child && child.props) {
+        const langMatch = /language-(\w+)/.exec(child.props.className || '');
+        const language = langMatch ? langMatch[1] : undefined;
+        const code = String(child.props.children || '').replace(/\n$/, '');
+        return <CodeBlock language={language} code={code} themeText={theme.text} />;
+      }
+      // Fallback for non-code children
+      return (
+        <pre className={`bg-white/10 rounded-lg p-4 mb-4 overflow-x-auto font-mono text-sm ${theme.text}`}>
+          {children}
+        </pre>
+      );
+    },
     img: ({ src, alt }: { src?: string; alt?: string }) => {
       // Check if this is a generated image:
       // 1. Alt text is "Generated Image" (preserved after URL replacement to Supabase)
