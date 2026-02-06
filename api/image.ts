@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // Pollinations API key from environment variable
-const POLLINATIONS_API_KEY = process.env.POLLINATIONS_API_KEY || '';
+const POLLINATIONS_API_KEY = process.env.POLLINATIONS_API_KEY || 'sk_aczCydv8Z7KEnG6X0SjvbdrBZHHgp0R2';
 
 type Persona = 'default' | 'girlie' | 'pro' | 'chatgpt' | 'gemini' | 'claude' | 'grok';
 type Process = 'create' | 'edit';
@@ -35,11 +35,11 @@ function constructPollinationsUrl(params: ImageParams): URL {
     model = persona === 'girlie' ? 'nanobanana' : 'nanobanana-pro';
   } else {
     // Create process: use seedream/zimage models
-    model = persona === 'girlie' ? 'zimage' : 'seedream-pro';
+    model = persona === 'girlie' ? 'zimage' : 'seedream';
   }
 
   // Use WHATWG URL API to avoid url.parse() deprecation warning
-  const url = new URL(`https://enter.pollinations.ai/api/generate/image/${encodeURIComponent(prompt)}`);
+  const url = new URL(`https://gen.pollinations.ai/api/generate/image/${encodeURIComponent(prompt)}`);
 
   // Add common parameters
   url.searchParams.set('enhance', 'false');
