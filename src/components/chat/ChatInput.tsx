@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Plus, X, CornerDownRight, ImagePlus, Code, Music, HeartPulse } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { VoiceRecorder } from './VoiceRecorder';
 import { ChatInputProps, ImageDimensions } from '../../types/chat';
 import { LoadingSpinner } from '../loading/LoadingSpinner';
@@ -12,6 +13,9 @@ import { MentionCall } from './MentionCall';
 import { PlusMenu, PlusMenuOption } from './PlusMenu';
 import { uploadImage } from '../../services/image/imageService';
 import { GroupChatParticipant } from '../../types/groupChat';
+import { useContour } from '../contour/useContour';
+import { ContourPanel } from '../contour/ContourPanel';
+import { ContourCommand } from '../contour/modules/commands';
 
 type Persona = keyof typeof AI_PERSONAS;
 
@@ -96,6 +100,9 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { theme } = useTheme();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const contour = useContour();
+  const contourRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -138,6 +145,21 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showPlusMenu]);
+
+  // Close contour on outside click
+  useEffect(() => {
+    if (!contour.isVisible) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        contourRef.current && !contourRef.current.contains(e.target as Node) &&
+        textareaRef.current && !textareaRef.current.contains(e.target as Node)
+      ) {
+        contour.dismiss();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [contour.isVisible, contour]);
 
   // Global keydown listener for type-to-chat functionality
   useEffect(() => {
@@ -216,14 +238,104 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
         await onSendMessage(message, undefined, undefined, undefined, undefined, undefined, activeMode);
       }
       setMessage('');
+      contour.dismiss();
     }
   };
 
+  const handleContourCommandSelect = useCallback((command: ContourCommand) => {
+    switch (command.action.type) {
+      case 'navigate':
+        navigate(command.action.path);
+        setMessage('');
+        contour.dismiss();
+        break;
+      case 'mode':
+        // Map contour mode strings to PlusMenuOption
+        const modeMap: Record<string, PlusMenuOption> = {
+          'web-coding': 'web-coding',
+          'music-compose': 'music-compose',
+          'tm-healthcare': 'tm-healthcare',
+        };
+        const plusOption = modeMap[command.action.mode];
+        if (plusOption) {
+          handlePlusMenuSelect(plusOption);
+        }
+        setMessage('');
+        contour.dismiss();
+        break;
+      case 'clipboard':
+        let clipboardValue = '';
+        if (command.action.handler === 'uuid') {
+          clipboardValue = crypto.randomUUID?.() ||
+            'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+              const r = (Math.random() * 16) | 0;
+              return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+            });
+        } else if (command.action.handler === 'timestamp') {
+          clipboardValue = Math.floor(Date.now() / 1000).toString();
+        }
+        if (clipboardValue) {
+          navigator.clipboard.writeText(clipboardValue).catch(() => {});
+        }
+        setMessage('');
+        contour.dismiss();
+        break;
+      case 'inline':
+        // For inline handlers, clear the slash command and keep contour context
+        // Future: open dedicated inline panels
+        setMessage('');
+        contour.dismiss();
+        break;
+    }
+  }, [navigate, contour, handlePlusMenuSelect]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Contour keyboard navigation takes priority when visible
+    if (contour.isVisible && contour.state.mode === 'commands') {
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        contour.selectUp();
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        contour.selectDown();
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (contour.selectedCommand) {
+          handleContourCommandSelect(contour.selectedCommand);
+        }
+        return;
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        contour.selectDown();
+        return;
+      }
+    }
+
+    // Calculator mode: Enter copies result
+    if (contour.isVisible && contour.state.mode === 'calculator' && contour.state.calculatorResult) {
+      if (e.key === 'Enter' && !e.shiftKey && !contour.state.calculatorResult.isPartial) {
+        e.preventDefault();
+        const resultStr = contour.state.calculatorResult.result.toString();
+        navigator.clipboard.writeText(resultStr).catch(() => {});
+        setMessage('');
+        contour.dismiss();
+        return;
+      }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey && isDesktop) {
       e.preventDefault();
       handleSubmit(e);
     } else if (e.key === 'Escape') {
+      if (contour.isVisible) {
+        contour.dismiss();
+        return;
+      }
       if (showPlusMenu) setShowPlusMenu(false);
       if (showMentionCall) setShowMentionCall(false);
     }
@@ -232,6 +344,9 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     setMessage(newValue);
+
+    // Feed input to Contour for smart detection
+    contour.analyze(newValue);
 
     if (newValue.endsWith('@')) {
       setShowMentionCall(true);
@@ -505,6 +620,17 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
               participants={participants}
               currentUserId={user?.id}
             />
+
+            {/* TimeMachine Contour - Smart Assist Overlay */}
+            <div ref={contourRef}>
+              <ContourPanel
+                state={contour.state}
+                isVisible={contour.isVisible}
+                onCommandSelect={handleContourCommandSelect}
+                selectedIndex={contour.state.selectedIndex}
+                persona={currentPersona}
+              />
+            </div>
           </div>
         </div>
       </div>
