@@ -322,9 +322,12 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
   // Memoized send message handler
   const handleSendMessageWithRateLimit = useCallback(async (
     message: string,
-    imageUrl?: string,
+    imageUrl?: string | string[],
     audioData?: string,
-    imageUrls?: string[]
+    imageUrls?: string[],
+    imageDimensions?: import('./types/chat').ImageDimensions,
+    replyToData?: import('./types/chat').ReplyToData,
+    specialMode?: string
   ) => {
     const mentionMatch = message.match(/^@(chatgpt|gemini|claude|grok|girlie|pro)\s/i);
     const targetModel = mentionMatch ? mentionMatch[1].toLowerCase() : currentPersona;
@@ -353,7 +356,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
       incrementCount(targetModel);
     }
 
-    await handleSendMessage(message, imageUrl, audioData, imageUrls, undefined, replyTo || undefined);
+    await handleSendMessage(message, imageUrl, audioData, imageUrls, imageDimensions, replyToData || replyTo || undefined, specialMode);
     // Clear reply after sending
     setReplyTo(null);
   }, [currentPersona, isAnonymous, isRateLimited, incrementCount, handleSendMessage, replyTo]);
