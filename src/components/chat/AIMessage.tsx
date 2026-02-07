@@ -383,7 +383,28 @@ function AIMessageComponent({
               gradientAnimationDuration={2}
               textClassName="text-base"
               className="py-1"
-              style={{ 
+              style={{
+                fontFamily: 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif',
+                fontSize: '16px'
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Special mode thinking state — replaces the normal "Thinking..." spinner */}
+      {isStreamingActive && !cleanContent && specialMode && SPECIAL_MODE_SHIMMER_TEXT[specialMode] && (
+        <div className="w-full max-w-2xl mx-auto my-4">
+          <div className="flex items-center justify-center py-4 px-4 rounded-2xl bg-black/5 backdrop-blur-sm">
+            <AnimatedShinyText
+              text={SPECIAL_MODE_SHIMMER_TEXT[specialMode]}
+              useShimmer={true}
+              baseColor={shimmerColors.baseColor}
+              shimmerColor={shimmerColors.shimmerColor}
+              gradientAnimationDuration={2}
+              textClassName="text-base"
+              className="py-1"
+              style={{
                 fontFamily: 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif',
                 fontSize: '16px'
               }}
@@ -404,7 +425,7 @@ function AIMessageComponent({
         </div>
       )}
       {/* Show content when not generating or when generation is complete */}
-      {!isGeneratingImage && !isRecordingVoice && (cleanContent || isStreamingActive) && !audioUrl && (
+      {!isGeneratingImage && !isRecordingVoice && !(isStreamingActive && !cleanContent && specialMode && SPECIAL_MODE_SHIMMER_TEXT[specialMode as string]) && (cleanContent || isStreamingActive) && !audioUrl && (
         <>
           {isChatMode ? (
             <div className="flex flex-col gap-1">
@@ -441,32 +462,14 @@ function AIMessageComponent({
                     )}
                   </>
                 ) : isStreamingActive ? (
-                  specialMode && SPECIAL_MODE_SHIMMER_TEXT[specialMode] ? (
-                    <div className="flex items-center gap-2">
-                      <AnimatedShinyText
-                        text={SPECIAL_MODE_SHIMMER_TEXT[specialMode]}
-                        useShimmer={true}
-                        baseColor={shimmerColors.baseColor}
-                        shimmerColor={shimmerColors.shimmerColor}
-                        gradientAnimationDuration={2}
-                        textClassName="text-sm"
-                        className="py-1"
-                        style={{
-                          fontFamily: 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif',
-                          fontSize: '14px'
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-sm opacity-60">
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                        className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"
-                      />
-                      Thinking...
-                    </div>
-                  )
+                  <div className="flex items-center gap-2 text-sm opacity-60">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"
+                    />
+                    Thinking...
+                  </div>
                 ) : null}
               </div>
             </div>
@@ -497,32 +500,14 @@ function AIMessageComponent({
                   )}
                 </>
               ) : isStreamingActive ? (
-                specialMode && SPECIAL_MODE_SHIMMER_TEXT[specialMode] ? (
-                  <div className="flex items-center justify-center gap-3">
-                    <AnimatedShinyText
-                      text={SPECIAL_MODE_SHIMMER_TEXT[specialMode]}
-                      useShimmer={true}
-                      baseColor={shimmerColors.baseColor}
-                      shimmerColor={shimmerColors.shimmerColor}
-                      gradientAnimationDuration={2}
-                      textClassName="text-lg"
-                      className="py-1"
-                      style={{
-                        fontFamily: 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif',
-                        fontSize: '18px'
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center gap-3 text-lg opacity-60">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                      className="w-6 h-6 border-2 border-current border-t-transparent rounded-full"
-                    />
-                    Thinking...
-                  </div>
-                )
+                <div className="flex items-center justify-center gap-3 text-lg opacity-60">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="w-6 h-6 border-2 border-current border-t-transparent rounded-full"
+                  />
+                  Thinking...
+                </div>
               ) : null}
             </div>
           )}
