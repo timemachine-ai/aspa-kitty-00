@@ -47,7 +47,8 @@ export async function generateAIResponseStreaming(
   onError?: (error: Error) => void,
   userId?: string,
   userMemories?: UserMemoryContext,
-  specialMode?: string
+  specialMode?: string,
+  onStatusChange?: (status: 'analyzing_photo' | 'thinking') => void
 ): Promise<void> {
   try {
     // Call the Vercel API route with streaming enabled
@@ -103,6 +104,16 @@ export async function generateAIResponseStreaming(
         if (done) break;
 
         let chunk = decoder.decode(value, { stream: true });
+
+        // Check for image analysis status markers
+        if (chunk.includes('[IMAGE_ANALYZING]')) {
+          chunk = chunk.replace('[IMAGE_ANALYZING]', '');
+          if (onStatusChange) onStatusChange('analyzing_photo');
+        }
+        if (chunk.includes('[IMAGE_ANALYZED]')) {
+          chunk = chunk.replace('[IMAGE_ANALYZED]', '');
+          if (onStatusChange) onStatusChange('thinking');
+        }
 
         // Check for audio URL marker
         const audioMatch = chunk.match(/\[AUDIO_URL\](.*?)\[\/AUDIO_URL\]/);

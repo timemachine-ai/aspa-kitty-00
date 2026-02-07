@@ -22,6 +22,7 @@ interface AIMessageProps extends MessageProps {
   isStreaming?: boolean;
   audioUrl?: string;
   isStreamingActive?: boolean;
+  loadingPhase?: 'analyzing_photo' | 'thinking' | null;
   specialMode?: string;
 }
 
@@ -101,6 +102,7 @@ function AIMessageComponent({
   isStreaming = false,
   audioUrl,
   isStreamingActive = false,
+  loadingPhase,
   specialMode
 }: AIMessageProps) {
   const [showReasoning, setShowReasoning] = useState(false);
@@ -468,7 +470,7 @@ function AIMessageComponent({
                       transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                       className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"
                     />
-                    Thinking...
+                    {loadingPhase === 'analyzing_photo' ? 'Analyzing photo...' : 'Thinking...'}
                   </div>
                 ) : null}
               </div>
@@ -506,7 +508,7 @@ function AIMessageComponent({
                     transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                     className="w-6 h-6 border-2 border-current border-t-transparent rounded-full"
                   />
-                  Thinking...
+                  {loadingPhase === 'analyzing_photo' ? 'Analyzing photo...' : 'Thinking...'}
                 </div>
               ) : null}
             </div>

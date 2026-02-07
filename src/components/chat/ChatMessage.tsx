@@ -13,6 +13,7 @@ interface ChatMessageProps extends Message {
   previousMessage?: string | null;
   isStreaming?: boolean;
   streamingMessageId?: number | null;
+  loadingPhase?: 'analyzing_photo' | 'thinking' | null;
   isGroupMode?: boolean;
   currentUserId?: string;
   onReply?: (message: { id: number; content: string; sender_nickname?: string; isAI: boolean }) => void;
@@ -38,6 +39,7 @@ export function ChatMessage({
   inputImageUrls,
   isStreaming,
   streamingMessageId,
+  loadingPhase,
   isGroupMode,
   currentUserId,
   sender_id,
@@ -248,6 +250,7 @@ export function ChatMessage({
           isStreaming={isStreaming}
           audioUrl={audioUrl}
           isStreamingActive={streamingMessageId === id}
+          loadingPhase={streamingMessageId === id ? loadingPhase : undefined}
           specialMode={specialMode}
         />
         {renderReactions()}
