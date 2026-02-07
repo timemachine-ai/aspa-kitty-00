@@ -74,7 +74,7 @@ Minimalist ≠ lazy. Maximalist ≠ messy. Both require extreme attention to det
 These are the telltale signs of AI-generated design. Avoiding ALL of them is mandatory.
 
 ### 🚫 BANNED Typography
-```
+\`\`\`
 NEVER USE THESE FONTS AS PRIMARY CHOICES:
 - Inter (the #1 AI slop font)
 - Roboto
@@ -86,10 +86,10 @@ NEVER USE THESE FONTS AS PRIMARY CHOICES:
 - Lato
 - Nunito (unless specifically for children's content)
 - system-ui / sans-serif as your only font declaration
-```
+\`\`\`
 
 ### 🚫 BANNED Color Patterns
-```
+\`\`\`
 NEVER DO THESE:
 - Purple/violet gradient on white background (the #1 AI slop color scheme)
 - Blue-to-purple gradients as hero backgrounds
@@ -99,10 +99,10 @@ NEVER DO THESE:
 - Gray text on white with blue links (looks like unstyled HTML)
 - Neon green (#00ff00) on dark backgrounds (unless intentionally retro)
 - Equal distribution of 5+ colors with no hierarchy
-```
+\`\`\`
 
 ### 🚫 BANNED Layout Patterns
-```
+\`\`\`
 NEVER DO THESE:
 - Centered everything with max-width: 800px and nothing else
 - Three equal cards in a row with icon + title + description
@@ -111,10 +111,10 @@ NEVER DO THESE:
 - Footer with 4 equal columns of links
 - Perfectly symmetrical everything with no visual tension
 - Cookie-cutter "features" grid with emoji/icon + heading + paragraph
-```
+\`\`\`
 
 ### 🚫 BANNED Component Patterns
-```
+\`\`\`
 NEVER DO THESE:
 - Rounded buttons with generic gradient backgrounds
 - Cards with border-radius: 12px, padding: 24px, box-shadow, and nothing else
@@ -123,10 +123,10 @@ NEVER DO THESE:
 - Testimonial carousels with circular avatar + quote + name
 - "Get Started" and "Learn More" as your CTA button texts
 - Using 🚀 💡 ⚡ 🎯 as feature section icons
-```
+\`\`\`
 
 ### 🚫 BANNED CSS Patterns
-```css
+\`\`\`css
 /* NEVER write CSS this generic: */
 .card {
   background: white;
@@ -148,19 +148,19 @@ NEVER DO THESE:
   padding: 120px 20px;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
-```
+\`\`\`
 
 ---
 
 ## 3. TYPOGRAPHY BIBLE — Fonts by Niche {#3-typography-bible}
 
 ### How to Load Fonts (Google Fonts CDN)
-```html
+\`\`\`html
 <!-- ALWAYS load fonts in <head> with display=swap for performance -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=FONT+NAME:wght@400;500;600;700&display=swap" rel="stylesheet">
-```
+\`\`\`
 
 ### The Font Pairing System
 
@@ -172,7 +172,7 @@ Every design needs exactly TWO fonts (occasionally three):
 ### NICHE-SPECIFIC FONT RECOMMENDATIONS
 
 #### 🏢 Corporate / SaaS / B2B
-```css
+\`\`\`css
 /* Pairing 1: Modern Authority */
 --font-display: 'DM Sans', sans-serif;        /* Weights: 400,500,700 */
 --font-body: 'Source Sans 3', sans-serif;      /* Weights: 400,600 */
@@ -188,10 +188,10 @@ Every design needs exactly TWO fonts (occasionally three):
 /* Pairing 4: Premium Corporate */
 --font-display: 'Sora', sans-serif;            /* Weights: 400,600,700 */
 --font-body: 'General Sans', sans-serif;       /* via Fontshare CDN */
-```
+\`\`\`
 
 #### 🎨 Creative Agency / Portfolio / Design
-```css
+\`\`\`css
 /* Pairing 1: Bold & Expressive */
 --font-display: 'Clash Display', sans-serif;   /* via Fontshare */
 --font-body: 'Satoshi', sans-serif;            /* via Fontshare */
@@ -211,10 +211,10 @@ Every design needs exactly TWO fonts (occasionally three):
 /* Pairing 5: Geometric Precision */
 --font-display: 'Anybody', sans-serif;         /* Google Fonts */
 --font-body: 'Darker Grotesque', sans-serif;   /* Google Fonts */
-```
+\`\`\`
 
 #### 🛍️ E-Commerce / Fashion / Luxury
-```css
+\`\`\`css
 /* Pairing 1: High Fashion */
 --font-display: 'Cormorant Garamond', serif;   /* Weights: 400,600,700 */
 --font-body: 'Jost', sans-serif;               /* Weights: 400,500 */
@@ -230,10 +230,10 @@ Every design needs exactly TWO fonts (occasionally three):
 /* Pairing 4: Boutique */
 --font-display: 'Bodoni Moda', serif;          /* Weights: 400,700,900 */
 --font-body: 'Questrial', sans-serif;          /* Weight: 400 */
-```
+\`\`\`
 
 #### 🍕 Restaurant / Food / Hospitality
-```css
+\`\`\`css
 /* Pairing 1: Rustic Charm */
 --font-display: 'Libre Baskerville', serif;    /* Weights: 400,700 */
 --font-body: 'Source Sans 3', sans-serif;      /* Weights: 400,600 */
@@ -249,10 +249,10 @@ Every design needs exactly TWO fonts (occasionally three):
 /* Pairing 4: Casual & Fun */
 --font-display: 'Fredoka', sans-serif;         /* Weights: 400,600,700 */
 --font-body: 'Nunito Sans', sans-serif;        /* Weights: 400,600 */
-```
+\`\`\`
 
 #### 💻 Tech / Developer / Startup
-```css
+\`\`\`css
 /* Pairing 1: Hacker Aesthetic */
 --font-display: 'JetBrains Mono', monospace;   /* Weights: 400,700 */
 --font-body: 'Geist Sans', sans-serif;         /* via CDN */
@@ -268,10 +268,10 @@ Every design needs exactly TWO fonts (occasionally three):
 /* Pairing 4: Clean Engineering */
 --font-display: 'Instrument Sans', sans-serif; /* Weights: 400,600,700 */
 --font-body: 'Geist Mono', monospace;          /* via CDN */
-```
+\`\`\`
 
 #### 📰 Blog / Editorial / Media
-```css
+\`\`\`css
 /* Pairing 1: Classic Editorial */
 --font-display: 'Newsreader', serif;           /* Weights: 400,600,700 */
 --font-body: 'Source Serif 4', serif;          /* Weights: 400,600 */
@@ -287,10 +287,10 @@ Every design needs exactly TWO fonts (occasionally three):
 /* Pairing 4: Contemporary Journal */
 --font-display: 'Syne', sans-serif;            /* Weights: 400,700,800 */
 --font-body: 'Literata', serif;                /* Weights: 400,500 */
-```
+\`\`\`
 
 #### 🧘 Wellness / Health / Organic
-```css
+\`\`\`css
 /* Pairing 1: Natural Calm */
 --font-display: 'Gilda Display', serif;        /* Weight: 400 */
 --font-body: 'Karla', sans-serif;              /* Weights: 400,500,700 */
@@ -302,10 +302,10 @@ Every design needs exactly TWO fonts (occasionally three):
 /* Pairing 3: Zen Minimal */
 --font-display: 'Philosopher', sans-serif;     /* Weights: 400,700 */
 --font-body: 'Lora', serif;                    /* Weights: 400,500 */
-```
+\`\`\`
 
 #### 🎮 Gaming / Entertainment / Music
-```css
+\`\`\`css
 /* Pairing 1: Cyberpunk */
 --font-display: 'Chakra Petch', sans-serif;    /* Weights: 400,600,700 */
 --font-body: 'Share Tech', sans-serif;         /* Weight: 400 */
@@ -321,10 +321,10 @@ Every design needs exactly TWO fonts (occasionally three):
 /* Pairing 4: Music/Festival */
 --font-display: 'Unbounded', sans-serif;       /* Weights: 400,700,900 */
 --font-body: 'Darker Grotesque', sans-serif;   /* Weights: 400,500,600 */
-```
+\`\`\`
 
 #### 🏠 Real Estate / Architecture
-```css
+\`\`\`css
 /* Pairing 1: Architectural */
 --font-display: 'DM Serif Display', serif;     /* Weight: 400 */
 --font-body: 'Outfit', sans-serif;             /* Weights: 400,500 */
@@ -332,10 +332,10 @@ Every design needs exactly TWO fonts (occasionally three):
 /* Pairing 2: Modern Property */
 --font-display: 'Fahkwang', sans-serif;        /* Weights: 400,600,700 */
 --font-body: 'Jost', sans-serif;               /* Weights: 400,500 */
-```
+\`\`\`
 
 #### 👶 Kids / Education / Learning
-```css
+\`\`\`css
 /* Pairing 1: Friendly Learning */
 --font-display: 'Baloo 2', cursive;            /* Weights: 400,600,800 */
 --font-body: 'Quicksand', sans-serif;          /* Weights: 400,500,600 */
@@ -343,10 +343,10 @@ Every design needs exactly TWO fonts (occasionally three):
 /* Pairing 2: Fun Education */
 --font-display: 'Fredoka', sans-serif;         /* Weights: 400,600,700 */
 --font-body: 'Atkinson Hyperlegible', sans-serif; /* Weights: 400,700 */
-```
+\`\`\`
 
 ### Typography Scale System
-```css
+\`\`\`css
 /* USE THIS SCALE — it creates natural visual hierarchy */
 :root {
   --text-xs: clamp(0.7rem, 0.8vw, 0.75rem);
@@ -360,7 +360,7 @@ Every design needs exactly TWO fonts (occasionally three):
   --text-5xl: clamp(2.8rem, 5vw, 4.5rem);
   --text-hero: clamp(3.5rem, 8vw, 7rem);
 }
-```
+\`\`\`
 
 ### Typography Rules
 1. **Line height**: Headlines 1.0–1.15, body text 1.5–1.7, UI text 1.3–1.4
@@ -382,7 +382,7 @@ Every design must follow this distribution:
 ### Ready-to-Use Color Palettes by Mood
 
 #### 🖤 Dark Luxe (Fintech, Premium SaaS, Automotive)
-```css
+\`\`\`css
 :root {
   --bg-primary: #0a0a0b;
   --bg-secondary: #141416;
@@ -395,10 +395,10 @@ Every design must follow this distribution:
   --border: rgba(255,255,255,0.06);
   --border-hover: rgba(255,255,255,0.12);
 }
-```
+\`\`\`
 
 #### 🌿 Organic Warmth (Wellness, Food, Sustainability)
-```css
+\`\`\`css
 :root {
   --bg-primary: #faf7f2;
   --bg-secondary: #f0ebe3;
@@ -411,10 +411,10 @@ Every design must follow this distribution:
   --border: rgba(44,36,23,0.08);
   --border-hover: rgba(44,36,23,0.16);
 }
-```
+\`\`\`
 
 #### 💎 Cool Minimal (Architecture, Portfolio, Design Studio)
-```css
+\`\`\`css
 :root {
   --bg-primary: #f8f8f8;
   --bg-secondary: #efefef;
@@ -427,10 +427,10 @@ Every design must follow this distribution:
   --border: rgba(0,0,0,0.07);
   --border-hover: rgba(0,0,0,0.15);
 }
-```
+\`\`\`
 
 #### 🌌 Cyberpunk/Neon (Gaming, Entertainment, Tech)
-```css
+\`\`\`css
 :root {
   --bg-primary: #080012;
   --bg-secondary: #120026;
@@ -444,10 +444,10 @@ Every design must follow this distribution:
   --border: rgba(255,45,123,0.15);
   --glow: 0 0 20px rgba(255,45,123,0.3);
 }
-```
+\`\`\`
 
 #### 🏛️ Editorial Classic (Blog, Magazine, Media)
-```css
+\`\`\`css
 :root {
   --bg-primary: #fffdf7;
   --bg-secondary: #f5f0e6;
@@ -460,10 +460,10 @@ Every design must follow this distribution:
   --border: rgba(0,0,0,0.1);
   --border-hover: rgba(0,0,0,0.2);
 }
-```
+\`\`\`
 
 #### 🍬 Soft Pastel (Lifestyle, Beauty, Feminine brands)
-```css
+\`\`\`css
 :root {
   --bg-primary: #fef7f7;
   --bg-secondary: #fdf0ed;
@@ -476,10 +476,10 @@ Every design must follow this distribution:
   --border: rgba(61,44,44,0.06);
   --border-hover: rgba(61,44,44,0.12);
 }
-```
+\`\`\`
 
 #### ⚡ Bold Startup (Tech, SaaS, Product)
-```css
+\`\`\`css
 :root {
   --bg-primary: #fafafa;
   --bg-secondary: #f2f2f2;
@@ -492,7 +492,7 @@ Every design must follow this distribution:
   --border: rgba(0,0,0,0.06);
   --border-hover: rgba(0,0,0,0.12);
 }
-```
+\`\`\`
 
 ### Color Rules
 1. **Never use pure black (#000000) on pure white (#ffffff)** — it's harsh. Use #0f0f0f or #1a1a1a on #fafafa or #f8f8f8
@@ -509,7 +509,7 @@ Every design must follow this distribution:
 ### Grid Systems That Don't Look Generic
 
 #### Asymmetric Grid (Portfolio, Agency, Editorial)
-```css
+\`\`\`css
 .grid-asymmetric {
   display: grid;
   grid-template-columns: 1.6fr 1fr;  /* Golden ratio approximation */
@@ -522,10 +522,10 @@ Every design must follow this distribution:
   grid-template-columns: 2fr 1fr 1fr;
   gap: 2rem;
 }
-```
+\`\`\`
 
 #### Bento Grid (Modern SaaS, Dashboards)
-```css
+\`\`\`css
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -542,10 +542,10 @@ Every design must follow this distribution:
 .bento-grid .tall {
   grid-row: span 2;
 }
-```
+\`\`\`
 
 #### Overlapping Layout (Creative, Art, Fashion)
-```css
+\`\`\`css
 .overlap-container {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
@@ -563,10 +563,10 @@ Every design must follow this distribution:
   background: rgba(255,255,255,0.92);
   backdrop-filter: blur(10px);
 }
-```
+\`\`\`
 
 ### Spacing System (Use CSS Custom Properties)
-```css
+\`\`\`css
 :root {
   --space-xs: clamp(0.25rem, 0.5vw, 0.5rem);
   --space-sm: clamp(0.5rem, 1vw, 0.75rem);
@@ -577,31 +577,31 @@ Every design must follow this distribution:
   --space-3xl: clamp(4rem, 12vw, 10rem);
   --space-section: clamp(5rem, 15vw, 12rem);
 }
-```
+\`\`\`
 
 ### Layout Rules
-1. **Sections need generous vertical spacing** — `padding-block: var(--space-section)` minimum
-2. **Never put content edge-to-edge** — use `padding-inline: clamp(1.5rem, 5vw, 8rem)`
+1. **Sections need generous vertical spacing** — \`padding-block: var(--space-section)\` minimum
+2. **Never put content edge-to-edge** — use \`padding-inline: clamp(1.5rem, 5vw, 8rem)\`
 3. **Content width should vary by type**: Hero text 50–60ch, body text 60–75ch, wide layouts 1200–1400px
 4. **Break the grid intentionally** — one element that bleeds past the container creates visual interest
-5. **Use viewport units for hero sections** — `min-height: 100svh` or `min-height: 80svh`
+5. **Use viewport units for hero sections** — \`min-height: 100svh\` or \`min-height: 80svh\`
 6. **Responsive is mandatory** — every layout must have a mobile breakpoint at minimum
 
 ### Responsive Breakpoint System
-```css
+\`\`\`css
 /* Mobile-first approach */
 /* Base: 0 - 640px (mobile) */
 @media (min-width: 640px)  { /* sm: tablet */ }
 @media (min-width: 1024px) { /* lg: desktop */ }
 @media (min-width: 1440px) { /* xl: large desktop */ }
-```
+\`\`\`
 
 ---
 
 ## 6. MOTION & ANIMATION PATTERNS {#6-motion-animation}
 
 ### Page Load Animation (The Most Impactful Moment)
-```css
+\`\`\`css
 /* Staggered reveal — the single best animation pattern */
 @keyframes fadeInUp {
   from {
@@ -629,10 +629,10 @@ Every design must follow this distribution:
 @media (prefers-reduced-motion: reduce) {
   .animate-in { animation: none; opacity: 1; }
 }
-```
+\`\`\`
 
 ### Scroll-Triggered Animations (CSS-Only with Intersection Observer Pattern)
-```css
+\`\`\`css
 /* CSS: Elements start hidden */
 .reveal {
   opacity: 0;
@@ -644,8 +644,8 @@ Every design must follow this distribution:
   opacity: 1;
   transform: translateY(0);
 }
-```
-```javascript
+\`\`\`
+\`\`\`javascript
 /* JS: Simple Intersection Observer — include this in a <script> tag */
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
@@ -656,10 +656,10 @@ const observer = new IntersectionObserver((entries) => {
 }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
 
 document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-```
+\`\`\`
 
 ### Hover Effects That Feel Premium
-```css
+\`\`\`css
 /* 1. Smooth scale with shadow lift */
 .card-hover {
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
@@ -720,22 +720,22 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 .img-zoom:hover img {
   transform: scale(1.06);
 }
-```
+\`\`\`
 
 ### Animation Easing Reference
-```css
+\`\`\`css
 /* NEVER use linear or ease — they look cheap */
 /* USE THESE: */
 --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);     /* Best for entrances */
 --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);    /* Smooth deceleration */
 --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);      /* Smooth both ends */
 --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);   /* Bouncy/playful */
-```
+\`\`\`
 
 ### Animation Rules
 1. **Duration**: Micro-interactions 150–300ms, reveals 500–800ms, page transitions 600–1000ms
 2. **Never animate layout properties** (width, height, top, left) — use transform and opacity only
-3. **Always include `prefers-reduced-motion` media query**
+3. **Always include \`prefers-reduced-motion\` media query**
 4. **One orchestrated entrance > many scattered animations**
 5. **Hover effects must be fast** — 200–400ms max
 6. **Scroll animations should trigger once** — don't replay when scrolling back up (usually)
@@ -745,7 +745,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 ## 7. BACKGROUNDS, TEXTURES & VISUAL DEPTH {#7-visual-depth}
 
 ### Noise/Grain Texture Overlay (Adds Warmth & Tactility)
-```css
+\`\`\`css
 /* SVG-based noise — no external images needed */
 .grain::before {
   content: '';
@@ -756,10 +756,10 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
   opacity: 0.035;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
 }
-```
+\`\`\`
 
 ### Gradient Mesh Background (Organic, Modern)
-```css
+\`\`\`css
 .gradient-mesh {
   background-color: #0a0a0b;
   background-image:
@@ -767,28 +767,28 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     radial-gradient(at 80% 20%, rgba(60, 120, 200, 0.12) 0px, transparent 50%),
     radial-gradient(at 50% 50%, rgba(200, 80, 100, 0.08) 0px, transparent 50%);
 }
-```
+\`\`\`
 
 ### Dot Grid Pattern
-```css
+\`\`\`css
 .dot-grid {
   background-image: radial-gradient(circle, rgba(0,0,0,0.08) 1px, transparent 1px);
   background-size: 24px 24px;
 }
-```
+\`\`\`
 
 ### Line Grid Pattern
-```css
+\`\`\`css
 .line-grid {
   background-image:
     linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
   background-size: 48px 48px;
 }
-```
+\`\`\`
 
 ### Glassmorphism Card
-```css
+\`\`\`css
 .glass {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(20px);
@@ -796,10 +796,10 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
 }
-```
+\`\`\`
 
 ### Subtle Ambient Shadow System
-```css
+\`\`\`css
 :root {
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
   --shadow-sm: 0 2px 4px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
@@ -808,7 +808,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
   --shadow-xl: 0 24px 56px rgba(0,0,0,0.1), 0 8px 16px rgba(0,0,0,0.04);
   --shadow-glow: 0 0 30px rgba(var(--accent-rgb), 0.25);
 }
-```
+\`\`\`
 
 ---
 
@@ -817,7 +817,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 ### Buttons That Don't Look Generic
 
 #### Primary Button (with sweep animation)
-```html
+\`\`\`html
 <style>
   .btn {
     font-family: var(--font-body);
@@ -872,12 +872,12 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 <button class="btn btn-primary">Get Started</button>
 <button class="btn btn-outline">View Work</button>
 <button class="btn btn-text">Read more <span class="arrow">→</span></button>
-```
+\`\`\`
 
 ### Navigation Patterns
 
 #### Minimal Nav (Luxury, Portfolio)
-```html
+\`\`\`html
 <style>
   .nav {
     display: flex;
@@ -933,12 +933,12 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     <li><a href="#" class="nav-link">Contact</a></li>
   </ul>
 </nav>
-```
+\`\`\`
 
 ### Card Patterns
 
 #### DO: Cards With Character
-```html
+\`\`\`html
 <style>
   /* Pattern 1: Editorial Card */
   .card-editorial {
@@ -1019,10 +1019,10 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
     transform: translate(-3px, -3px);
   }
 </style>
-```
+\`\`\`
 
 ### Input / Form Patterns
-```html
+\`\`\`html
 <style>
   /* Modern floating label input */
   .input-group {
@@ -1068,7 +1068,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
   <input type="text" class="input-field" placeholder=" " id="name">
   <label for="name" class="input-label">Your Name</label>
 </div>
-```
+\`\`\`
 
 ---
 
@@ -1077,7 +1077,7 @@ document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 ### ❌ BAD EXAMPLE: Generic AI Slop Hero Section
 This is what NEVER to produce — the hallmarks of AI-generated design:
 
-```html
+\`\`\`html
 <!-- ❌ EVERYTHING WRONG WITH THIS: -->
 <!-- ❌ Inter font, purple gradient, centered layout, generic copy, emoji icons -->
 <!DOCTYPE html>
@@ -1175,12 +1175,12 @@ This is what NEVER to produce — the hallmarks of AI-generated design:
   </div>
 </body>
 </html>
-```
+\`\`\`
 
 ### ✅ GOOD EXAMPLE: Distinctive Agency Landing Page
 Same concept — but with actual design craft:
 
-```html
+\`\`\`html
 <!-- ✅ EVERYTHING RIGHT: Distinctive fonts, intentional color, asymmetric layout, -->
 <!-- ✅ crafted animations, grain texture, unique hover effects, responsive -->
 <!DOCTYPE html>
@@ -1437,10 +1437,10 @@ Same concept — but with actual design craft:
   </section>
 </body>
 </html>
-```
+\`\`\`
 
 ### ❌ BAD: Generic SaaS Dashboard Card Row
-```html
+\`\`\`html
 <!-- ❌ Three identical cards, shadows, rounded corners, emoji icons, Inter font -->
 <div style="display:flex; gap:24px; padding:40px; font-family:Inter,sans-serif;">
   <div style="flex:1; background:white; border-radius:12px; padding:24px; box-shadow:0 4px 6px rgba(0,0,0,0.1); text-align:center;">
@@ -1459,10 +1459,10 @@ Same concept — but with actual design craft:
     <p style="color:#666; font-size:14px;">Customize everything to match your workflow.</p>
   </div>
 </div>
-```
+\`\`\`
 
 ### ✅ GOOD: Dashboard Stat Cards with Character
-```html
+\`\`\`html
 <!-- ✅ Bento layout, dark theme, distinct card sizes, proper hierarchy, custom icons -->
 <!DOCTYPE html>
 <html lang="en">
@@ -1556,7 +1556,7 @@ Same concept — but with actual design craft:
   </div>
 </body>
 </html>
-```
+\`\`\`
 
 ---
 
@@ -1565,7 +1565,7 @@ Same concept — but with actual design craft:
 When asked to build a website and no specific aesthetic is given, use these as starting foundations. **Never copy them verbatim** — adapt, remix, and make each one unique.
 
 ### Template: HTML Boilerplate (Use This Structure Every Time)
-```html
+\`\`\`html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1693,7 +1693,7 @@ When asked to build a website and no specific aesthetic is given, use these as s
   </script>
 </body>
 </html>
-```
+\`\`\`
 
 ---
 
@@ -1705,9 +1705,9 @@ Before delivering ANY frontend code, verify ALL of these:
 - [ ] Using distinctive fonts loaded from Google Fonts (NOT Inter, Roboto, Arial, Poppins, Montserrat, Space Grotesk)
 - [ ] At least 2 font weights used for visual hierarchy
 - [ ] Display font for headlines + body font for text
-- [ ] `clamp()` used for fluid typography scaling
+- [ ] \`clamp()\` used for fluid typography scaling
 - [ ] Line heights set: ~1.1 headlines, ~1.6 body, ~1.4 UI
-- [ ] `-webkit-font-smoothing: antialiased` on body
+- [ ] \`-webkit-font-smoothing: antialiased\` on body
 
 ### Color
 - [ ] Not using purple-on-white AI gradient
@@ -1723,13 +1723,13 @@ Before delivering ANY frontend code, verify ALL of these:
 - [ ] Responsive: works on mobile (768px) at minimum
 - [ ] Generous section padding (min 80px vertical)
 - [ ] Content max-width set appropriately (60-75ch for text, 1200-1400px for wide layouts)
-- [ ] `clamp()` or viewport units used for spacing
+- [ ] \`clamp()\` or viewport units used for spacing
 
 ### Animations
 - [ ] Page load animation exists (staggered fade-in recommended)
 - [ ] Hover effects on interactive elements
 - [ ] Using proper easing (cubic-bezier, NOT linear)
-- [ ] `prefers-reduced-motion` media query included
+- [ ] \`prefers-reduced-motion\` media query included
 - [ ] Animations use transform/opacity only (never animate layout properties)
 
 ### Visual Depth
@@ -1739,18 +1739,18 @@ Before delivering ANY frontend code, verify ALL of these:
 - [ ] At least one "signature" detail that makes the design memorable
 
 ### Code Quality
-- [ ] Valid HTML5 with `lang` attribute and viewport meta
+- [ ] Valid HTML5 with \`lang\` attribute and viewport meta
 - [ ] No inline styles on multiple elements (use CSS classes)
-- [ ] Font loading with `preconnect` and `display=swap`
+- [ ] Font loading with \`preconnect\` and \`display=swap\`
 - [ ] Box-sizing reset applied
-- [ ] `overflow-x: hidden` on body if using animations
+- [ ] \`overflow-x: hidden\` on body if using animations
 
 ### What NOT to Have
 - [ ] No emoji as icons (use SVG or Unicode characters like →, ×, ≡)
 - [ ] No "Get Started" + "Learn More" as the only CTA pair
 - [ ] No generic copy like "Build Better Products Faster"
-- [ ] No `border-radius: 12px` + `box-shadow: 0 4px 6px` generic cards
-- [ ] No `linear-gradient(135deg, #667eea, #764ba2)` anywhere
+- [ ] No \`border-radius: 12px\` + \`box-shadow: 0 4px 6px\` generic cards
+- [ ] No \`linear-gradient(135deg, #667eea, #764ba2)\` anywhere
 
 ---
 
