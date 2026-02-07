@@ -1,9 +1,9 @@
 /**
  * TimeMachine Contour - Main Panel Component
  *
- * A glassmorphic spotlight overlay that appears above the chat textbox.
- * Shows "TimeMachine Contour" branding in top-left.
- * Supports two modes: calculator results and command palette.
+ * A glassmorphic spotlight overlay above the chat textbox.
+ * Shows "TimeMachine Contour" branding top-left.
+ * Supports: command palette, auto-detected results, and focused tool mode.
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -14,11 +14,11 @@ import {
   FileSearch, FileText, Settings, History, Image, Brain,
   HelpCircle, Code, Music, HeartPulse, Fingerprint, Clock,
   Search, Wrench, Monitor, Zap, Command, Equal,
+  ChevronLeft, Play, Pause, RotateCcw, Copy, Check,
 } from 'lucide-react';
-import { ContourState, ContourMode } from './useContour';
+import { ContourState, ModuleData, ModuleId } from './useContour';
 import { ContourCommand, ContourCategory, CATEGORY_INFO } from './modules/commands';
 
-// Map icon name strings to actual Lucide components
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Calculator, ArrowLeftRight, DollarSign, Globe, Palette,
   Timer, Calendar, Shuffle, Type, Braces, Lock, Link, Hash,
@@ -33,64 +33,361 @@ interface ContourPanelProps {
   onCommandSelect: (command: ContourCommand) => void;
   selectedIndex: number;
   persona?: string;
+  // Timer controls
+  onTimerStart?: () => void;
+  onTimerToggle?: () => void;
+  onTimerReset?: () => void;
+  onCopyValue?: (value: string) => void;
 }
 
-const personaAccent: Record<string, { bg: string; border: string; glow: string; text: string }> = {
+interface AccentTheme {
+  bg: string;
+  border: string;
+  glow: string;
+  text: string;
+  solid: string;
+}
+
+const personaAccent: Record<string, AccentTheme> = {
   default: {
     bg: 'rgba(139, 0, 255, 0.08)',
     border: 'rgba(139, 0, 255, 0.25)',
     glow: '0 0 40px rgba(139, 0, 255, 0.15)',
     text: 'text-purple-400',
+    solid: '#8b00ff',
   },
   girlie: {
     bg: 'rgba(236, 72, 153, 0.08)',
     border: 'rgba(236, 72, 153, 0.25)',
     glow: '0 0 40px rgba(236, 72, 153, 0.15)',
     text: 'text-pink-400',
+    solid: '#ec4899',
   },
   pro: {
     bg: 'rgba(34, 211, 238, 0.08)',
     border: 'rgba(34, 211, 238, 0.25)',
     glow: '0 0 40px rgba(34, 211, 238, 0.15)',
     text: 'text-cyan-400',
+    solid: '#22d3ee',
   },
+};
+
+const MODULE_META: Record<ModuleId, { icon: React.ComponentType<{ className?: string }>; label: string; placeholder: string }> = {
+  calculator: { icon: Calculator, label: 'Calculator', placeholder: 'Type a math expression... (e.g., 5+3*2)' },
+  units: { icon: ArrowLeftRight, label: 'Unit Converter', placeholder: 'e.g., 5km to miles, 100f to c, 2kg to lb' },
+  currency: { icon: DollarSign, label: 'Currency Converter', placeholder: 'e.g., 50 usd to eur, 100 gbp to jpy' },
+  timezone: { icon: Globe, label: 'Timezone Converter', placeholder: 'e.g., 3pm EST in IST, now in Tokyo' },
+  color: { icon: Palette, label: 'Color Converter', placeholder: 'e.g., #ff5733, rgb(255,87,51), coral' },
+  date: { icon: Calendar, label: 'Date Calculator', placeholder: 'e.g., days until Dec 25, 30 days from now' },
+  timer: { icon: Timer, label: 'Timer', placeholder: 'e.g., 5m, 1h30m, 90s, 10:00' },
 };
 
 function getIcon(iconName: string): React.ComponentType<{ className?: string }> {
   return ICON_MAP[iconName] || Command;
 }
 
-/** Group commands by category */
 function groupByCategory(commands: ContourCommand[]): { category: ContourCategory; commands: ContourCommand[] }[] {
   const grouped = new Map<ContourCategory, ContourCommand[]>();
-
   for (const cmd of commands) {
     const list = grouped.get(cmd.category) || [];
     list.push(cmd);
     grouped.set(cmd.category, list);
   }
-
   return Array.from(grouped.entries()).map(([category, commands]) => ({ category, commands }));
 }
 
-export function ContourPanel({ state, isVisible, onCommandSelect, selectedIndex, persona = 'default' }: ContourPanelProps) {
+// ─── Module View Components ────────────────────────────────────
+
+function CalculatorView({ module, accent }: { module: ModuleData; accent: AccentTheme }) {
+  const calc = module.calculator;
+  if (!calc && module.focused) {
+    return <HintView icon={Calculator} accent={accent} text={MODULE_META.calculator.placeholder} />;
+  }
+  if (!calc) return null;
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-3">
+        <IconBadge icon={Equal} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className="text-white/40 text-xs font-mono mb-1 truncate">{calc.expression}</div>
+          <div className={`text-xl font-semibold tracking-tight ${calc.isPartial ? 'text-white/50' : 'text-white'}`}>
+            {calc.displayResult}
+          </div>
+        </div>
+      </div>
+      {!calc.isPartial && (
+        <FooterHint text="Press Enter to copy result" />
+      )}
+    </div>
+  );
+}
+
+function UnitsView({ module, accent }: { module: ModuleData; accent: AccentTheme }) {
+  const units = module.units;
+  if (!units && module.focused) {
+    return <HintView icon={ArrowLeftRight} accent={accent} text={MODULE_META.units.placeholder} />;
+  }
+  if (!units) return null;
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-3">
+        <IconBadge icon={ArrowLeftRight} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className={`text-xl font-semibold tracking-tight ${units.isPartial ? 'text-white/50' : 'text-white'}`}>
+            {units.display}
+          </div>
+        </div>
+      </div>
+      {!units.isPartial && (
+        <FooterHint text="Press Enter to copy result" />
+      )}
+    </div>
+  );
+}
+
+function CurrencyView({ module, accent }: { module: ModuleData; accent: AccentTheme }) {
+  const curr = module.currency;
+  if (!curr && module.focused) {
+    return <HintView icon={DollarSign} accent={accent} text={MODULE_META.currency.placeholder} />;
+  }
+  if (!curr) return null;
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-3">
+        <IconBadge icon={DollarSign} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className={`text-xl font-semibold tracking-tight ${curr.isPartial || curr.isLoading ? 'text-white/50' : 'text-white'}`}>
+            {curr.display}
+          </div>
+          {curr.rate && !curr.isPartial && (
+            <div className="text-white/30 text-xs mt-1">
+              1 {curr.fromCurrency} = {curr.rate.toFixed(4)} {curr.toCurrency}
+            </div>
+          )}
+          {curr.error && (
+            <div className="text-red-400/60 text-xs mt-1">{curr.error}</div>
+          )}
+        </div>
+        {curr.isLoading && (
+          <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+        )}
+      </div>
+      {!curr.isPartial && !curr.isLoading && curr.toValue !== null && (
+        <FooterHint text="Press Enter to copy result" />
+      )}
+    </div>
+  );
+}
+
+function TimezoneView({ module, accent }: { module: ModuleData; accent: AccentTheme }) {
+  const tz = module.timezone;
+  if (!tz && module.focused) {
+    return <HintView icon={Globe} accent={accent} text={MODULE_META.timezone.placeholder} />;
+  }
+  if (!tz) return null;
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-3">
+        <IconBadge icon={Globe} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className={`text-xl font-semibold tracking-tight ${tz.isPartial ? 'text-white/50' : 'text-white'}`}>
+            {tz.display}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ColorView({ module, accent }: { module: ModuleData; accent: AccentTheme }) {
+  const color = module.color;
+  if (!color && module.focused) {
+    return <HintView icon={Palette} accent={accent} text={MODULE_META.color.placeholder} />;
+  }
+  if (!color) return null;
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-3">
+        {/* Color swatch */}
+        <div
+          className="w-10 h-10 rounded-xl border border-white/20 flex-shrink-0"
+          style={{ background: color.cssColor }}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-white font-semibold text-lg font-mono">{color.hex}</span>
+          </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+            <span className="text-white/40 text-xs font-mono">
+              rgb({color.rgb.r}, {color.rgb.g}, {color.rgb.b})
+            </span>
+            <span className="text-white/40 text-xs font-mono">
+              hsl({color.hsl.h}, {color.hsl.s}%, {color.hsl.l}%)
+            </span>
+          </div>
+        </div>
+      </div>
+      <FooterHint text="Press Enter to copy HEX value" />
+    </div>
+  );
+}
+
+function DateView({ module, accent }: { module: ModuleData; accent: AccentTheme }) {
+  const date = module.date;
+  if (!date && module.focused) {
+    return <HintView icon={Calendar} accent={accent} text={MODULE_META.date.placeholder} />;
+  }
+  if (!date) return null;
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-3">
+        <IconBadge icon={Calendar} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className={`text-xl font-semibold tracking-tight ${date.isPartial ? 'text-white/50' : 'text-white'}`}>
+            {date.display}
+          </div>
+          {date.subtitle && (
+            <div className="text-white/30 text-xs mt-1">{date.subtitle}</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimerView({ module, accent, onStart, onToggle, onReset }: {
+  module: ModuleData; accent: AccentTheme;
+  onStart?: () => void; onToggle?: () => void; onReset?: () => void;
+}) {
+  const timer = module.timer;
+  if (!timer && module.focused) {
+    return <HintView icon={Timer} accent={accent} text={MODULE_META.timer.placeholder} />;
+  }
+  if (!timer) return null;
+
+  const progressPercent = timer.progress * 100;
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-3 mb-3">
+        <IconBadge icon={Timer} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className="text-white/30 text-xs mb-1">{timer.label} timer</div>
+          <div className={`text-3xl font-mono font-bold tracking-tight ${timer.isComplete ? accent.text : 'text-white'}`}>
+            {timer.display}
+          </div>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-1 rounded-full bg-white/10 mb-3 overflow-hidden">
+        <motion.div
+          className="h-full rounded-full"
+          style={{ background: accent.solid }}
+          animate={{ width: `${progressPercent}%` }}
+          transition={{ duration: 0.3 }}
+        />
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center gap-2">
+        {!timer.isRunning && !timer.isComplete && timer.remainingSeconds === timer.totalSeconds && (
+          <button
+            onClick={onStart}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/80 transition-colors"
+            style={{ background: accent.bg, border: `1px solid ${accent.border}` }}
+          >
+            <Play className="w-3 h-3" /> Start
+          </button>
+        )}
+        {(timer.isRunning || (timer.remainingSeconds < timer.totalSeconds && !timer.isComplete)) && (
+          <button
+            onClick={onToggle}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/80 transition-colors"
+            style={{ background: accent.bg, border: `1px solid ${accent.border}` }}
+          >
+            {timer.isRunning ? <><Pause className="w-3 h-3" /> Pause</> : <><Play className="w-3 h-3" /> Resume</>}
+          </button>
+        )}
+        {(timer.remainingSeconds < timer.totalSeconds || timer.isComplete) && (
+          <button
+            onClick={onReset}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/60 hover:text-white/80 transition-colors"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
+          >
+            <RotateCcw className="w-3 h-3" /> Reset
+          </button>
+        )}
+        {timer.isComplete && (
+          <span className={`ml-auto text-sm font-medium ${accent.text}`}>Complete!</span>
+        )}
+      </div>
+
+      {!timer.isRunning && !timer.isComplete && timer.remainingSeconds === timer.totalSeconds && (
+        <div className="mt-2">
+          <span className="text-[10px] text-white/20">Press Start or Enter to begin</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Shared UI Helpers ─────────────────────────────────────────
+
+function IconBadge({ icon: Icon, accent }: { icon: React.ComponentType<{ className?: string }>; accent: AccentTheme }) {
+  return (
+    <div className="p-2.5 rounded-xl flex-shrink-0" style={{ background: accent.bg, border: `1px solid ${accent.border}` }}>
+      <Icon className={`w-5 h-5 ${accent.text}`} />
+    </div>
+  );
+}
+
+function HintView({ icon: Icon, accent, text }: { icon: React.ComponentType<{ className?: string }>; accent: AccentTheme; text: string }) {
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-3">
+        <IconBadge icon={Icon} accent={accent} />
+        <div className="text-white/30 text-sm">{text}</div>
+      </div>
+    </div>
+  );
+}
+
+function FooterHint({ text }: { text: string }) {
+  return (
+    <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+      <span className="text-[10px] text-white/20">{text}</span>
+    </div>
+  );
+}
+
+// ─── Main Panel ────────────────────────────────────────────────
+
+export function ContourPanel({
+  state, isVisible, onCommandSelect, selectedIndex, persona = 'default',
+  onTimerStart, onTimerToggle, onTimerReset, onCopyValue,
+}: ContourPanelProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const selectedItemRef = useRef<HTMLButtonElement>(null);
   const accent = personaAccent[persona] || personaAccent.default;
 
-  // Auto-scroll to keep selected item visible
   useEffect(() => {
     if (selectedItemRef.current && scrollContainerRef.current) {
-      selectedItemRef.current.scrollIntoView({
-        block: 'nearest',
-        behavior: 'smooth',
-      });
+      selectedItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }, [selectedIndex]);
 
-  // Compute flat index mapping for keyboard navigation
   let flatIndex = 0;
   const getFlatIndex = () => flatIndex++;
+
+  const isFocused = state.mode === 'module' && state.module?.focused;
+  const moduleMeta = state.module ? MODULE_META[state.module.id] : null;
 
   return (
     <AnimatePresence>
@@ -109,31 +406,32 @@ export function ContourPanel({ state, isVisible, onCommandSelect, selectedIndex,
               backdropFilter: 'blur(40px) saturate(180%)',
               WebkitBackdropFilter: 'blur(40px) saturate(180%)',
               border: `1px solid ${accent.border}`,
-              boxShadow: `
-                ${accent.glow},
-                0 25px 50px rgba(0, 0, 0, 0.5),
-                inset 0 1px 0 rgba(255, 255, 255, 0.08)
-              `,
+              boxShadow: `${accent.glow}, 0 25px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08)`,
             }}
           >
-            {/* Header - TimeMachine Contour branding */}
-            <div
-              className="px-4 py-2.5 flex items-center justify-between"
-              style={{
-                borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-              }}
-            >
+            {/* Header */}
+            <div className="px-4 py-2.5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.06)' }}>
               <div className="flex items-center gap-2">
-                <div
-                  className="w-2 h-2 rounded-full"
-                  style={{
-                    background: accent.border.replace('0.25', '0.8'),
-                    boxShadow: `0 0 6px ${accent.border}`,
-                  }}
-                />
-                <span className="text-[11px] font-medium tracking-wider uppercase text-white/40">
-                  TimeMachine Contour
-                </span>
+                {isFocused && moduleMeta && (
+                  <>
+                    <div className="w-2 h-2 rounded-full" style={{ background: accent.solid, boxShadow: `0 0 6px ${accent.border}` }} />
+                    <span className="text-[11px] font-medium tracking-wider uppercase text-white/40">
+                      Contour
+                    </span>
+                    <span className="text-white/15 text-[11px]">/</span>
+                    <span className={`text-[11px] font-medium ${accent.text}`}>
+                      {moduleMeta.label}
+                    </span>
+                  </>
+                )}
+                {!isFocused && (
+                  <>
+                    <div className="w-2 h-2 rounded-full" style={{ background: accent.border.replace('0.25', '0.8'), boxShadow: `0 0 6px ${accent.border}` }} />
+                    <span className="text-[11px] font-medium tracking-wider uppercase text-white/40">
+                      TimeMachine Contour
+                    </span>
+                  </>
+                )}
               </div>
               {state.mode === 'commands' && (
                 <span className="text-[10px] text-white/20 font-mono">
@@ -147,36 +445,21 @@ export function ContourPanel({ state, isVisible, onCommandSelect, selectedIndex,
               ref={scrollContainerRef}
               className="max-h-[320px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full"
             >
-              {/* Calculator Mode */}
-              {state.mode === 'calculator' && state.calculatorResult && (
-                <div className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="p-2.5 rounded-xl"
-                      style={{
-                        background: accent.bg,
-                        border: `1px solid ${accent.border}`,
-                      }}
-                    >
-                      <Equal className={`w-5 h-5 ${accent.text}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-white/40 text-xs font-mono mb-1 truncate">
-                        {state.calculatorResult.expression}
-                      </div>
-                      <div className={`text-xl font-semibold tracking-tight ${state.calculatorResult.isPartial ? 'text-white/50' : 'text-white'}`}>
-                        {state.calculatorResult.displayResult}
-                      </div>
-                    </div>
-                  </div>
-                  {!state.calculatorResult.isPartial && (
-                    <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                      <span className="text-[10px] text-white/20">
-                        Press Enter to copy result · Keep typing to continue
-                      </span>
-                    </div>
+              {/* Module views */}
+              {state.mode === 'module' && state.module && (
+                <>
+                  {state.module.id === 'calculator' && <CalculatorView module={state.module} accent={accent} />}
+                  {state.module.id === 'units' && <UnitsView module={state.module} accent={accent} />}
+                  {state.module.id === 'currency' && <CurrencyView module={state.module} accent={accent} />}
+                  {state.module.id === 'timezone' && <TimezoneView module={state.module} accent={accent} />}
+                  {state.module.id === 'color' && <ColorView module={state.module} accent={accent} />}
+                  {state.module.id === 'date' && <DateView module={state.module} accent={accent} />}
+                  {state.module.id === 'timer' && (
+                    <TimerView module={state.module} accent={accent}
+                      onStart={onTimerStart} onToggle={onTimerToggle} onReset={onTimerReset}
+                    />
                   )}
-                </div>
+                </>
               )}
 
               {/* Commands Mode */}
@@ -191,14 +474,11 @@ export function ContourPanel({ state, isVisible, onCommandSelect, selectedIndex,
                   ) : (
                     groupByCategory(state.commands).map(({ category, commands }) => (
                       <div key={category}>
-                        {/* Category label */}
                         <div className="px-4 py-1.5">
                           <span className="text-[10px] font-medium tracking-wider uppercase text-white/25">
                             {CATEGORY_INFO[category]?.label || category}
                           </span>
                         </div>
-
-                        {/* Commands in this category */}
                         {commands.map((cmd) => {
                           const idx = getFlatIndex();
                           const isSelected = idx === selectedIndex;
@@ -215,35 +495,18 @@ export function ContourPanel({ state, isVisible, onCommandSelect, selectedIndex,
                                 className="flex items-center gap-3 w-full px-2 py-2 rounded-xl transition-colors duration-100"
                                 style={{
                                   background: isSelected ? accent.bg : 'transparent',
-                                  border: isSelected
-                                    ? `1px solid ${accent.border}`
-                                    : '1px solid transparent',
+                                  border: isSelected ? `1px solid ${accent.border}` : '1px solid transparent',
                                 }}
                               >
-                                <div
-                                  className="p-1.5 rounded-lg flex-shrink-0"
-                                  style={{
-                                    background: isSelected
-                                      ? accent.border.replace('0.25', '0.15')
-                                      : 'rgba(255, 255, 255, 0.04)',
-                                  }}
-                                >
-                                  <IconComponent
-                                    className={`w-4 h-4 ${isSelected ? accent.text : 'text-white/40'}`}
-                                  />
+                                <div className="p-1.5 rounded-lg flex-shrink-0" style={{ background: isSelected ? accent.border.replace('0.25', '0.15') : 'rgba(255, 255, 255, 0.04)' }}>
+                                  <IconComponent className={`w-4 h-4 ${isSelected ? accent.text : 'text-white/40'}`} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-white/70'}`}>
-                                    {cmd.name}
-                                  </div>
-                                  <div className={`text-xs truncate ${isSelected ? 'text-white/40' : 'text-white/20'}`}>
-                                    {cmd.description}
-                                  </div>
+                                  <div className={`text-sm font-medium ${isSelected ? 'text-white' : 'text-white/70'}`}>{cmd.name}</div>
+                                  <div className={`text-xs truncate ${isSelected ? 'text-white/40' : 'text-white/20'}`}>{cmd.description}</div>
                                 </div>
                                 {isSelected && (
-                                  <div className="flex-shrink-0 text-[10px] text-white/20 font-mono">
-                                    ↵
-                                  </div>
+                                  <div className="flex-shrink-0 text-[10px] text-white/20 font-mono">↵</div>
                                 )}
                               </div>
                             </button>
@@ -256,28 +519,27 @@ export function ContourPanel({ state, isVisible, onCommandSelect, selectedIndex,
               )}
             </div>
 
-            {/* Footer hint */}
+            {/* Footer */}
             {state.mode === 'commands' && state.commands.length > 0 && (
-              <div
-                className="px-4 py-2 flex items-center justify-between"
-                style={{
-                  borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                }}
-              >
+              <div className="px-4 py-2 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] text-white/20 flex items-center gap-1">
-                    <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/30">↑↓</kbd>
-                    navigate
+                    <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/30">↑↓</kbd> navigate
                   </span>
                   <span className="text-[10px] text-white/20 flex items-center gap-1">
-                    <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/30">↵</kbd>
-                    select
+                    <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/30">↵</kbd> open
                   </span>
                   <span className="text-[10px] text-white/20 flex items-center gap-1">
-                    <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/30">esc</kbd>
-                    dismiss
+                    <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/30">esc</kbd> dismiss
                   </span>
                 </div>
+              </div>
+            )}
+            {isFocused && (
+              <div className="px-4 py-2 flex items-center" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                <span className="text-[10px] text-white/20 flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/30">esc</kbd> back
+                </span>
               </div>
             )}
           </div>

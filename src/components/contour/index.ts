@@ -1,6 +1,12 @@
 export { ContourPanel } from './ContourPanel';
 export { useContour } from './useContour';
-export type { ContourState, ContourMode } from './useContour';
+export type { ContourState, ContourMode, ModuleId, ModuleData } from './useContour';
 export type { ContourCommand, ContourCategory, ContourAction } from './modules/commands';
 export { searchCommands, CONTOUR_COMMANDS, CATEGORY_INFO } from './modules/commands';
 export { evaluateMath, isMathExpression } from './modules/calculator';
+export { detectUnits } from './modules/unitConverter';
+export { detectCurrency, resolveCurrency } from './modules/currencyConverter';
+export { detectTimezone } from './modules/timezoneConverter';
+export { detectColor } from './modules/colorConverter';
+export { detectDate } from './modules/dateCalculator';
+export { createTimerState, tickTimer, formatDuration, parseDuration } from './modules/timer';
