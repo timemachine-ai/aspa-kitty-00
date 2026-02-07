@@ -203,6 +203,8 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Don't send messages when contour is focused (textbox belongs to the tool)
+    if (contour.isFocused) return;
     if ((message.trim() || selectedImages.length > 0) && !isLoading && !isUploading) {
       // Close mention modal when sending message
       setShowMentionCall(false);
@@ -291,48 +293,74 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
         break;
       }
       case 'inline':
-        setMessage('');
-        contour.dismiss();
+        // Open the tool INSIDE the contour panel (focused mode)
+        if (contour.focusOnModule(command.action.handler)) {
+          setMessage('');
+        } else {
+          setMessage('');
+          contour.dismiss();
+        }
         break;
     }
   }, [navigate, contour, handlePlusMenuSelect]);
 
+  /**
+   * Get a copyable result value from the current module state
+   */
+  const getModuleCopyValue = (): string | null => {
+    const mod = contour.state.module;
+    if (!mod) return null;
+    if (mod.calculator && !mod.calculator.isPartial) return mod.calculator.result.toString();
+    if (mod.units && !mod.units.isPartial) return mod.units.toValue.toFixed(4).replace(/\.?0+$/, '');
+    if (mod.currency?.toValue != null && !mod.currency.isPartial && !mod.currency.isLoading) return mod.currency.toValue.toFixed(2);
+    if (mod.color) return mod.color.hex;
+    if (mod.timezone && !mod.timezone.isPartial) return mod.timezone.toTime;
+    if (mod.date && !mod.date.isPartial) return mod.date.display;
+    return null;
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Contour keyboard navigation takes priority when visible
+    // Command palette navigation
     if (contour.isVisible && contour.state.mode === 'commands') {
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        contour.selectUp();
-        return;
-      }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        contour.selectDown();
-        return;
-      }
+      if (e.key === 'ArrowUp') { e.preventDefault(); contour.selectUp(); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); contour.selectDown(); return; }
+      if (e.key === 'Tab') { e.preventDefault(); contour.selectDown(); return; }
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        if (contour.selectedCommand) {
-          handleContourCommandSelect(contour.selectedCommand);
-        }
-        return;
-      }
-      if (e.key === 'Tab') {
-        e.preventDefault();
-        contour.selectDown();
+        if (contour.selectedCommand) handleContourCommandSelect(contour.selectedCommand);
         return;
       }
     }
 
-    // Calculator mode: Enter copies result
-    if (contour.isVisible && contour.state.mode === 'calculator' && contour.state.calculatorResult) {
-      if (e.key === 'Enter' && !e.shiftKey && !contour.state.calculatorResult.isPartial) {
-        e.preventDefault();
-        const resultStr = contour.state.calculatorResult.result.toString();
-        navigator.clipboard.writeText(resultStr).catch(() => {});
-        setMessage('');
-        contour.dismiss();
-        return;
+    // Module mode: Enter copies result or starts timer
+    if (contour.isVisible && contour.state.mode === 'module' && contour.state.module) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        const mod = contour.state.module;
+
+        // Timer: Enter starts the timer
+        if (mod.id === 'timer' && mod.timer && !mod.timer.isRunning && !mod.timer.isComplete) {
+          e.preventDefault();
+          contour.startTimer();
+          return;
+        }
+
+        // Other modules: Enter copies the result
+        const copyValue = getModuleCopyValue();
+        if (copyValue) {
+          e.preventDefault();
+          navigator.clipboard.writeText(copyValue).catch(() => {});
+          if (!contour.isFocused) {
+            setMessage('');
+            contour.dismiss();
+          }
+          return;
+        }
+
+        // In focused mode with no result yet, don't send message
+        if (contour.isFocused) {
+          e.preventDefault();
+          return;
+        }
       }
     }
 
@@ -628,6 +656,9 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                 onCommandSelect={handleContourCommandSelect}
                 selectedIndex={contour.state.selectedIndex}
                 persona={currentPersona}
+                onTimerStart={contour.startTimer}
+                onTimerToggle={contour.toggleTimer}
+                onTimerReset={contour.resetTimer}
               />
             </div>
           </div>
