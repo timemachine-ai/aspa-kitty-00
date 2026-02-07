@@ -1074,7 +1074,8 @@ async function callCerebrasAirAPIStreaming(
   tools?: any[],
   model: string = 'gpt-oss-120b',
   temperature: number = 0.9,
-  maxTokens: number = 2000
+  maxTokens: number = 2000,
+  reasoningEffort: string = 'low'
 ): Promise<ReadableStream> {
   const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY;
 
@@ -1089,7 +1090,7 @@ async function callCerebrasAirAPIStreaming(
     max_completion_tokens: maxTokens,
     top_p: 1,
     stream: true,
-    reasoning_effort: "low"
+    reasoning_effort: reasoningEffort
  };
 
   if (tools) {
@@ -1535,9 +1536,10 @@ The memory tags will be processed and removed from the visible response, so writ
       ? specialModeConfig.tools.map(t => toolMap[t]).filter(Boolean)
       : [imageGenerationTool, webSearchTool, youtubeMusicTool];
 
-    // Apply temperature and maxTokens overrides from special mode (used later in API calls)
+    // Apply temperature, maxTokens, and reasoningEffort overrides from special mode
     const temperatureToUse = specialModeConfig?.temperature ?? personaConfig.temperature;
     const maxTokensToUse = specialModeConfig?.maxTokens ?? personaConfig.maxTokens;
+    const reasoningEffortToUse: string = specialModeConfig?.reasoningEffort ?? 'low';
 
     // Handle audio transcription if audioData is provided
     let processedMessages = [...messages];
@@ -1681,7 +1683,8 @@ The memory tags will be processed and removed from the visible response, so writ
           toolsToUse,
           modelToUse,
           temperatureToUse,
-          maxTokensToUse
+          maxTokensToUse,
+          reasoningEffortToUse
         );
       } else {
         // Girlie and Pro personas use standard Groq API
@@ -1916,7 +1919,7 @@ The memory tags will be processed and removed from the visible response, so writ
           max_completion_tokens: maxTokensToUse,
           top_p: 1,
           stream: false,
-          reasoning_effort: "low"
+          reasoning_effort: reasoningEffortToUse
         };
 
         if (toolsToUse && toolsToUse.length > 0) {
