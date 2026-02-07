@@ -192,6 +192,15 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
+  const handlePlusMenuSelect = (option: PlusMenuOption) => {
+    setSelectedPlusOption(option);
+    setShowPlusMenu(false);
+
+    if (option === 'upload-photos') {
+      fileInputRef.current?.click();
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((message.trim() || selectedImages.length > 0) && !isLoading && !isUploading) {
@@ -249,8 +258,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
         setMessage('');
         contour.dismiss();
         break;
-      case 'mode':
-        // Map contour mode strings to PlusMenuOption
+      case 'mode': {
         const modeMap: Record<string, PlusMenuOption> = {
           'web-coding': 'web-coding',
           'music-compose': 'music-compose',
@@ -263,7 +271,8 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
         setMessage('');
         contour.dismiss();
         break;
-      case 'clipboard':
+      }
+      case 'clipboard': {
         let clipboardValue = '';
         if (command.action.handler === 'uuid') {
           clipboardValue = crypto.randomUUID?.() ||
@@ -280,9 +289,8 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
         setMessage('');
         contour.dismiss();
         break;
+      }
       case 'inline':
-        // For inline handlers, clear the slash command and keep contour context
-        // Future: open dedicated inline panels
         setMessage('');
         contour.dismiss();
         break;
@@ -386,15 +394,6 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     } else {
       // Toggle the card
       setShowPlusMenu(prev => !prev);
-    }
-  };
-
-  const handlePlusMenuSelect = (option: PlusMenuOption) => {
-    setSelectedPlusOption(option);
-    setShowPlusMenu(false);
-
-    if (option === 'upload-photos') {
-      fileInputRef.current?.click();
     }
   };
 
