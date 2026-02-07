@@ -18,7 +18,7 @@ export const SPECIAL_MODE_CONFIGS = {
       model: 'gpt-oss-120b',
       temperature: 0.9,
       maxTokens: 7500,
-      tools: ['webSearch'],
+      tools: [],
       reasoningEffort: 'high',
       systemPrompt: `# The Master Frontend Design Skill
 

@@ -45,6 +45,7 @@ export function ChatMessage({
   sender_avatar,
   replyTo,
   reactions,
+  specialMode,
   onReply,
   onReact
 }: ChatMessageProps) {
@@ -247,6 +248,7 @@ export function ChatMessage({
           isStreaming={isStreaming}
           audioUrl={audioUrl}
           isStreamingActive={streamingMessageId === id}
+          specialMode={specialMode}
         />
         {renderReactions()}
         {renderActions()}

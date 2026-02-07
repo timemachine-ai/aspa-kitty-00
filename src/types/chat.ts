@@ -27,6 +27,8 @@ export interface Message {
   };
   // Reactions (emoji -> user_ids)
   reactions?: Record<string, string[]>;
+  // Special mode that triggered this message (e.g. 'web-coding', 'music-compose')
+  specialMode?: string;
 }
 
 export interface ChatState {

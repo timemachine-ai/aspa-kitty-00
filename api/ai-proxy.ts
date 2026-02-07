@@ -1093,7 +1093,7 @@ async function callCerebrasAirAPIStreaming(
     reasoning_effort: reasoningEffort
  };
 
-  if (tools) {
+  if (tools && tools.length > 0) {
     requestBody.tools = tools;
     requestBody.tool_choice = "auto";
     console.log('Cerebras API Tools:', JSON.stringify(tools, null, 2));
@@ -1532,8 +1532,8 @@ The memory tags will be processed and removed from the visible response, so writ
     // Initialize model, system prompt, and tools — apply special mode overrides
     let modelToUse = specialModeConfig?.model || personaConfig.model;
     let systemPromptToUse = enhancedSystemPrompt;
-    let toolsToUse: any[] = specialModeConfig?.tools
-      ? specialModeConfig.tools.map(t => toolMap[t]).filter(Boolean)
+    let toolsToUse: any[] = specialModeConfig && 'tools' in specialModeConfig
+      ? specialModeConfig.tools.map((t: string) => toolMap[t]).filter(Boolean)
       : [imageGenerationTool, webSearchTool, youtubeMusicTool];
 
     // Apply temperature, maxTokens, and reasoningEffort overrides from special mode
