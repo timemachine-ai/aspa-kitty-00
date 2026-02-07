@@ -1754,8 +1754,8 @@ The memory tags will be processed and removed from the visible response, so writ
           apiMessages,
           personaConfig.model
         );
-      } else if (persona === 'default' && !hasImageInput && !audioData) {
-        // Air persona uses Cerebras gpt-oss-120b (only when no image input)
+      } else if (persona === 'default' && !audioData) {
+        // Air persona uses Cerebras gpt-oss-120b (images already converted to text by OCR pipeline above)
         streamingResponse = await callCerebrasAirAPIStreaming(
           apiMessages,
           toolsToUse,
@@ -1765,7 +1765,7 @@ The memory tags will be processed and removed from the visible response, so writ
           reasoningEffortToUse
         );
       } else {
-        // Girlie and Pro personas, or default with image input, use standard Groq API
+        // Girlie and Pro personas use standard Groq API
         streamingResponse = await callGroqStandardAPIStreaming(
           apiMessages,
           modelToUse,
@@ -2013,8 +2013,8 @@ The memory tags will be processed and removed from the visible response, so writ
           apiMessages,
           personaConfig.model
         );
-      } else if (persona === 'default' && !hasImageInput && !audioData) {
-        // Air persona uses Cerebras gpt-oss-120b
+      } else if (persona === 'default' && !audioData) {
+        // Air persona uses Cerebras gpt-oss-120b (images already converted to text by OCR pipeline above)
         const requestBody: any = {
           model: modelToUse,
           messages: apiMessages,
