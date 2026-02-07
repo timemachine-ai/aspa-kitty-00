@@ -220,7 +220,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && isDesktop) {
       e.preventDefault();
       handleSubmit(e);
     } else if (e.key === 'Escape') {

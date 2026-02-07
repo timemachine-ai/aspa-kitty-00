@@ -99,7 +99,7 @@ function UserMessageComponent({ content, imageData, audioData, inputImageUrls, s
           )}
 
             {/* Display text content if present */}
-            {content && <div>{content}</div>}
+            {content && <div style={{ whiteSpace: 'pre-wrap' }}>{content}</div>}
           </div>
         )}
       </div>
