@@ -1068,6 +1068,68 @@ async function incrementRateLimit(userId: string | null, ip: string, persona: st
   }
 }
 
+// Extract text content from images using Llama 4 Maverick (OCR pipeline)
+async function extractImageContent(imageUrls: string[]): Promise<string> {
+  const GROQ_API_KEY = process.env.GROQ_API_KEY;
+  if (!GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY not configured for image extraction');
+  }
+
+  const imageContents = imageUrls.map((url: string) => ({
+    type: 'image_url',
+    image_url: { url }
+  }));
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `You are an image content extraction system. Your job is to extract ALL content from this image and output it as plain text.
+
+Rules:
+- Extract EVERY piece of text visible in the image, character by character, word by word
+- Maintain the original structure and formatting as closely as possible
+- If there are mathematical equations, write them out in LaTeX notation
+- If there are tables, preserve the table structure using text formatting
+- If there are diagrams or figures, describe them in detail
+- If there are code snippets, preserve the exact code
+- Do NOT skip anything - every single piece of content must be captured
+- Do NOT add any commentary, analysis, or answers
+- Do NOT summarize - give the COMPLETE content
+- If the image contains a question paper or exam, extract every question exactly as written
+- For handwritten content, do your best to accurately read and transcribe it
+- If the image is not text-based (e.g. a photo, artwork, screenshot), describe everything visible in thorough detail
+
+Output ONLY the extracted content, nothing else.`
+          },
+          ...imageContents
+        ]
+      }],
+      temperature: 0.1,
+      max_tokens: 4000,
+      stream: false
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Image extraction error:', errorText);
+    throw new Error(`Image extraction failed: ${response.status}`);
+  }
+
+  const result = await response.json();
+  return result.choices?.[0]?.message?.content || 'Could not extract content from image.';
+}
+
 // Streaming function for Air persona - CEREBRAS API
 async function callCerebrasAirAPIStreaming(
   messages: any[],
@@ -1610,34 +1672,13 @@ The memory tags will be processed and removed from the visible response, so writ
     }
 
     let apiMessages;
-    
-    if (imageData) {
-      const lastMessage = processedMessages[processedMessages.length - 1];
-      const imageUrls = Array.isArray(imageData) ? imageData : [imageData];
-      
-      const imageContents = imageUrls.map((url: string) => ({
-        type: 'image_url',
-        image_url: { url }
-      }));
+    // Track if we need to run the image OCR pipeline before the main AI call
+    const hasImageInput = !!imageData && !isAudioInput;
+    const imageUrlsForOCR = hasImageInput ? (Array.isArray(imageData) ? imageData : [imageData]) : [];
 
-      apiMessages = [
-        {
-          role: 'user',
-          content: [
-            { 
-              type: 'text', 
-              text: `${systemPromptToUse}\n\n${lastMessage.content || "What's in this image?"}`
-            },
-            ...imageContents
-          ]
-        }
-      ];
-      
-      // Override model for image processing
-      modelToUse = 'meta-llama/llama-4-maverick-17b-128e-instruct';
-      toolsToUse = [imageGenerationTool, webSearchTool]; // Ensure image tool and web search are available for image inputs
-    } else {
-      // External AIs don't need system prompts - they use their default behavior
+    {
+      // Build apiMessages the same way for all cases (text-only messages)
+      // If images are present, the OCR pipeline will inject extracted text before the API call
       const externalAIs = ['chatgpt', 'gemini', 'claude', 'deepseek', 'grok'];
       const isExternalAI = externalAIs.includes(persona);
 
@@ -1668,6 +1709,43 @@ The memory tags will be processed and removed from the visible response, so writ
 
       let streamingResponse: ReadableStream;
 
+      // Image OCR pipeline: extract text from images before calling persona AI
+      if (hasImageInput && imageUrlsForOCR.length > 0) {
+        // Send status marker so frontend shows "Analyzing photo..."
+        res.write('[IMAGE_ANALYZING]');
+
+        try {
+          const extractedText = await extractImageContent(imageUrlsForOCR);
+
+          // Inject extracted text into the last user message in apiMessages
+          const lastMsgIndex = apiMessages.length - 1;
+          const lastMsg = apiMessages[lastMsgIndex];
+          const userPrompt = lastMsg.content === '[Image message]' ? '' : lastMsg.content;
+
+          // Build enriched message combining extracted image content + user prompt
+          const enrichedContent = userPrompt
+            ? `[Content extracted from the attached image(s):\n${extractedText}\n]\n\nUser's message: ${userPrompt}`
+            : `[Content extracted from the attached image(s):\n${extractedText}\n]\n\nThe user shared this image. Respond based on the extracted content above.`;
+
+          apiMessages[lastMsgIndex] = { ...lastMsg, content: enrichedContent };
+        } catch (ocrError) {
+          console.error('Image OCR pipeline error:', ocrError);
+          // Fallback: let the persona model know there was an image but OCR failed
+          const lastMsgIndex = apiMessages.length - 1;
+          const lastMsg = apiMessages[lastMsgIndex];
+          const userPrompt = lastMsg.content === '[Image message]' ? '' : lastMsg.content;
+          apiMessages[lastMsgIndex] = {
+            ...lastMsg,
+            content: userPrompt
+              ? `[The user attached an image but text extraction failed. Please respond to their message as best you can.]\n\nUser's message: ${userPrompt}`
+              : `[The user attached an image but text extraction failed. Let them know you couldn't process the image and ask them to try again.]`
+          };
+        }
+
+        // Send status marker so frontend switches to "Thinking..."
+        res.write('[IMAGE_ANALYZED]');
+      }
+
       // Choose API based on persona
       const externalAIs = ['chatgpt', 'gemini', 'claude', 'deepseek', 'grok'];
       if (externalAIs.includes(persona)) {
@@ -1676,8 +1754,8 @@ The memory tags will be processed and removed from the visible response, so writ
           apiMessages,
           personaConfig.model
         );
-      } else if (persona === 'default' && !imageData && !audioData) {
-        // Air persona uses Cerebras gpt-oss-120b
+      } else if (persona === 'default' && !hasImageInput && !audioData) {
+        // Air persona uses Cerebras gpt-oss-120b (only when no image input)
         streamingResponse = await callCerebrasAirAPIStreaming(
           apiMessages,
           toolsToUse,
@@ -1687,7 +1765,7 @@ The memory tags will be processed and removed from the visible response, so writ
           reasoningEffortToUse
         );
       } else {
-        // Girlie and Pro personas use standard Groq API
+        // Girlie and Pro personas, or default with image input, use standard Groq API
         streamingResponse = await callGroqStandardAPIStreaming(
           apiMessages,
           modelToUse,
@@ -1902,6 +1980,31 @@ The memory tags will be processed and removed from the visible response, so writ
       // Non-streaming response (fallback)
       let apiResponse: any;
 
+      // Image OCR pipeline for non-streaming: extract text from images before calling persona AI
+      if (hasImageInput && imageUrlsForOCR.length > 0) {
+        try {
+          const extractedText = await extractImageContent(imageUrlsForOCR);
+          const lastMsgIndex = apiMessages.length - 1;
+          const lastMsg = apiMessages[lastMsgIndex];
+          const userPrompt = lastMsg.content === '[Image message]' ? '' : lastMsg.content;
+          const enrichedContent = userPrompt
+            ? `[Content extracted from the attached image(s):\n${extractedText}\n]\n\nUser's message: ${userPrompt}`
+            : `[Content extracted from the attached image(s):\n${extractedText}\n]\n\nThe user shared this image. Respond based on the extracted content above.`;
+          apiMessages[lastMsgIndex] = { ...lastMsg, content: enrichedContent };
+        } catch (ocrError) {
+          console.error('Image OCR pipeline error (non-streaming):', ocrError);
+          const lastMsgIndex = apiMessages.length - 1;
+          const lastMsg = apiMessages[lastMsgIndex];
+          const userPrompt = lastMsg.content === '[Image message]' ? '' : lastMsg.content;
+          apiMessages[lastMsgIndex] = {
+            ...lastMsg,
+            content: userPrompt
+              ? `[The user attached an image but text extraction failed. Please respond to their message as best you can.]\n\nUser's message: ${userPrompt}`
+              : `[The user attached an image but text extraction failed. Let them know you couldn't process the image and ask them to try again.]`
+          };
+        }
+      }
+
       // Choose API based on persona
       const externalAIs = ['chatgpt', 'gemini', 'claude', 'deepseek', 'grok'];
       if (externalAIs.includes(persona)) {
@@ -1910,7 +2013,7 @@ The memory tags will be processed and removed from the visible response, so writ
           apiMessages,
           personaConfig.model
         );
-      } else if (persona === 'default' && !imageData && !audioData) {
+      } else if (persona === 'default' && !hasImageInput && !audioData) {
         // Air persona uses Cerebras gpt-oss-120b
         const requestBody: any = {
           model: modelToUse,

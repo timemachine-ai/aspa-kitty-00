@@ -19,6 +19,7 @@ interface ChatModeProps {
   onMessageAnimated: (messageId: number) => void;
   error?: string | null;
   streamingMessageId?: number | null;
+  loadingPhase?: 'analyzing_photo' | 'thinking' | null;
   isGroupMode?: boolean;
   currentUserId?: string;
   onReply?: (message: ReplyTo) => void;
@@ -31,6 +32,7 @@ export function ChatMode({
   onMessageAnimated,
   error,
   streamingMessageId,
+  loadingPhase,
   isGroupMode,
   currentUserId,
   onReply,
@@ -161,6 +163,7 @@ export function ChatMode({
                     currentPersona={currentPersona}
                     previousMessage={previousMessage}
                     streamingMessageId={streamingMessageId}
+                    loadingPhase={loadingPhase}
                     isGroupMode={isGroupMode}
                     currentUserId={currentUserId}
                     onReply={onReply}

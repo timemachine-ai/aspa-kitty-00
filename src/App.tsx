@@ -147,6 +147,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     showRateLimitModal,
     streamingMessageId,
     youtubeMusic,
+    loadingPhase,
     currentSessionId,
     // Collaborative mode
     isCollaborative,
@@ -763,6 +764,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
                   onMessageAnimated={markMessageAsAnimated}
                   error={error}
                   streamingMessageId={streamingMessageId}
+                  loadingPhase={loadingPhase}
                   isGroupMode={isGroupMode}
                   currentUserId={user?.id}
                   onReply={isCollaborative ? handleReply : undefined}
@@ -774,6 +776,7 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
                   currentPersona={currentPersona}
                   onMessageAnimated={markMessageAsAnimated}
                   streamingMessageId={streamingMessageId}
+                  loadingPhase={loadingPhase}
                 />
               )}
             </>
