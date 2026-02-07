@@ -22,7 +22,14 @@ interface AIMessageProps extends MessageProps {
   isStreaming?: boolean;
   audioUrl?: string;
   isStreamingActive?: boolean;
+  specialMode?: string;
 }
+
+const SPECIAL_MODE_SHIMMER_TEXT: Record<string, string> = {
+  'web-coding': 'Thinking outside the box',
+  'music-compose': 'Thinking about the melody',
+  'tm-healthcare': 'Talking with the medical researcher',
+};
 
 const getPersonaColor = (persona: keyof typeof AI_PERSONAS = 'default') => {
   switch (persona) {
@@ -93,7 +100,8 @@ function AIMessageComponent({
   previousMessage = null,
   isStreaming = false,
   audioUrl,
-  isStreamingActive = false
+  isStreamingActive = false,
+  specialMode
 }: AIMessageProps) {
   const [showReasoning, setShowReasoning] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -433,14 +441,32 @@ function AIMessageComponent({
                     )}
                   </>
                 ) : isStreamingActive ? (
-                  <div className="flex items-center gap-2 text-sm opacity-60">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                      className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"
-                    />
-                    Thinking...
-                  </div>
+                  specialMode && SPECIAL_MODE_SHIMMER_TEXT[specialMode] ? (
+                    <div className="flex items-center gap-2">
+                      <AnimatedShinyText
+                        text={SPECIAL_MODE_SHIMMER_TEXT[specialMode]}
+                        useShimmer={true}
+                        baseColor={shimmerColors.baseColor}
+                        shimmerColor={shimmerColors.shimmerColor}
+                        gradientAnimationDuration={2}
+                        textClassName="text-sm"
+                        className="py-1"
+                        style={{
+                          fontFamily: 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm opacity-60">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"
+                      />
+                      Thinking...
+                    </div>
+                  )
                 ) : null}
               </div>
             </div>
@@ -471,14 +497,32 @@ function AIMessageComponent({
                   )}
                 </>
               ) : isStreamingActive ? (
-                <div className="flex items-center justify-center gap-3 text-lg opacity-60">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                    className="w-6 h-6 border-2 border-current border-t-transparent rounded-full"
-                  />
-                  Thinking...
-                </div>
+                specialMode && SPECIAL_MODE_SHIMMER_TEXT[specialMode] ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <AnimatedShinyText
+                      text={SPECIAL_MODE_SHIMMER_TEXT[specialMode]}
+                      useShimmer={true}
+                      baseColor={shimmerColors.baseColor}
+                      shimmerColor={shimmerColors.shimmerColor}
+                      gradientAnimationDuration={2}
+                      textClassName="text-lg"
+                      className="py-1"
+                      style={{
+                        fontFamily: 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif',
+                        fontSize: '18px'
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center gap-3 text-lg opacity-60">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="w-6 h-6 border-2 border-current border-t-transparent rounded-full"
+                    />
+                    Thinking...
+                  </div>
+                )
               ) : null}
             </div>
           )}

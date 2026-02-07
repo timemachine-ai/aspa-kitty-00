@@ -540,7 +540,8 @@ export function useChat(
       id: aiMessageId,
       content: '',
       isAI: true,
-      hasAnimated: false
+      hasAnimated: false,
+      specialMode: specialMode
     };
 
     setMessages(prev => [...prev, aiMessage]);
