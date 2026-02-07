@@ -5,17 +5,7 @@
 // Personas: 'default' = Air, 'girlie' = Girlie, 'pro' = PRO
 // Tools available: 'imageGeneration', 'webSearch', 'youtubeMusic'
 
-export interface SpecialModePersonaConfig {
-  systemPrompt: string;
-  model?: string;          // override persona model (omit to keep persona default)
-  temperature?: number;    // override persona temperature
-  maxTokens?: number;      // override persona maxTokens
-  tools?: string[];        // which tools to enable — omit to keep defaults (imageGeneration, webSearch, youtubeMusic)
-}
-
-export type SpecialModeConfig = Record<'default' | 'girlie' | 'pro', SpecialModePersonaConfig>;
-
-export const SPECIAL_MODE_CONFIGS: Record<string, SpecialModeConfig> = {
+export const SPECIAL_MODE_CONFIGS = {
 
   // ─────────────────────────────────────────────────────────
   // WEB CODING
