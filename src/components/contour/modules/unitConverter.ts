@@ -224,3 +224,86 @@ export function getSuggestions(unitName: string): string[] {
   }
   return [];
 }
+
+// ─── Interactive Mode Helpers ──────────────────────────────────
+
+export interface UnitOption {
+  label: string;
+  names: string[];
+}
+
+export interface UnitCategory {
+  id: string;
+  label: string;
+  units: UnitOption[];
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  length: 'Length',
+  weight: 'Weight',
+  volume: 'Volume',
+  speed: 'Speed',
+  area: 'Area',
+  data: 'Data',
+  temperature: 'Temperature',
+};
+
+export function getUnitCategories(): UnitCategory[] {
+  const categoryMap = new Map<string, UnitOption[]>();
+  for (const unit of UNITS) {
+    const list = categoryMap.get(unit.category) || [];
+    list.push({ label: unit.label, names: unit.names });
+    categoryMap.set(unit.category, list);
+  }
+  categoryMap.set('temperature', TEMP_UNITS.map(t => ({ label: t.label, names: t.names })));
+
+  return Array.from(categoryMap.entries()).map(([id, units]) => ({
+    id,
+    label: CATEGORY_LABELS[id] || id,
+    units,
+  }));
+}
+
+/**
+ * Direct conversion by unit labels (for interactive UI).
+ * Unlike detectUnits() which parses text, this takes structured inputs.
+ */
+export function convertDirect(value: number, fromLabel: string, toLabel: string): UnitResult | null {
+  const fromUnit = UNITS.find(u => u.label === fromLabel);
+  const toUnit = UNITS.find(u => u.label === toLabel);
+
+  if (fromUnit && toUnit && fromUnit.category === toUnit.category) {
+    const baseValue = fromUnit.toBase(value);
+    const result = toUnit.fromBase(baseValue);
+    return {
+      fromValue: value,
+      fromUnit: fromUnit.names[0],
+      fromLabel: fromUnit.label,
+      toValue: result,
+      toUnit: toUnit.names[0],
+      toLabel: toUnit.label,
+      display: `${formatNum(value)} ${fromUnit.label} = ${formatNum(result)} ${toUnit.label}`,
+      isPartial: false,
+    };
+  }
+
+  // Temperature
+  const fromTemp = TEMP_UNITS.find(t => t.label === fromLabel);
+  const toTemp = TEMP_UNITS.find(t => t.label === toLabel);
+  if (fromTemp && toTemp) {
+    const inC = fromTemp.toC(value);
+    const result = toTemp.fromC(inC);
+    return {
+      fromValue: value,
+      fromUnit: fromTemp.names[0],
+      fromLabel: fromTemp.label,
+      toValue: result,
+      toUnit: toTemp.names[0],
+      toLabel: toTemp.label,
+      display: `${formatNum(value)} ${fromTemp.label} = ${formatNum(result)} ${toTemp.label}`,
+      isPartial: false,
+    };
+  }
+
+  return null;
+}
