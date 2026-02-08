@@ -280,3 +280,23 @@ export function getCurrencyInfo(code: string): { symbol: string; name: string } 
 export function getAllCurrencyCodes(): string[] {
   return Object.keys(CURRENCIES);
 }
+
+// ─── Interactive Mode Helpers ──────────────────────────────────
+
+export interface CurrencyOption {
+  code: string;
+  symbol: string;
+  name: string;
+}
+
+export const POPULAR_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'INR', 'CNY', 'AUD', 'CAD', 'CHF', 'BTC'];
+
+export function getCurrencyList(): CurrencyOption[] {
+  return Object.entries(CURRENCIES).map(([code, info]) => ({
+    code,
+    symbol: info.symbol,
+    name: info.name,
+  }));
+}
+
+export { formatCurrency };

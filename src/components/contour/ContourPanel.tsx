@@ -19,6 +19,18 @@ import {
 import { ContourState, ModuleData, ModuleId } from './useContour';
 import { ContourCommand, ContourCategory, CATEGORY_INFO } from './modules/commands';
 import { getUnitCategories, convertDirect, UnitResult } from './modules/unitConverter';
+import {
+  getCurrencyList, POPULAR_CURRENCIES, resolveCurrency, formatCurrency,
+  CurrencyResult, CurrencyOption,
+} from './modules/currencyConverter';
+import {
+  getTimezoneList, POPULAR_TIMEZONES, convertTimezoneDirect, findTimezoneByLabel,
+  TimezoneResult, TimezoneOption,
+} from './modules/timezoneConverter';
+import {
+  colorFromRgb, hexToRgb, rgbToHex, rgbToHsl, COLOR_PRESETS,
+  ColorResult,
+} from './modules/colorConverter';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Calculator, ArrowLeftRight, DollarSign, Globe, Palette,
@@ -315,91 +327,700 @@ function UnitsInteractive({ units, accent, onCopyValue }: { units?: UnitResult; 
   );
 }
 
-function CurrencyView({ module, accent }: { module: ModuleData; accent: AccentTheme }) {
-  const curr = module.currency;
-  if (!curr && module.focused) {
-    return <HintView icon={DollarSign} accent={accent} text={MODULE_META.currency.placeholder} />;
-  }
-  if (!curr) return null;
+const CURRENCY_LIST = getCurrencyList();
 
-  return (
-    <div className="p-4">
-      <div className="flex items-center gap-3">
-        <IconBadge icon={DollarSign} accent={accent} />
-        <div className="flex-1 min-w-0">
-          <div className={`text-xl font-semibold tracking-tight ${curr.isPartial || curr.isLoading ? 'text-white/50' : 'text-white'}`}>
-            {curr.display}
-          </div>
-          {curr.rate && !curr.isPartial && (
-            <div className="text-white/30 text-xs mt-1">
-              1 {curr.fromCurrency} = {curr.rate.toFixed(4)} {curr.toCurrency}
+function CurrencyView({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const curr = module.currency;
+
+  // Non-focused: simple display (unchanged behavior)
+  if (!module.focused) {
+    if (!curr) return null;
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3">
+          <IconBadge icon={DollarSign} accent={accent} />
+          <div className="flex-1 min-w-0">
+            <div className={`text-xl font-semibold tracking-tight ${curr.isPartial || curr.isLoading ? 'text-white/50' : 'text-white'}`}>
+              {curr.display}
             </div>
-          )}
-          {curr.error && (
-            <div className="text-red-400/60 text-xs mt-1">{curr.error}</div>
+            {curr.rate && !curr.isPartial && (
+              <div className="text-white/30 text-xs mt-1">
+                1 {curr.fromCurrency} = {curr.rate.toFixed(4)} {curr.toCurrency}
+              </div>
+            )}
+            {curr.error && (
+              <div className="text-red-400/60 text-xs mt-1">{curr.error}</div>
+            )}
+          </div>
+          {curr.isLoading && (
+            <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
           )}
         </div>
-        {curr.isLoading && (
-          <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+        {!curr.isPartial && !curr.isLoading && curr.toValue !== null && (
+          <FooterHint text="Press Enter to copy result" />
         )}
       </div>
-      {!curr.isPartial && !curr.isLoading && curr.toValue !== null && (
+    );
+  }
+
+  // Focused mode: interactive UI
+  return <CurrencyInteractive curr={curr} accent={accent} onCopyValue={onCopyValue} />;
+}
+
+function CurrencyInteractive({ curr, accent, onCopyValue }: { curr?: CurrencyResult; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const [fromCode, setFromCode] = useState('USD');
+  const [toCode, setToCode] = useState('EUR');
+  const [amount, setAmount] = useState('1');
+  const [result, setResult] = useState<CurrencyResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const genRef = useRef(0);
+
+  // Resolve conversion whenever inputs change
+  useEffect(() => {
+    const num = parseFloat(amount);
+    if (isNaN(num) || amount === '') {
+      setResult(null);
+      setIsLoading(false);
+      return;
+    }
+
+    if (fromCode === toCode) {
+      setResult({
+        fromValue: num, fromCurrency: fromCode, toCurrency: toCode,
+        toValue: num, rate: 1,
+        display: `${formatCurrency(num, fromCode)} = ${formatCurrency(num, toCode)}`,
+        isPartial: false, isLoading: false,
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    const gen = ++genRef.current;
+    setIsLoading(true);
+
+    resolveCurrency({
+      fromValue: num, fromCurrency: fromCode, toCurrency: toCode,
+      toValue: null, rate: null, display: '', isPartial: false, isLoading: true,
+    }).then(resolved => {
+      if (genRef.current !== gen) return;
+      setResult(resolved);
+      setIsLoading(false);
+    });
+  }, [amount, fromCode, toCode]);
+
+  // Sync from textbox detection (until user interacts with card)
+  useEffect(() => {
+    if (hasInteracted || !curr || curr.isPartial) return;
+    setFromCode(curr.fromCurrency);
+    if (curr.toCurrency) setToCode(curr.toCurrency);
+    setAmount(String(curr.fromValue));
+  }, [curr?.fromCurrency, curr?.toCurrency, curr?.fromValue, curr?.isPartial, hasInteracted]);
+
+  const handleSwap = () => {
+    setHasInteracted(true);
+    setFromCode(toCode);
+    setToCode(fromCode);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && result && !isLoading && result.toValue !== null && onCopyValue) {
+      e.preventDefault();
+      onCopyValue(result.display);
+    }
+  };
+
+  const popularFrom = POPULAR_CURRENCIES.filter(c => c !== toCode).slice(0, 6);
+  const popularTo = POPULAR_CURRENCIES.filter(c => c !== fromCode).slice(0, 6);
+
+  const selectStyle = {
+    backgroundImage: SELECT_ARROW,
+    backgroundRepeat: 'no-repeat' as const,
+    backgroundPosition: 'right 8px center',
+  };
+
+  const optionStyle = { background: '#1a1a1a', color: 'white' };
+
+  return (
+    <div className="p-4 space-y-3" onKeyDown={handleKeyDown}>
+      {/* Quick pick pills for "From" */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] text-white/20 font-medium uppercase tracking-wider mr-1">From</span>
+        <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+          {popularFrom.map(code => (
+            <button
+              key={code}
+              onClick={() => { setHasInteracted(true); setFromCode(code); }}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium whitespace-nowrap transition-all ${
+                fromCode === code ? 'text-white' : 'text-white/35 hover:text-white/55'
+              }`}
+              style={fromCode === code ? {
+                background: accent.bg,
+                border: `1px solid ${accent.border}`,
+              } : {
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.05)',
+              }}
+            >
+              {code}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Conversion row */}
+      <div className="flex items-center gap-2">
+        {/* Amount input */}
+        <input
+          type="number"
+          value={amount}
+          onChange={e => { setHasInteracted(true); setAmount(e.target.value); }}
+          className="w-[80px] bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 text-white text-sm font-mono text-center focus:outline-none focus:border-white/25 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          placeholder="0"
+        />
+
+        {/* From currency */}
+        <select
+          value={fromCode}
+          onChange={e => { setHasInteracted(true); setFromCode(e.target.value); }}
+          className="flex-1 min-w-0 bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-white/25 transition-colors appearance-none cursor-pointer pr-7"
+          style={selectStyle}
+        >
+          <optgroup label="Popular" style={optionStyle}>
+            {POPULAR_CURRENCIES.map(code => {
+              const c = CURRENCY_LIST.find(x => x.code === code);
+              return <option key={code} value={code} style={optionStyle}>{c?.symbol} {code}</option>;
+            })}
+          </optgroup>
+          <optgroup label="All" style={optionStyle}>
+            {CURRENCY_LIST.filter(c => !POPULAR_CURRENCIES.includes(c.code)).map(c => (
+              <option key={c.code} value={c.code} style={optionStyle}>{c.code} - {c.name}</option>
+            ))}
+          </optgroup>
+        </select>
+
+        {/* Swap */}
+        <button
+          onClick={handleSwap}
+          className="p-2 rounded-lg text-white/40 hover:text-white/70 transition-colors flex-shrink-0"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          <Shuffle className="w-3.5 h-3.5" />
+        </button>
+
+        {/* To currency */}
+        <select
+          value={toCode}
+          onChange={e => { setHasInteracted(true); setToCode(e.target.value); }}
+          className="flex-1 min-w-0 bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-white/25 transition-colors appearance-none cursor-pointer pr-7"
+          style={selectStyle}
+        >
+          <optgroup label="Popular" style={optionStyle}>
+            {POPULAR_CURRENCIES.map(code => {
+              const c = CURRENCY_LIST.find(x => x.code === code);
+              return <option key={code} value={code} style={optionStyle}>{c?.symbol} {code}</option>;
+            })}
+          </optgroup>
+          <optgroup label="All" style={optionStyle}>
+            {CURRENCY_LIST.filter(c => !POPULAR_CURRENCIES.includes(c.code)).map(c => (
+              <option key={c.code} value={c.code} style={optionStyle}>{c.code} - {c.name}</option>
+            ))}
+          </optgroup>
+        </select>
+      </div>
+
+      {/* Quick pick pills for "To" */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] text-white/20 font-medium uppercase tracking-wider mr-1.5">To</span>
+        <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+          {popularTo.map(code => (
+            <button
+              key={code}
+              onClick={() => { setHasInteracted(true); setToCode(code); }}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium whitespace-nowrap transition-all ${
+                toCode === code ? 'text-white' : 'text-white/35 hover:text-white/55'
+              }`}
+              style={toCode === code ? {
+                background: accent.bg,
+                border: `1px solid ${accent.border}`,
+              } : {
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.05)',
+              }}
+            >
+              {code}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Result */}
+      {(result || isLoading) && (
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.15 }}
+          className="flex items-center gap-3 pt-1"
+        >
+          <IconBadge icon={DollarSign} accent={accent} />
+          <div className="flex-1 min-w-0">
+            <div className={`text-xl font-semibold tracking-tight ${isLoading ? 'text-white/50' : 'text-white'}`}>
+              {isLoading ? `${formatCurrency(parseFloat(amount) || 0, fromCode)} = ...` : result?.display}
+            </div>
+            {result?.rate && !isLoading && (
+              <div className="text-white/30 text-xs mt-1">
+                1 {result.fromCurrency} = {result.rate.toFixed(4)} {result.toCurrency}
+              </div>
+            )}
+            {result?.error && (
+              <div className="text-red-400/60 text-xs mt-1">{result.error}</div>
+            )}
+          </div>
+          {isLoading && (
+            <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin flex-shrink-0" />
+          )}
+        </motion.div>
+      )}
+
+      {result && !isLoading && result.toValue !== null && (
         <FooterHint text="Press Enter to copy result" />
       )}
     </div>
   );
 }
 
-function TimezoneView({ module, accent }: { module: ModuleData; accent: AccentTheme }) {
-  const tz = module.timezone;
-  if (!tz && module.focused) {
-    return <HintView icon={Globe} accent={accent} text={MODULE_META.timezone.placeholder} />;
+const TZ_LIST = getTimezoneList();
+const TZ_REGIONS = (() => {
+  const grouped = new Map<string, TimezoneOption[]>();
+  for (const tz of TZ_LIST) {
+    const list = grouped.get(tz.region) || [];
+    list.push(tz);
+    grouped.set(tz.region, list);
   }
-  if (!tz) return null;
+  return Array.from(grouped.entries());
+})();
 
-  return (
-    <div className="p-4">
-      <div className="flex items-center gap-3">
-        <IconBadge icon={Globe} accent={accent} />
-        <div className="flex-1 min-w-0">
-          <div className={`text-xl font-semibold tracking-tight ${tz.isPartial ? 'text-white/50' : 'text-white'}`}>
-            {tz.display}
+function TimezoneView({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const tz = module.timezone;
+
+  if (!module.focused) {
+    if (!tz) return null;
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3">
+          <IconBadge icon={Globe} accent={accent} />
+          <div className="flex-1 min-w-0">
+            <div className={`text-xl font-semibold tracking-tight ${tz.isPartial ? 'text-white/50' : 'text-white'}`}>
+              {tz.display}
+            </div>
           </div>
         </div>
       </div>
+    );
+  }
+
+  return <TimezoneInteractive tz={tz} accent={accent} onCopyValue={onCopyValue} />;
+}
+
+function TimezoneInteractive({ tz, accent, onCopyValue }: { tz?: TimezoneResult; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const now = new Date();
+  const initH = now.getHours();
+  const [hours, setHours] = useState(initH > 12 ? initH - 12 : initH === 0 ? 12 : initH);
+  const [minutes, setMinutes] = useState(now.getMinutes());
+  const [isPm, setIsPm] = useState(initH >= 12);
+  const [fromIana, setFromIana] = useState('America/New_York');
+  const [toIana, setToIana] = useState('Asia/Kolkata');
+  const [result, setResult] = useState<TimezoneResult | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  // Compute result
+  useEffect(() => {
+    let h24 = hours;
+    if (isPm && hours !== 12) h24 += 12;
+    if (!isPm && hours === 12) h24 = 0;
+    setResult(convertTimezoneDirect(h24, minutes, fromIana, toIana));
+  }, [hours, minutes, isPm, fromIana, toIana]);
+
+  // Sync from textbox
+  useEffect(() => {
+    if (hasInteracted || !tz || tz.isPartial) return;
+    const fromEntry = TZ_LIST.find(t => t.label === tz.fromLabel);
+    const toEntry = TZ_LIST.find(t => t.label === tz.toLabel);
+    if (fromEntry) setFromIana(fromEntry.iana);
+    if (toEntry) setToIana(toEntry.iana);
+  }, [tz?.fromLabel, tz?.toLabel, hasInteracted]);
+
+  const handleNow = () => {
+    setHasInteracted(true);
+    const n = new Date();
+    const h = n.getHours();
+    setIsPm(h >= 12);
+    setHours(h > 12 ? h - 12 : h === 0 ? 12 : h);
+    setMinutes(n.getMinutes());
+  };
+
+  const handleSwap = () => {
+    setHasInteracted(true);
+    setFromIana(toIana);
+    setToIana(fromIana);
+  };
+
+  const handleHourChange = (val: string) => {
+    setHasInteracted(true);
+    const n = parseInt(val);
+    if (!isNaN(n) && n >= 1 && n <= 12) setHours(n);
+  };
+
+  const handleMinuteChange = (val: string) => {
+    setHasInteracted(true);
+    const n = parseInt(val);
+    if (!isNaN(n) && n >= 0 && n <= 59) setMinutes(n);
+    else if (val === '') setMinutes(0);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && result && onCopyValue) {
+      e.preventDefault();
+      onCopyValue(result.display);
+    }
+  };
+
+  const selectStyle = {
+    backgroundImage: SELECT_ARROW,
+    backgroundRepeat: 'no-repeat' as const,
+    backgroundPosition: 'right 8px center',
+  };
+  const optionStyle = { background: '#1a1a1a', color: 'white' };
+
+  return (
+    <div className="p-4 space-y-3" onKeyDown={handleKeyDown}>
+      {/* Popular timezone pills */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden">
+        {POPULAR_TIMEZONES.map(label => {
+          const entry = TZ_LIST.find(t => t.label === label);
+          if (!entry) return null;
+          const isActive = toIana === entry.iana;
+          return (
+            <button
+              key={label}
+              onClick={() => { setHasInteracted(true); setToIana(entry.iana); }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-all ${
+                isActive ? 'text-white' : 'text-white/40 hover:text-white/60'
+              }`}
+              style={isActive ? {
+                background: accent.bg,
+                border: `1px solid ${accent.border}`,
+              } : {
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Time input row */}
+      <div className="flex items-center gap-1.5">
+        <input
+          type="number"
+          value={hours}
+          min={1} max={12}
+          onChange={e => handleHourChange(e.target.value)}
+          className="w-[44px] bg-white/[0.06] border border-white/10 rounded-lg px-1.5 py-2 text-white text-sm font-mono text-center focus:outline-none focus:border-white/25 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
+        <span className="text-white/30 font-mono text-sm">:</span>
+        <input
+          type="text"
+          value={String(minutes).padStart(2, '0')}
+          onChange={e => handleMinuteChange(e.target.value)}
+          maxLength={2}
+          className="w-[44px] bg-white/[0.06] border border-white/10 rounded-lg px-1.5 py-2 text-white text-sm font-mono text-center focus:outline-none focus:border-white/25 transition-colors"
+        />
+        {/* AM/PM toggle */}
+        <div className="flex rounded-lg overflow-hidden border border-white/10 flex-shrink-0">
+          <button
+            onClick={() => { setHasInteracted(true); setIsPm(false); }}
+            className={`px-2 py-2 text-[11px] font-medium transition-colors ${!isPm ? 'text-white' : 'text-white/30'}`}
+            style={!isPm ? { background: accent.bg } : { background: 'rgba(255,255,255,0.03)' }}
+          >AM</button>
+          <button
+            onClick={() => { setHasInteracted(true); setIsPm(true); }}
+            className={`px-2 py-2 text-[11px] font-medium transition-colors ${isPm ? 'text-white' : 'text-white/30'}`}
+            style={isPm ? { background: accent.bg } : { background: 'rgba(255,255,255,0.03)' }}
+          >PM</button>
+        </div>
+        {/* Now button */}
+        <button
+          onClick={handleNow}
+          className="px-2.5 py-2 rounded-lg text-[11px] font-medium text-white/50 hover:text-white/80 transition-colors flex-shrink-0"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          <Clock className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* From / To timezone row */}
+      <div className="flex items-center gap-2">
+        <select
+          value={fromIana}
+          onChange={e => { setHasInteracted(true); setFromIana(e.target.value); }}
+          className="flex-1 min-w-0 bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-white/25 transition-colors appearance-none cursor-pointer pr-7"
+          style={selectStyle}
+        >
+          {TZ_REGIONS.map(([region, zones]) => (
+            <optgroup key={region} label={region} style={optionStyle}>
+              {zones.map(z => (
+                <option key={z.label} value={z.iana} style={optionStyle}>{z.label}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+
+        <button
+          onClick={handleSwap}
+          className="p-2 rounded-lg text-white/40 hover:text-white/70 transition-colors flex-shrink-0"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+        >
+          <Shuffle className="w-3.5 h-3.5" />
+        </button>
+
+        <select
+          value={toIana}
+          onChange={e => { setHasInteracted(true); setToIana(e.target.value); }}
+          className="flex-1 min-w-0 bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-white/25 transition-colors appearance-none cursor-pointer pr-7"
+          style={selectStyle}
+        >
+          {TZ_REGIONS.map(([region, zones]) => (
+            <optgroup key={region} label={region} style={optionStyle}>
+              {zones.map(z => (
+                <option key={z.label} value={z.iana} style={optionStyle}>{z.label}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </div>
+
+      {/* Result */}
+      {result && (
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.15 }}
+          className="flex items-center gap-3 pt-1"
+        >
+          <IconBadge icon={Globe} accent={accent} />
+          <div className="flex-1 min-w-0">
+            <div className="text-xl font-semibold tracking-tight text-white">
+              {result.display}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {result && <FooterHint text="Press Enter to copy result" />}
     </div>
   );
 }
 
-function ColorView({ module, accent }: { module: ModuleData; accent: AccentTheme }) {
+function ColorView({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
   const color = module.color;
-  if (!color && module.focused) {
-    return <HintView icon={Palette} accent={accent} text={MODULE_META.color.placeholder} />;
-  }
-  if (!color) return null;
 
-  return (
-    <div className="p-4">
-      <div className="flex items-center gap-3">
-        {/* Color swatch */}
-        <div
-          className="w-10 h-10 rounded-xl border border-white/20 flex-shrink-0"
-          style={{ background: color.cssColor }}
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-white font-semibold text-lg font-mono">{color.hex}</span>
-          </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-            <span className="text-white/40 text-xs font-mono">
-              rgb({color.rgb.r}, {color.rgb.g}, {color.rgb.b})
-            </span>
-            <span className="text-white/40 text-xs font-mono">
-              hsl({color.hsl.h}, {color.hsl.s}%, {color.hsl.l}%)
-            </span>
+  if (!module.focused) {
+    if (!color) return null;
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl border border-white/20 flex-shrink-0" style={{ background: color.cssColor }} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-white font-semibold text-lg font-mono">{color.hex}</span>
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+              <span className="text-white/40 text-xs font-mono">rgb({color.rgb.r}, {color.rgb.g}, {color.rgb.b})</span>
+              <span className="text-white/40 text-xs font-mono">hsl({color.hsl.h}, {color.hsl.s}%, {color.hsl.l}%)</span>
+            </div>
           </div>
         </div>
+        <FooterHint text="Press Enter to copy HEX value" />
       </div>
+    );
+  }
+
+  return <ColorInteractive color={color} accent={accent} onCopyValue={onCopyValue} />;
+}
+
+function ColorInteractive({ color, accent, onCopyValue }: { color?: ColorResult; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const [r, setR] = useState(255);
+  const [g, setG] = useState(87);
+  const [b, setB] = useState(51);
+  const [hexInput, setHexInput] = useState('#FF5733');
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const hexSourceRef = useRef<'hex' | 'rgb'>('rgb');
+
+  // Derived values
+  const hex = rgbToHex(r, g, b).toUpperCase();
+  const hsl = rgbToHsl(r, g, b);
+  const cssColor = rgbToHex(r, g, b);
+
+  // Sync hexInput from RGB (when changed from non-hex source)
+  useEffect(() => {
+    if (hexSourceRef.current === 'rgb') {
+      setHexInput(hex);
+    }
+  }, [hex]);
+
+  // Sync from textbox detection
+  useEffect(() => {
+    if (hasInteracted || !color) return;
+    hexSourceRef.current = 'rgb';
+    setR(color.rgb.r);
+    setG(color.rgb.g);
+    setB(color.rgb.b);
+  }, [color?.hex, hasInteracted]);
+
+  const handleRgb = (which: 'r' | 'g' | 'b', val: string) => {
+    setHasInteracted(true);
+    hexSourceRef.current = 'rgb';
+    const n = parseInt(val);
+    if (isNaN(n)) return;
+    const clamped = Math.max(0, Math.min(255, n));
+    if (which === 'r') setR(clamped);
+    else if (which === 'g') setG(clamped);
+    else setB(clamped);
+  };
+
+  const handleHexChange = (val: string) => {
+    setHasInteracted(true);
+    hexSourceRef.current = 'hex';
+    setHexInput(val);
+    const parsed = hexToRgb(val);
+    if (parsed) {
+      setR(parsed.r);
+      setG(parsed.g);
+      setB(parsed.b);
+    }
+  };
+
+  const handlePickerChange = (val: string) => {
+    setHasInteracted(true);
+    hexSourceRef.current = 'rgb';
+    const parsed = hexToRgb(val);
+    if (parsed) {
+      setR(parsed.r);
+      setG(parsed.g);
+      setB(parsed.b);
+    }
+  };
+
+  const handlePreset = (presetHex: string) => {
+    setHasInteracted(true);
+    hexSourceRef.current = 'rgb';
+    const parsed = hexToRgb(presetHex);
+    if (parsed) {
+      setR(parsed.r);
+      setG(parsed.g);
+      setB(parsed.b);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && onCopyValue) {
+      e.preventDefault();
+      onCopyValue(hex);
+    }
+  };
+
+  return (
+    <div className="p-4 space-y-3" onKeyDown={handleKeyDown}>
+      {/* Preset color swatches */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden">
+        {COLOR_PRESETS.map(p => (
+          <button
+            key={p.name}
+            onClick={() => handlePreset(p.hex)}
+            className="w-6 h-6 rounded-lg flex-shrink-0 border transition-all hover:scale-110"
+            style={{
+              background: p.hex,
+              borderColor: hex === p.hex.toUpperCase() ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.15)',
+              boxShadow: hex === p.hex.toUpperCase() ? `0 0 8px ${p.hex}40` : 'none',
+            }}
+            title={p.name}
+          />
+        ))}
+      </div>
+
+      {/* Picker + HEX input row */}
+      <div className="flex items-center gap-2.5">
+        {/* Native color picker */}
+        <div className="relative flex-shrink-0">
+          <input
+            type="color"
+            value={cssColor}
+            onChange={e => handlePickerChange(e.target.value)}
+            className="w-10 h-10 rounded-xl border border-white/20 cursor-pointer p-0 [&::-webkit-color-swatch-wrapper]:p-0.5 [&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-none"
+            style={{ background: 'rgba(255,255,255,0.06)' }}
+          />
+        </div>
+
+        {/* HEX input */}
+        <input
+          type="text"
+          value={hexInput}
+          onChange={e => handleHexChange(e.target.value)}
+          maxLength={9}
+          className="w-[100px] bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 text-white text-sm font-mono focus:outline-none focus:border-white/25 transition-colors"
+          placeholder="#000000"
+        />
+
+        {/* Large swatch preview */}
+        <div
+          className="flex-1 h-10 rounded-xl border border-white/15"
+          style={{ background: cssColor, boxShadow: `0 0 20px ${cssColor}30` }}
+        />
+      </div>
+
+      {/* RGB inputs */}
+      <div className="flex items-center gap-2">
+        {(['r', 'g', 'b'] as const).map(ch => (
+          <div key={ch} className="flex items-center gap-1.5 flex-1">
+            <span className="text-[11px] font-mono font-medium text-white/30 uppercase w-3">{ch}</span>
+            <input
+              type="number"
+              min={0} max={255}
+              value={ch === 'r' ? r : ch === 'g' ? g : b}
+              onChange={e => handleRgb(ch, e.target.value)}
+              className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs font-mono text-center focus:outline-none focus:border-white/25 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+        ))}
+        {/* HSL display */}
+        <div className="flex-shrink-0 text-[10px] text-white/25 font-mono">
+          hsl({hsl.h},{hsl.s}%,{hsl.l}%)
+        </div>
+      </div>
+
+      {/* All formats display */}
+      <motion.div
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.15 }}
+        className="flex items-center gap-3 pt-1"
+      >
+        <div
+          className="w-10 h-10 rounded-xl border border-white/20 flex-shrink-0"
+          style={{ background: cssColor }}
+        />
+        <div className="flex-1 min-w-0">
+          <span className="text-white font-semibold text-lg font-mono">{hex}</span>
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+            <span className="text-white/40 text-xs font-mono">rgb({r}, {g}, {b})</span>
+            <span className="text-white/40 text-xs font-mono">hsl({hsl.h}, {hsl.s}%, {hsl.l}%)</span>
+          </div>
+        </div>
+      </motion.div>
+
       <FooterHint text="Press Enter to copy HEX value" />
     </div>
   );
@@ -618,9 +1239,9 @@ export function ContourPanel({
                 <>
                   {state.module.id === 'calculator' && <CalculatorView module={state.module} accent={accent} />}
                   {state.module.id === 'units' && <UnitsView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
-                  {state.module.id === 'currency' && <CurrencyView module={state.module} accent={accent} />}
-                  {state.module.id === 'timezone' && <TimezoneView module={state.module} accent={accent} />}
-                  {state.module.id === 'color' && <ColorView module={state.module} accent={accent} />}
+                  {state.module.id === 'currency' && <CurrencyView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
+                  {state.module.id === 'timezone' && <TimezoneView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
+                  {state.module.id === 'color' && <ColorView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
                   {state.module.id === 'date' && <DateView module={state.module} accent={accent} />}
                   {state.module.id === 'timer' && (
                     <TimerView module={state.module} accent={accent}
