@@ -111,6 +111,28 @@ function hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: n
   };
 }
 
+// ─── Interactive Mode Helpers ──────────────────────────────────
+
+export { hexToRgb, rgbToHex, rgbToHsl, hslToRgb };
+
+export const COLOR_PRESETS = [
+  { name: 'Red', hex: '#FF0000' }, { name: 'Coral', hex: '#FF7F50' },
+  { name: 'Orange', hex: '#FFA500' }, { name: 'Gold', hex: '#FFD700' },
+  { name: 'Green', hex: '#008000' }, { name: 'Cyan', hex: '#00FFFF' },
+  { name: 'Blue', hex: '#0000FF' }, { name: 'Purple', hex: '#800080' },
+  { name: 'Pink', hex: '#FFC0CB' }, { name: 'Crimson', hex: '#DC143C' },
+];
+
+export function colorFromRgb(r: number, g: number, b: number): ColorResult {
+  const hex = rgbToHex(r, g, b).toUpperCase();
+  const hsl = rgbToHsl(r, g, b);
+  return {
+    hex, rgb: { r, g, b }, hsl,
+    display: `${hex} · rgb(${r}, ${g}, ${b}) · hsl(${hsl.h}°, ${hsl.s}%, ${hsl.l}%)`,
+    input: hex, cssColor: hex,
+  };
+}
+
 export function detectColor(input: string): ColorResult | null {
   const trimmed = input.trim();
   if (!trimmed) return null;

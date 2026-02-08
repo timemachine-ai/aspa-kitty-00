@@ -248,3 +248,87 @@ export function detectTimezone(input: string): TimezoneResult | null {
 
   return null;
 }
+
+// ─── Interactive Mode Helpers ──────────────────────────────────
+
+export interface TimezoneOption {
+  label: string;
+  iana: string;
+  region: string;
+}
+
+export const POPULAR_TIMEZONES = ['EST', 'PST', 'UTC', 'IST', 'JST', 'CET', 'AEST', 'SGT'];
+
+function ianaToRegion(iana: string): string {
+  if (iana === 'UTC') return 'Global';
+  const prefix = iana.split('/')[0];
+  const map: Record<string, string> = {
+    America: 'Americas', Europe: 'Europe', Asia: 'Asia',
+    Australia: 'Oceania', Pacific: 'Oceania', Africa: 'Africa',
+  };
+  return map[prefix] || 'Other';
+}
+
+export function getTimezoneList(): TimezoneOption[] {
+  const seen = new Set<string>();
+  return TIMEZONES.filter(tz => {
+    if (seen.has(tz.label)) return false;
+    seen.add(tz.label);
+    return true;
+  }).map(tz => ({
+    label: tz.label,
+    iana: tz.iana,
+    region: ianaToRegion(tz.iana),
+  }));
+}
+
+export function findTimezoneByLabel(label: string): { label: string; iana: string } | null {
+  return TIMEZONES.find(tz => tz.label === label) || null;
+}
+
+export function convertTimezoneDirect(
+  hours: number, minutes: number, fromIana: string, toIana: string
+): TimezoneResult | null {
+  try {
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const sourceDate = new Date(
+      `${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`
+    );
+
+    const fromFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: fromIana,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    });
+    const toFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: toIana,
+      hour: 'numeric', minute: '2-digit', hour12: true, weekday: 'short',
+    });
+
+    const fromParts = fromFormatter.formatToParts(sourceDate);
+    const fromHour = parseInt(fromParts.find(p => p.type === 'hour')?.value || '0');
+    const fromMin = parseInt(fromParts.find(p => p.type === 'minute')?.value || '0');
+
+    const hourDiff = hours - fromHour;
+    const minDiff = minutes - fromMin;
+    const adjustedDate = new Date(sourceDate.getTime() + (hourDiff * 60 + minDiff) * 60 * 1000);
+
+    const convertedTime = toFormatter.format(adjustedDate);
+    const fromTimeDisplay = `${hours % 12 || 12}:${String(minutes).padStart(2, '0')} ${hours >= 12 ? 'PM' : 'AM'}`;
+
+    const fromTz = TIMEZONES.find(tz => tz.iana === fromIana);
+    const toTz = TIMEZONES.find(tz => tz.iana === toIana);
+    const fromLabel = fromTz?.label || fromIana.split('/').pop() || fromIana;
+    const toLabel = toTz?.label || toIana.split('/').pop() || toIana;
+
+    return {
+      fromTime: fromTimeDisplay, fromZone: fromIana, fromLabel,
+      toTime: convertedTime, toZone: toIana, toLabel,
+      display: `${fromTimeDisplay} ${fromLabel} = ${convertedTime} ${toLabel}`,
+      isPartial: false, isNow: false,
+    };
+  } catch {
+    return null;
+  }
+}
