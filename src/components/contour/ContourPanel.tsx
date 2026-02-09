@@ -31,6 +31,11 @@ import {
   colorFromRgb, hexToRgb, rgbToHex, rgbToHsl, COLOR_PRESETS,
   ColorResult,
 } from './modules/colorConverter';
+import {
+  DATE_OPERATIONS, DATE_QUICK_PICKS, computeDateDirect, parseDate,
+  DateResult, DateOperation,
+} from './modules/dateCalculator';
+import { TimerState } from './modules/timer';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Calculator, ArrowLeftRight, DollarSign, Globe, Palette,
@@ -50,6 +55,7 @@ interface ContourPanelProps {
   onTimerStart?: () => void;
   onTimerToggle?: () => void;
   onTimerReset?: () => void;
+  onSetTimerDuration?: (seconds: number) => void;
   onCopyValue?: (value: string) => void;
 }
 
@@ -1026,40 +1032,239 @@ function ColorInteractive({ color, accent, onCopyValue }: { color?: ColorResult;
   );
 }
 
-function DateView({ module, accent }: { module: ModuleData; accent: AccentTheme }) {
+function DateView({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
   const date = module.date;
-  if (!date && module.focused) {
-    return <HintView icon={Calendar} accent={accent} text={MODULE_META.date.placeholder} />;
+
+  if (!module.focused) {
+    if (!date) return null;
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3">
+          <IconBadge icon={Calendar} accent={accent} />
+          <div className="flex-1 min-w-0">
+            <div className={`text-xl font-semibold tracking-tight ${date.isPartial ? 'text-white/50' : 'text-white'}`}>
+              {date.display}
+            </div>
+            {date.subtitle && (
+              <div className="text-white/30 text-xs mt-1">{date.subtitle}</div>
+            )}
+          </div>
+        </div>
+        {!date.isPartial && <FooterHint text="Press Enter to copy result" />}
+      </div>
+    );
   }
-  if (!date) return null;
+
+  return <DateInteractive date={date} accent={accent} onCopyValue={onCopyValue} />;
+}
+
+function DateInteractive({ date, accent, onCopyValue }: { date?: DateResult; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const [operation, setOperation] = useState<DateOperation>('until');
+  const [dateInput1, setDateInput1] = useState('');
+  const [dateInput2, setDateInput2] = useState('');
+  const [numDays, setNumDays] = useState('30');
+  const [result, setResult] = useState<DateResult | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  // Compute result whenever inputs change
+  useEffect(() => {
+    if (operation === 'until' || operation === 'since') {
+      const parsed = dateInput1 ? parseDate(dateInput1) : null;
+      if (!parsed) { setResult(null); return; }
+      setResult(computeDateDirect(operation, parsed));
+    } else if (operation === 'from_now' || operation === 'ago') {
+      const n = parseInt(numDays);
+      if (isNaN(n) || numDays === '') { setResult(null); return; }
+      setResult(computeDateDirect(operation, null, null, n));
+    } else if (operation === 'between') {
+      const d1 = dateInput1 ? parseDate(dateInput1) : null;
+      const d2 = dateInput2 ? parseDate(dateInput2) : null;
+      if (!d1 || !d2) { setResult(null); return; }
+      setResult(computeDateDirect(operation, d1, d2));
+    }
+  }, [operation, dateInput1, dateInput2, numDays]);
+
+  // Sync from textbox detection
+  useEffect(() => {
+    if (hasInteracted || !date || date.isPartial) return;
+    setOperation(date.type);
+  }, [date?.type, date?.isPartial, hasInteracted]);
+
+  const handleQuickPick = (value: string) => {
+    setHasInteracted(true);
+    setDateInput1(value);
+    if (operation !== 'until' && operation !== 'since') {
+      setOperation('until');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && result && onCopyValue) {
+      e.preventDefault();
+      onCopyValue(result.display);
+    }
+  };
+
+  const needsDateInput = operation === 'until' || operation === 'since';
+  const needsNumInput = operation === 'from_now' || operation === 'ago';
+  const needsTwoDates = operation === 'between';
 
   return (
-    <div className="p-4">
-      <div className="flex items-center gap-3">
-        <IconBadge icon={Calendar} accent={accent} />
-        <div className="flex-1 min-w-0">
-          <div className={`text-xl font-semibold tracking-tight ${date.isPartial ? 'text-white/50' : 'text-white'}`}>
-            {date.display}
-          </div>
-          {date.subtitle && (
-            <div className="text-white/30 text-xs mt-1">{date.subtitle}</div>
-          )}
-        </div>
+    <div className="p-4 space-y-3" onKeyDown={handleKeyDown}>
+      {/* Operation pills */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden">
+        {DATE_OPERATIONS.map(op => (
+          <button
+            key={op.id}
+            onClick={() => { setHasInteracted(true); setOperation(op.id); }}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-all ${
+              operation === op.id ? 'text-white' : 'text-white/40 hover:text-white/60'
+            }`}
+            style={operation === op.id ? {
+              background: accent.bg,
+              border: `1px solid ${accent.border}`,
+              boxShadow: `0 0 8px ${accent.border.replace('0.25', '0.08')}`,
+            } : {
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            {op.label}
+          </button>
+        ))}
       </div>
+
+      {/* Quick picks (for until/since) */}
+      {needsDateInput && (
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-white/20 font-medium uppercase tracking-wider mr-1">Quick</span>
+          <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+            {DATE_QUICK_PICKS.map(qp => (
+              <button
+                key={qp.value}
+                onClick={() => handleQuickPick(qp.value)}
+                className="px-2 py-0.5 rounded-md text-[10px] font-medium whitespace-nowrap transition-all text-white/35 hover:text-white/55"
+                style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                }}
+              >
+                {qp.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Input area */}
+      <div className="flex items-center gap-2">
+        {needsDateInput && (
+          <input
+            type="text"
+            value={dateInput1}
+            onChange={e => { setHasInteracted(true); setDateInput1(e.target.value); }}
+            className="flex-1 bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-white/25 transition-colors"
+            placeholder="e.g. Dec 25, March 15 2026"
+          />
+        )}
+        {needsNumInput && (
+          <>
+            <input
+              type="number"
+              value={numDays}
+              onChange={e => { setHasInteracted(true); setNumDays(e.target.value); }}
+              className="w-[80px] bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 text-white text-sm font-mono text-center focus:outline-none focus:border-white/25 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              placeholder="30"
+            />
+            <span className="text-white/30 text-sm">days {operation === 'from_now' ? 'from now' : 'ago'}</span>
+          </>
+        )}
+        {needsTwoDates && (
+          <>
+            <input
+              type="text"
+              value={dateInput1}
+              onChange={e => { setHasInteracted(true); setDateInput1(e.target.value); }}
+              className="flex-1 bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-white/25 transition-colors"
+              placeholder="Start date"
+            />
+            <span className="text-white/25 text-xs">to</span>
+            <input
+              type="text"
+              value={dateInput2}
+              onChange={e => { setHasInteracted(true); setDateInput2(e.target.value); }}
+              className="flex-1 bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-2 text-white text-sm focus:outline-none focus:border-white/25 transition-colors"
+              placeholder="End date"
+            />
+          </>
+        )}
+      </div>
+
+      {/* Result */}
+      {result && (
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.15 }}
+          className="flex items-center gap-3 pt-1"
+        >
+          <IconBadge icon={Calendar} accent={accent} />
+          <div className="flex-1 min-w-0">
+            <div className="text-xl font-semibold tracking-tight text-white">
+              {result.display}
+            </div>
+            {result.subtitle && (
+              <div className="text-white/30 text-xs mt-1">{result.subtitle}</div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {result && <FooterHint text="Press Enter to copy result" />}
     </div>
   );
 }
 
-function TimerView({ module, accent, onStart, onToggle, onReset }: {
+const TIMER_PRESETS = [
+  { label: '1m', seconds: 60 },
+  { label: '2m', seconds: 120 },
+  { label: '5m', seconds: 300 },
+  { label: '10m', seconds: 600 },
+  { label: '15m', seconds: 900 },
+  { label: '30m', seconds: 1800 },
+  { label: '1h', seconds: 3600 },
+];
+
+function TimerView({ module, accent, onStart, onToggle, onReset, onSetDuration }: {
   module: ModuleData; accent: AccentTheme;
   onStart?: () => void; onToggle?: () => void; onReset?: () => void;
+  onSetDuration?: (seconds: number) => void;
 }) {
   const timer = module.timer;
-  if (!timer && module.focused) {
-    return <HintView icon={Timer} accent={accent} text={MODULE_META.timer.placeholder} />;
-  }
-  if (!timer) return null;
 
+  if (!module.focused) {
+    // Non-focused: unchanged simple display
+    if (!timer) return null;
+    return <TimerDisplay timer={timer} accent={accent} onStart={onStart} onToggle={onToggle} onReset={onReset} />;
+  }
+
+  // Focused mode: interactive UI
+  return (
+    <TimerInteractive
+      timer={timer}
+      accent={accent}
+      onStart={onStart}
+      onToggle={onToggle}
+      onReset={onReset}
+      onSetDuration={onSetDuration}
+    />
+  );
+}
+
+function TimerDisplay({ timer, accent, onStart, onToggle, onReset }: {
+  timer: TimerState; accent: AccentTheme;
+  onStart?: () => void; onToggle?: () => void; onReset?: () => void;
+}) {
   const progressPercent = timer.progress * 100;
 
   return (
@@ -1074,7 +1279,6 @@ function TimerView({ module, accent, onStart, onToggle, onReset }: {
         </div>
       </div>
 
-      {/* Progress bar */}
       <div className="h-1 rounded-full bg-white/10 mb-3 overflow-hidden">
         <motion.div
           className="h-full rounded-full"
@@ -1084,7 +1288,6 @@ function TimerView({ module, accent, onStart, onToggle, onReset }: {
         />
       </div>
 
-      {/* Controls */}
       <div className="flex items-center gap-2">
         {!timer.isRunning && !timer.isComplete && timer.remainingSeconds === timer.totalSeconds && (
           <button
@@ -1127,6 +1330,185 @@ function TimerView({ module, accent, onStart, onToggle, onReset }: {
   );
 }
 
+function TimerInteractive({ timer, accent, onStart, onToggle, onReset, onSetDuration }: {
+  timer?: TimerState; accent: AccentTheme;
+  onStart?: () => void; onToggle?: () => void; onReset?: () => void;
+  onSetDuration?: (seconds: number) => void;
+}) {
+  const [customH, setCustomH] = useState('0');
+  const [customM, setCustomM] = useState('5');
+  const [customS, setCustomS] = useState('0');
+
+  const handlePreset = (seconds: number) => {
+    onSetDuration?.(seconds);
+  };
+
+  const handleCustomSet = () => {
+    const h = parseInt(customH) || 0;
+    const m = parseInt(customM) || 0;
+    const s = parseInt(customS) || 0;
+    const total = h * 3600 + m * 60 + s;
+    if (total > 0) onSetDuration?.(total);
+  };
+
+  // If a timer is set, show the timer display with controls
+  if (timer) {
+    const progressPercent = timer.progress * 100;
+    return (
+      <div className="p-4 space-y-3">
+        {/* Timer display */}
+        <div className="flex items-center gap-3">
+          <IconBadge icon={Timer} accent={accent} />
+          <div className="flex-1 min-w-0">
+            <div className="text-white/30 text-xs mb-1">{timer.label} timer</div>
+            <div className={`text-3xl font-mono font-bold tracking-tight ${timer.isComplete ? accent.text : 'text-white'}`}>
+              {timer.display}
+            </div>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-1 rounded-full bg-white/10 overflow-hidden">
+          <motion.div
+            className="h-full rounded-full"
+            style={{ background: accent.solid }}
+            animate={{ width: `${progressPercent}%` }}
+            transition={{ duration: 0.3 }}
+          />
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center gap-2">
+          {!timer.isRunning && !timer.isComplete && timer.remainingSeconds === timer.totalSeconds && (
+            <button
+              onClick={onStart}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/80 transition-colors"
+              style={{ background: accent.bg, border: `1px solid ${accent.border}` }}
+            >
+              <Play className="w-3 h-3" /> Start
+            </button>
+          )}
+          {(timer.isRunning || (timer.remainingSeconds < timer.totalSeconds && !timer.isComplete)) && (
+            <button
+              onClick={onToggle}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/80 transition-colors"
+              style={{ background: accent.bg, border: `1px solid ${accent.border}` }}
+            >
+              {timer.isRunning ? <><Pause className="w-3 h-3" /> Pause</> : <><Play className="w-3 h-3" /> Resume</>}
+            </button>
+          )}
+          {(timer.remainingSeconds < timer.totalSeconds || timer.isComplete) && (
+            <button
+              onClick={onReset}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/60 hover:text-white/80 transition-colors"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}
+            >
+              <RotateCcw className="w-3 h-3" /> Reset
+            </button>
+          )}
+          {timer.isComplete && (
+            <span className={`ml-auto text-sm font-medium ${accent.text}`}>Complete!</span>
+          )}
+        </div>
+
+        {/* Preset pills to quickly change duration (only when not running) */}
+        {!timer.isRunning && !timer.isComplete && timer.remainingSeconds === timer.totalSeconds && (
+          <div className="flex gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden pt-1">
+            {TIMER_PRESETS.map(p => (
+              <button
+                key={p.label}
+                onClick={() => handlePreset(p.seconds)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-all ${
+                  timer.totalSeconds === p.seconds ? 'text-white' : 'text-white/40 hover:text-white/60'
+                }`}
+                style={timer.totalSeconds === p.seconds ? {
+                  background: accent.bg,
+                  border: `1px solid ${accent.border}`,
+                } : {
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!timer.isRunning && !timer.isComplete && timer.remainingSeconds === timer.totalSeconds && (
+          <FooterHint text="Press Enter to start timer" />
+        )}
+      </div>
+    );
+  }
+
+  // No timer set yet: show preset picker + custom input
+  return (
+    <div className="p-4 space-y-3">
+      {/* Preset pills */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden">
+        {TIMER_PRESETS.map(p => (
+          <button
+            key={p.label}
+            onClick={() => handlePreset(p.seconds)}
+            className="px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-all text-white/40 hover:text-white/60"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Custom H:M:S input */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] text-white/20 font-medium uppercase tracking-wider mr-1">Custom</span>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min={0} max={23}
+            value={customH}
+            onChange={e => setCustomH(e.target.value)}
+            className="w-[40px] bg-white/[0.06] border border-white/10 rounded-lg px-1.5 py-1.5 text-white text-xs font-mono text-center focus:outline-none focus:border-white/25 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <span className="text-white/20 text-[10px]">h</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min={0} max={59}
+            value={customM}
+            onChange={e => setCustomM(e.target.value)}
+            className="w-[40px] bg-white/[0.06] border border-white/10 rounded-lg px-1.5 py-1.5 text-white text-xs font-mono text-center focus:outline-none focus:border-white/25 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <span className="text-white/20 text-[10px]">m</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min={0} max={59}
+            value={customS}
+            onChange={e => setCustomS(e.target.value)}
+            className="w-[40px] bg-white/[0.06] border border-white/10 rounded-lg px-1.5 py-1.5 text-white text-xs font-mono text-center focus:outline-none focus:border-white/25 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <span className="text-white/20 text-[10px]">s</span>
+        </div>
+        <button
+          onClick={handleCustomSet}
+          className="ml-1 px-3 py-1.5 rounded-lg text-[11px] font-medium text-white/70 hover:text-white transition-colors"
+          style={{ background: accent.bg, border: `1px solid ${accent.border}` }}
+        >
+          Set
+        </button>
+      </div>
+
+      <FooterHint text="Pick a preset or set custom duration" />
+    </div>
+  );
+}
+
 // ─── Shared UI Helpers ─────────────────────────────────────────
 
 function IconBadge({ icon: Icon, accent }: { icon: React.ComponentType<{ className?: string }>; accent: AccentTheme }) {
@@ -1160,7 +1542,7 @@ function FooterHint({ text }: { text: string }) {
 
 export function ContourPanel({
   state, isVisible, onCommandSelect, selectedIndex, persona = 'default',
-  onTimerStart, onTimerToggle, onTimerReset, onCopyValue,
+  onTimerStart, onTimerToggle, onTimerReset, onSetTimerDuration, onCopyValue,
 }: ContourPanelProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const selectedItemRef = useRef<HTMLButtonElement>(null);
@@ -1242,10 +1624,11 @@ export function ContourPanel({
                   {state.module.id === 'currency' && <CurrencyView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
                   {state.module.id === 'timezone' && <TimezoneView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
                   {state.module.id === 'color' && <ColorView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
-                  {state.module.id === 'date' && <DateView module={state.module} accent={accent} />}
+                  {state.module.id === 'date' && <DateView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
                   {state.module.id === 'timer' && (
                     <TimerView module={state.module} accent={accent}
                       onStart={onTimerStart} onToggle={onTimerToggle} onReset={onTimerReset}
+                      onSetDuration={onSetTimerDuration}
                     />
                   )}
                 </>
