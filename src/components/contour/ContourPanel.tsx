@@ -15,6 +15,10 @@ import {
   HelpCircle, Code, Music, HeartPulse, Fingerprint, Clock,
   Search, Wrench, Monitor, Zap, Command, Equal,
   ChevronLeft, Play, Pause, RotateCcw, Copy, Check,
+  Dices, Coins, RefreshCw,
+  BookOpen, Mic, AlignLeft, List, MessageSquare, LetterText, RemoveFormatting,
+  Languages, ArrowRightLeft,
+  Volume2,
 } from 'lucide-react';
 import { ContourState, ModuleData, ModuleId } from './useContour';
 import { ContourCommand, ContourCategory, CATEGORY_INFO } from './modules/commands';
@@ -36,6 +40,19 @@ import {
   DateResult, DateOperation,
 } from './modules/dateCalculator';
 import { TimerState } from './modules/timer';
+import {
+  RandomResult, regenerate as regenerateRandom, QUICK_ACTIONS,
+} from './modules/randomGenerator';
+import {
+  WordCountResult, getStatItems,
+} from './modules/wordCounter';
+import {
+  TranslationResult, resolveTranslation, translateDirect,
+  getLanguageList, POPULAR_LANGUAGES, getLanguageName,
+} from './modules/translator';
+import {
+  DictionaryResult, resolveDictionary, lookupWord,
+} from './modules/dictionary';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Calculator, ArrowLeftRight, DollarSign, Globe, Palette,
@@ -43,6 +60,10 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   FileSearch, FileText, Settings, History, Image, Brain,
   HelpCircle, Code, Music, HeartPulse, Fingerprint, Clock,
   Search, Wrench, Monitor, Zap, Command,
+  Dices, Coins, RefreshCw,
+  BookOpen, Mic, AlignLeft, List, MessageSquare, LetterText, RemoveFormatting,
+  Languages, ArrowRightLeft,
+  Volume2,
 };
 
 interface ContourPanelProps {
@@ -99,6 +120,10 @@ const MODULE_META: Record<ModuleId, { icon: React.ComponentType<{ className?: st
   color: { icon: Palette, label: 'Color Converter', placeholder: 'e.g., #ff5733, rgb(255,87,51), coral' },
   date: { icon: Calendar, label: 'Date Calculator', placeholder: 'e.g., days until Dec 25, 30 days from now' },
   timer: { icon: Timer, label: 'Timer', placeholder: 'e.g., 5m, 1h30m, 90s, 10:00' },
+  random: { icon: Shuffle, label: 'Random Generator', placeholder: 'e.g., uuid, password 16, roll 2d6, flip coin, random 1-100' },
+  wordcount: { icon: Type, label: 'Word Counter', placeholder: 'Type or paste text to count words, characters, sentences...' },
+  translator: { icon: Languages, label: 'Translator', placeholder: 'e.g., food in bangla, hello in spanish, translate thanks to french' },
+  dictionary: { icon: BookOpen, label: 'Dictionary', placeholder: 'e.g., perplexed meaning, define serendipity, what is ephemeral' },
 };
 
 function getIcon(iconName: string): React.ComponentType<{ className?: string }> {
@@ -1509,6 +1534,565 @@ function TimerInteractive({ timer, accent, onStart, onToggle, onReset, onSetDura
   );
 }
 
+// ─── Random Generator View ─────────────────────────────────────
+
+function RandomView({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const random = module.random;
+  const [current, setCurrent] = useState<RandomResult | null>(random || null);
+  const [copied, setCopied] = useState(false);
+
+  // Sync from textbox detection
+  useEffect(() => {
+    if (random) setCurrent(random);
+  }, [random]);
+
+  const handleRegenerate = () => {
+    if (current) {
+      setCurrent(regenerateRandom(current));
+      setCopied(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (current) {
+      onCopyValue?.(current.value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  // Focused mode with no input: show quick actions
+  if (!current && module.focused) {
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-4">
+          <IconBadge icon={Shuffle} accent={accent} />
+          <div className="text-white/30 text-sm">{MODULE_META.random.placeholder}</div>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {QUICK_ACTIONS.map(action => {
+            const ActionIcon = ICON_MAP[action.icon] || Shuffle;
+            return (
+              <button
+                key={action.id}
+                onClick={() => { setCurrent(action.generate()); setCopied(false); }}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl hover:bg-white/[0.06] transition-colors border border-transparent hover:border-white/10"
+              >
+                <ActionIcon className={`w-4 h-4 ${accent.text}`} />
+                <span className="text-xs text-white/50">{action.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (!current) return null;
+
+  // Color swatch for hex type
+  const isHex = current.type === 'hex';
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-3">
+        <IconBadge icon={Shuffle} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className="text-white/40 text-xs font-mono mb-1">{current.label}</div>
+          <div className="flex items-center gap-2">
+            {isHex && (
+              <div className="w-6 h-6 rounded-md flex-shrink-0 border border-white/10" style={{ background: current.value }} />
+            )}
+            <div className={`text-xl font-semibold tracking-tight text-white ${current.type === 'password' ? 'font-mono text-base break-all' : ''}`}>
+              {current.value}
+            </div>
+          </div>
+          {current.detail && (
+            <div className="text-white/25 text-xs mt-1 font-mono">{current.detail}</div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRegenerate}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+          >
+            <RefreshCw className="w-3 h-3" /> Regenerate
+          </button>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+          >
+            {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+        <span className="text-[10px] text-white/20">Press Enter to copy</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Word Counter View ─────────────────────────────────────────
+
+function WordCountView({ module, accent }: { module: ModuleData; accent: AccentTheme }) {
+  const wc = module.wordcount;
+
+  if (!wc && module.focused) {
+    return <HintView icon={Type} accent={accent} text={MODULE_META.wordcount.placeholder} />;
+  }
+  if (!wc) return null;
+
+  const stats = getStatItems(wc);
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-3 mb-3">
+        <IconBadge icon={Type} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className="text-white text-sm font-medium">
+            {wc.words.toLocaleString()} {wc.words === 1 ? 'word' : 'words'}
+          </div>
+          <div className="text-white/30 text-xs">
+            {wc.characters.toLocaleString()} characters
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2">
+        {stats.map(stat => {
+          const StatIcon = ICON_MAP[stat.icon] || Type;
+          return (
+            <div
+              key={stat.label}
+              className="flex flex-col items-center gap-1 p-2 rounded-lg"
+              style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)' }}
+            >
+              <StatIcon className={`w-3.5 h-3.5 ${accent.text}`} />
+              <span className="text-white text-xs font-semibold">{stat.value}</span>
+              <span className="text-white/25 text-[9px]">{stat.label}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <FooterHint text={module.focused ? 'Type or paste text above' : 'Use /word-count to analyze text'} />
+    </div>
+  );
+}
+
+// ─── Translator View ───────────────────────────────────────────
+
+const ALL_LANGUAGES = getLanguageList();
+
+function TranslatorView({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const trans = module.translator;
+
+  if (!module.focused) {
+    // Auto-detect mode: simple display
+    if (!trans) return null;
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3">
+          <IconBadge icon={Languages} accent={accent} />
+          <div className="flex-1 min-w-0">
+            <div className="text-white/40 text-xs mb-1">
+              {trans.sourceLang !== 'Auto' ? trans.sourceLang : 'English'} → {trans.targetLang}
+            </div>
+            {trans.isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="text-white/50 text-lg">Translating...</div>
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+              </div>
+            ) : trans.error ? (
+              <div className="text-red-400/60 text-sm">{trans.error}</div>
+            ) : (
+              <div className="text-xl font-semibold tracking-tight text-white">
+                {trans.translatedText}
+              </div>
+            )}
+            <div className="text-white/25 text-xs mt-1">&ldquo;{trans.sourceText}&rdquo;</div>
+          </div>
+        </div>
+        {!trans.isLoading && trans.translatedText && (
+          <FooterHint text="Press Enter to copy translation" />
+        )}
+      </div>
+    );
+  }
+
+  // Focused mode: interactive UI
+  return <TranslatorInteractive trans={trans} accent={accent} onCopyValue={onCopyValue} />;
+}
+
+function TranslatorInteractive({ trans, accent, onCopyValue }: { trans?: TranslationResult; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const [fromCode, setFromCode] = useState('en');
+  const [toCode, setToCode] = useState('bn');
+  const [inputText, setInputText] = useState('');
+  const [result, setResult] = useState<TranslationResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const genRef = useRef(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync from auto-detect (only until user interacts)
+  useEffect(() => {
+    if (hasInteracted || !trans || trans.isPartial) return;
+    if (trans.translatedText) {
+      setResult(trans);
+      setInputText(trans.sourceText);
+      if (trans.sourceLangCode !== 'auto') setFromCode(trans.sourceLangCode);
+      setToCode(trans.targetLangCode);
+    }
+  }, [trans, hasInteracted]);
+
+  // Debounced translation when inputs change
+  useEffect(() => {
+    if (!hasInteracted) return;
+    if (!inputText.trim()) { setResult(null); setIsLoading(false); return; }
+
+    setIsLoading(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(() => {
+      const gen = ++genRef.current;
+      const req = translateDirect(inputText.trim(), fromCode, toCode);
+      resolveTranslation(req).then(resolved => {
+        if (genRef.current !== gen) return;
+        setResult(resolved);
+        setIsLoading(false);
+      });
+    }, 500);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [inputText, fromCode, toCode, hasInteracted]);
+
+  const handleSwap = () => {
+    setHasInteracted(true);
+    const tmp = fromCode;
+    setFromCode(toCode);
+    setToCode(tmp);
+    if (result?.translatedText) {
+      setInputText(result.translatedText);
+    }
+  };
+
+  const handleCopy = () => {
+    if (result?.translatedText) {
+      onCopyValue?.(result.translatedText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  const selectStyle = {
+    background: 'rgba(255, 255, 255, 0.06)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    backgroundImage: SELECT_ARROW,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 8px center',
+    backgroundSize: '10px',
+  };
+
+  return (
+    <div className="p-4">
+      {/* Language selectors */}
+      <div className="flex items-center gap-2 mb-3">
+        <select
+          value={fromCode}
+          onChange={e => { setHasInteracted(true); setFromCode(e.target.value); }}
+          className="flex-1 rounded-lg px-3 py-2 text-white text-xs appearance-none focus:outline-none focus:border-white/25 transition-colors pr-6"
+          style={selectStyle}
+        >
+          {POPULAR_LANGUAGES.map(code => (
+            <option key={code} value={code}>{getLanguageName(code)}</option>
+          ))}
+          <option disabled>───</option>
+          {ALL_LANGUAGES.filter(l => !POPULAR_LANGUAGES.includes(l.code)).map(l => (
+            <option key={l.code} value={l.code}>{l.name}</option>
+          ))}
+        </select>
+
+        <button
+          onClick={handleSwap}
+          className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors flex-shrink-0"
+          title="Swap languages"
+        >
+          <ArrowRightLeft className={`w-4 h-4 ${accent.text}`} />
+        </button>
+
+        <select
+          value={toCode}
+          onChange={e => { setHasInteracted(true); setToCode(e.target.value); }}
+          className="flex-1 rounded-lg px-3 py-2 text-white text-xs appearance-none focus:outline-none focus:border-white/25 transition-colors pr-6"
+          style={selectStyle}
+        >
+          {POPULAR_LANGUAGES.map(code => (
+            <option key={code} value={code}>{getLanguageName(code)}</option>
+          ))}
+          <option disabled>───</option>
+          {ALL_LANGUAGES.filter(l => !POPULAR_LANGUAGES.includes(l.code)).map(l => (
+            <option key={l.code} value={l.code}>{l.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Text input */}
+      <input
+        ref={inputRef}
+        type="text"
+        value={inputText}
+        onChange={e => { setHasInteracted(true); setInputText(e.target.value); }}
+        placeholder="Type text to translate..."
+        className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors mb-3"
+      />
+
+      {/* Result */}
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-2">
+          <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+          <span className="text-white/40 text-sm">Translating...</span>
+        </div>
+      ) : result?.translatedText ? (
+        <div className="py-2">
+          <div className="text-lg font-semibold text-white">{result.translatedText}</div>
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+            >
+              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+        </div>
+      ) : result?.error ? (
+        <div className="text-red-400/60 text-sm py-2">{result.error}</div>
+      ) : !inputText.trim() ? (
+        <div className="text-white/20 text-xs py-2">Type text above to translate</div>
+      ) : null}
+
+      <FooterHint text="Type or paste text, pick languages, get instant translation" />
+    </div>
+  );
+}
+
+// ─── Dictionary View ───────────────────────────────────────────
+
+function DictionaryView({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const dict = module.dictionary;
+
+  if (!module.focused) {
+    // Auto-detect mode: simple display
+    if (!dict) return null;
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3">
+          <IconBadge icon={BookOpen} accent={accent} />
+          <div className="flex-1 min-w-0">
+            {dict.isLoading ? (
+              <div className="flex items-center gap-2">
+                <div className="text-white/50 text-lg">Looking up &ldquo;{dict.word}&rdquo;...</div>
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+              </div>
+            ) : dict.error ? (
+              <div className="text-red-400/60 text-sm">{dict.error}</div>
+            ) : (
+              <>
+                <DictHeader dict={dict} accent={accent} />
+                <DictMeanings dict={dict} accent={accent} compact />
+              </>
+            )}
+          </div>
+        </div>
+        {!dict.isLoading && dict.meanings.length > 0 && (
+          <FooterHint text="Press Enter to copy definition" />
+        )}
+      </div>
+    );
+  }
+
+  // Focused mode: interactive lookup
+  return <DictionaryInteractive dict={dict} accent={accent} onCopyValue={onCopyValue} />;
+}
+
+function DictHeader({ dict, accent }: { dict: DictionaryResult; accent: AccentTheme }) {
+  const handlePlayAudio = () => {
+    if (dict.phoneticAudio) {
+      const audio = new Audio(dict.phoneticAudio);
+      audio.play().catch(() => {});
+    }
+  };
+
+  return (
+    <div className="flex items-baseline gap-2 mb-1">
+      <span className="text-white text-lg font-semibold capitalize">{dict.word}</span>
+      {dict.phonetic && (
+        <span className="text-white/30 text-xs font-mono">{dict.phonetic}</span>
+      )}
+      {dict.phoneticAudio && (
+        <button
+          onClick={handlePlayAudio}
+          className="p-0.5 hover:bg-white/10 rounded transition-colors"
+          title="Play pronunciation"
+        >
+          <Volume2 className={`w-3.5 h-3.5 ${accent.text}`} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function DictMeanings({ dict, accent, compact }: { dict: DictionaryResult; accent: AccentTheme; compact?: boolean }) {
+  const maxMeanings = compact ? 2 : dict.meanings.length;
+  const maxDefs = compact ? 1 : 3;
+
+  return (
+    <div className="space-y-2">
+      {dict.meanings.slice(0, maxMeanings).map((meaning, i) => (
+        <div key={i}>
+          <span
+            className="text-[10px] font-medium tracking-wider uppercase px-1.5 py-0.5 rounded"
+            style={{ background: accent.bg, color: accent.solid }}
+          >
+            {meaning.partOfSpeech}
+          </span>
+          <div className="mt-1 space-y-1">
+            {meaning.definitions.slice(0, maxDefs).map((def, j) => (
+              <div key={j}>
+                <div className="text-white/80 text-sm">{def.definition}</div>
+                {def.example && !compact && (
+                  <div className="text-white/30 text-xs italic ml-3 mt-0.5">&ldquo;{def.example}&rdquo;</div>
+                )}
+              </div>
+            ))}
+          </div>
+          {!compact && meaning.synonyms.length > 0 && (
+            <div className="mt-1 flex items-center gap-1 flex-wrap">
+              <span className="text-white/25 text-[10px]">Synonyms:</span>
+              {meaning.synonyms.map((s, k) => (
+                <span key={k} className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.04] text-white/40">{s}</span>
+              ))}
+            </div>
+          )}
+          {!compact && meaning.antonyms.length > 0 && (
+            <div className="mt-1 flex items-center gap-1 flex-wrap">
+              <span className="text-white/25 text-[10px]">Antonyms:</span>
+              {meaning.antonyms.map((s, k) => (
+                <span key={k} className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.04] text-white/40">{s}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DictionaryInteractive({ dict, accent, onCopyValue }: { dict?: DictionaryResult; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const [inputWord, setInputWord] = useState('');
+  const [result, setResult] = useState<DictionaryResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const genRef = useRef(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync from auto-detect
+  useEffect(() => {
+    if (hasInteracted || !dict) return;
+    if (!dict.isLoading && dict.meanings.length > 0) {
+      setResult(dict);
+      setInputWord(dict.word);
+    }
+  }, [dict, hasInteracted]);
+
+  // Debounced lookup
+  useEffect(() => {
+    if (!hasInteracted) return;
+    const word = inputWord.trim();
+    if (!word || word.length < 2) { setResult(null); setIsLoading(false); return; }
+
+    setIsLoading(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(() => {
+      const gen = ++genRef.current;
+      const req = lookupWord(word);
+      resolveDictionary(req).then(resolved => {
+        if (genRef.current !== gen) return;
+        setResult(resolved);
+        setIsLoading(false);
+      });
+    }, 600);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [inputWord, hasInteracted]);
+
+  const handleCopy = () => {
+    if (result && result.meanings.length > 0) {
+      const text = result.meanings.map(m =>
+        `${m.partOfSpeech}: ${m.definitions.map(d => d.definition).join('; ')}`
+      ).join('\n');
+      onCopyValue?.(`${result.word} — ${text}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  return (
+    <div className="p-4">
+      {/* Word input */}
+      <div className="flex items-center gap-2 mb-3">
+        <IconBadge icon={BookOpen} accent={accent} />
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputWord}
+          onChange={e => { setHasInteracted(true); setInputWord(e.target.value); }}
+          placeholder="Type a word to look up..."
+          className="flex-1 bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors"
+        />
+      </div>
+
+      {/* Result */}
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-3">
+          <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+          <span className="text-white/40 text-sm">Looking up...</span>
+        </div>
+      ) : result ? (
+        result.error ? (
+          <div className="text-red-400/60 text-sm py-2">{result.error}</div>
+        ) : result.meanings.length > 0 ? (
+          <div>
+            <DictHeader dict={result} accent={accent} />
+            <DictMeanings dict={result} accent={accent} />
+            <div className="mt-3 pt-2 flex items-center gap-2" style={{ borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+              >
+                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                {copied ? 'Copied!' : 'Copy definition'}
+              </button>
+            </div>
+          </div>
+        ) : null
+      ) : !inputWord.trim() ? (
+        <div className="text-white/20 text-xs py-2">Type a word above to see its definition</div>
+      ) : null}
+
+      <FooterHint text="Type a word to see definitions, pronunciation, synonyms & antonyms" />
+    </div>
+  );
+}
+
 // ─── Shared UI Helpers ─────────────────────────────────────────
 
 function IconBadge({ icon: Icon, accent }: { icon: React.ComponentType<{ className?: string }>; accent: AccentTheme }) {
@@ -1631,6 +2215,10 @@ export function ContourPanel({
                       onSetDuration={onSetTimerDuration}
                     />
                   )}
+                  {state.module.id === 'random' && <RandomView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
+                  {state.module.id === 'wordcount' && <WordCountView module={state.module} accent={accent} />}
+                  {state.module.id === 'translator' && <TranslatorView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
+                  {state.module.id === 'dictionary' && <DictionaryView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
                 </>
               )}
 
