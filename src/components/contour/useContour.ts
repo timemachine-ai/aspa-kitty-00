@@ -22,9 +22,10 @@ import { detectDate, DateResult } from './modules/dateCalculator';
 import { createTimerState, tickTimer, formatDuration, TimerState, parseDuration, formatDurationLabel } from './modules/timer';
 import { detectRandom, RandomResult } from './modules/randomGenerator';
 import { detectWordCount, analyzeText, WordCountResult } from './modules/wordCounter';
+import { detectTranslation, resolveTranslation, TranslationResult } from './modules/translator';
 import { searchCommands, ContourCommand } from './modules/commands';
 
-export type ModuleId = 'calculator' | 'units' | 'currency' | 'timezone' | 'color' | 'date' | 'timer' | 'random' | 'wordcount';
+export type ModuleId = 'calculator' | 'units' | 'currency' | 'timezone' | 'color' | 'date' | 'timer' | 'random' | 'wordcount' | 'translator';
 
 export type ContourMode = 'hidden' | 'commands' | 'module';
 
@@ -40,6 +41,7 @@ export interface ModuleData {
   timer?: TimerState;
   random?: RandomResult;
   wordcount?: WordCountResult;
+  translator?: TranslationResult;
 }
 
 export interface ContourState {
@@ -68,12 +70,14 @@ const HANDLER_TO_MODULE: Record<string, ModuleId> = {
   'timer': 'timer',
   'random': 'random',
   'word-count': 'wordcount',
+  'translator': 'translator',
 };
 
 export function useContour() {
   const [state, setState] = useState<ContourState>(INITIAL_STATE);
   const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currencyGenRef = useRef<number>(0);
+  const translatorGenRef = useRef<number>(0);
 
   useEffect(() => {
     return () => {
@@ -109,11 +113,15 @@ export function useContour() {
     const random = detectRandom(trimmed);
     if (random) return { id: 'random', focused: false, random };
 
-    // 7. Word counter
+    // 7. Translator
+    const translation = detectTranslation(trimmed);
+    if (translation) return { id: 'translator', focused: false, translator: translation };
+
+    // 8. Word counter
     const wordcount = detectWordCount(trimmed);
     if (wordcount) return { id: 'wordcount', focused: false, wordcount };
 
-    // 8. Math (broadest match, lowest priority)
+    // 9. Math (broadest match, lowest priority)
     if (isMathExpression(trimmed)) {
       const calc = evaluateMath(trimmed);
       if (calc) return { id: 'calculator', focused: false, calculator: calc };
@@ -171,6 +179,11 @@ export function useContour() {
         const wordcount = analyzeText(trimmed);
         return { id: 'wordcount', focused: true, wordcount };
       }
+      case 'translator': {
+        if (!trimmed) return { id: 'translator', focused: true };
+        const translation = detectTranslation(trimmed);
+        return { id: 'translator', focused: true, translator: translation || undefined };
+      }
     }
   }, []);
 
@@ -215,6 +228,19 @@ export function useContour() {
           setState(prev => {
             if (prev.module?.id !== 'currency') return prev;
             return { ...prev, module: { ...prev.module, currency: resolved } };
+          });
+        });
+      }
+
+      // Async translation resolution
+      const translation = detectTranslation(trimmed);
+      if (translation && !translation.isPartial) {
+        const gen = ++translatorGenRef.current;
+        resolveTranslation(translation).then(resolved => {
+          if (translatorGenRef.current !== gen) return;
+          setState(prev => {
+            if (prev.module?.id !== 'translator') return prev;
+            return { ...prev, module: { ...prev.module, translator: resolved } };
           });
         });
       }
