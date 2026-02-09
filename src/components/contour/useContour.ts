@@ -270,6 +270,29 @@ export function useContour() {
     });
   }, []);
 
+  const setTimerDuration = useCallback((seconds: number) => {
+    if (seconds <= 0) return;
+    if (timerIntervalRef.current) { clearInterval(timerIntervalRef.current); timerIntervalRef.current = null; }
+    setState(prev => {
+      if (prev.mode !== 'module' || prev.module?.id !== 'timer') return prev;
+      return {
+        ...prev,
+        module: {
+          ...prev.module,
+          timer: {
+            totalSeconds: seconds,
+            remainingSeconds: seconds,
+            isRunning: false,
+            isComplete: false,
+            label: formatDurationLabel(seconds),
+            display: formatDuration(seconds),
+            progress: 1,
+          },
+        },
+      };
+    });
+  }, []);
+
   const selectUp = useCallback(() => {
     setState(prev => {
       if (prev.mode !== 'commands' || prev.commands.length === 0) return prev;
@@ -310,5 +333,6 @@ export function useContour() {
     startTimer,
     toggleTimer,
     resetTimer,
+    setTimerDuration,
   };
 }

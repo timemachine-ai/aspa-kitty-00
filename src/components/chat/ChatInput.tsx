@@ -659,6 +659,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                 onTimerStart={contour.startTimer}
                 onTimerToggle={contour.toggleTimer}
                 onTimerReset={contour.resetTimer}
+                onSetTimerDuration={contour.setTimerDuration}
               />
             </div>
           </div>

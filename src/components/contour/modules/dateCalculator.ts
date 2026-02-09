@@ -268,3 +268,82 @@ export function detectDate(input: string): DateResult | null {
 
   return null;
 }
+
+// ─── Interactive Mode Helpers ──────────────────────────────────
+
+export type DateOperation = DateResult['type'];
+
+export const DATE_OPERATIONS: { id: DateOperation; label: string }[] = [
+  { id: 'until', label: 'Days until' },
+  { id: 'since', label: 'Days since' },
+  { id: 'from_now', label: 'From now' },
+  { id: 'ago', label: 'Ago' },
+  { id: 'between', label: 'Between' },
+];
+
+export const DATE_QUICK_PICKS = [
+  { name: 'Christmas', value: 'christmas' },
+  { name: 'New Year', value: 'new years' },
+  { name: 'Halloween', value: 'halloween' },
+  { name: "Valentine's", value: "valentine's" },
+];
+
+export { parseDate, formatDate };
+
+export function computeDateDirect(
+  operation: DateOperation,
+  date1?: Date | null,
+  date2?: Date | null,
+  numDays?: number,
+): DateResult | null {
+  const now = new Date();
+  switch (operation) {
+    case 'until': {
+      if (!date1) return null;
+      const days = daysBetween(now, date1);
+      return {
+        display: days >= 0 ? pluralize(days, 'day') : `${pluralize(-days, 'day')} ago`,
+        subtitle: `until ${formatDate(date1)}`,
+        days, targetDate: date1, isPartial: false, type: 'until',
+      };
+    }
+    case 'since': {
+      if (!date1) return null;
+      const days = daysBetween(date1, now);
+      return {
+        display: pluralize(days, 'day'),
+        subtitle: `since ${formatDate(date1)}`,
+        days, targetDate: date1, isPartial: false, type: 'since',
+      };
+    }
+    case 'from_now': {
+      if (numDays === undefined || numDays < 0) return null;
+      const target = new Date(now);
+      target.setDate(target.getDate() + numDays);
+      return {
+        display: formatDate(target),
+        subtitle: `${pluralize(numDays, 'day')} from now`,
+        days: numDays, targetDate: target, isPartial: false, type: 'from_now',
+      };
+    }
+    case 'ago': {
+      if (numDays === undefined || numDays < 0) return null;
+      const target = new Date(now);
+      target.setDate(target.getDate() - numDays);
+      return {
+        display: formatDate(target),
+        subtitle: `${pluralize(numDays, 'day')} ago`,
+        days: numDays, targetDate: target, isPartial: false, type: 'ago',
+      };
+    }
+    case 'between': {
+      if (!date1 || !date2) return null;
+      const days = Math.abs(daysBetween(date1, date2));
+      return {
+        display: pluralize(days, 'day'),
+        subtitle: `between ${formatDate(date1)} and ${formatDate(date2)}`,
+        days, isPartial: false, type: 'between',
+      };
+    }
+  }
+}
