@@ -16,9 +16,7 @@ import {
   Search, Wrench, Monitor, Zap, Command, Equal,
   ChevronLeft, Play, Pause, RotateCcw, Copy, Check,
   Dices, Coins, RefreshCw,
-  BookOpen, Mic, AlignLeft, List, MessageSquare, LetterText, RemoveFormatting,
-  Languages, ArrowRightLeft,
-  Volume2,
+  BookOpen, Mic, AlignLeft, List, MessageSquare,
 } from 'lucide-react';
 import { ContourState, ModuleData, ModuleId } from './useContour';
 import { ContourCommand, ContourCategory, CATEGORY_INFO } from './modules/commands';
@@ -61,9 +59,11 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   HelpCircle, Code, Music, HeartPulse, Fingerprint, Clock,
   Search, Wrench, Monitor, Zap, Command,
   Dices, Coins, RefreshCw,
-  BookOpen, Mic, AlignLeft, List, MessageSquare, LetterText, RemoveFormatting,
-  Languages, ArrowRightLeft,
-  Volume2,
+  BookOpen, Mic, AlignLeft, List, MessageSquare,
+  // Aliases for icons not in lucide-react 0.344.0
+  Languages: Globe,
+  LetterText: Type,
+  RemoveFormatting: Hash,
 };
 
 interface ContourPanelProps {
@@ -122,7 +122,7 @@ const MODULE_META: Record<ModuleId, { icon: React.ComponentType<{ className?: st
   timer: { icon: Timer, label: 'Timer', placeholder: 'e.g., 5m, 1h30m, 90s, 10:00' },
   random: { icon: Shuffle, label: 'Random Generator', placeholder: 'e.g., uuid, password 16, roll 2d6, flip coin, random 1-100' },
   wordcount: { icon: Type, label: 'Word Counter', placeholder: 'Type or paste text to count words, characters, sentences...' },
-  translator: { icon: Languages, label: 'Translator', placeholder: 'e.g., food in bangla, hello in spanish, translate thanks to french' },
+  translator: { icon: Globe, label: 'Translator', placeholder: 'e.g., food in bangla, hello in spanish, translate thanks to french' },
   dictionary: { icon: BookOpen, label: 'Dictionary', placeholder: 'e.g., perplexed meaning, define serendipity, what is ephemeral' },
 };
 
@@ -1696,7 +1696,7 @@ function TranslatorView({ module, accent, onCopyValue }: { module: ModuleData; a
     return (
       <div className="p-4">
         <div className="flex items-center gap-3">
-          <IconBadge icon={Languages} accent={accent} />
+          <IconBadge icon={Globe} accent={accent} />
           <div className="flex-1 min-w-0">
             <div className="text-white/40 text-xs mb-1">
               {trans.sourceLang !== 'Auto' ? trans.sourceLang : 'English'} → {trans.targetLang}
@@ -1822,7 +1822,7 @@ function TranslatorInteractive({ trans, accent, onCopyValue }: { trans?: Transla
           className="p-2 rounded-lg hover:bg-white/[0.06] transition-colors flex-shrink-0"
           title="Swap languages"
         >
-          <ArrowRightLeft className={`w-4 h-4 ${accent.text}`} />
+          <ArrowLeftRight className={`w-4 h-4 ${accent.text}`} />
         </button>
 
         <select
@@ -1940,7 +1940,7 @@ function DictHeader({ dict, accent }: { dict: DictionaryResult; accent: AccentTh
           className="p-0.5 hover:bg-white/10 rounded transition-colors"
           title="Play pronunciation"
         >
-          <Volume2 className={`w-3.5 h-3.5 ${accent.text}`} />
+          <Play className={`w-3.5 h-3.5 ${accent.text}`} />
         </button>
       )}
     </div>
