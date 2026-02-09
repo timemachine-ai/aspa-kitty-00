@@ -20,9 +20,10 @@ import { detectTimezone, TimezoneResult } from './modules/timezoneConverter';
 import { detectColor, ColorResult } from './modules/colorConverter';
 import { detectDate, DateResult } from './modules/dateCalculator';
 import { createTimerState, tickTimer, formatDuration, TimerState, parseDuration, formatDurationLabel } from './modules/timer';
+import { detectRandom, RandomResult } from './modules/randomGenerator';
 import { searchCommands, ContourCommand } from './modules/commands';
 
-export type ModuleId = 'calculator' | 'units' | 'currency' | 'timezone' | 'color' | 'date' | 'timer';
+export type ModuleId = 'calculator' | 'units' | 'currency' | 'timezone' | 'color' | 'date' | 'timer' | 'random';
 
 export type ContourMode = 'hidden' | 'commands' | 'module';
 
@@ -36,6 +37,7 @@ export interface ModuleData {
   color?: ColorResult;
   date?: DateResult;
   timer?: TimerState;
+  random?: RandomResult;
 }
 
 export interface ContourState {
@@ -62,6 +64,7 @@ const HANDLER_TO_MODULE: Record<string, ModuleId> = {
   'color-converter': 'color',
   'date-calculator': 'date',
   'timer': 'timer',
+  'random': 'random',
 };
 
 export function useContour() {
@@ -99,7 +102,11 @@ export function useContour() {
     const date = detectDate(trimmed);
     if (date) return { id: 'date', focused: false, date };
 
-    // 6. Math (broadest match, lowest priority)
+    // 6. Random generator
+    const random = detectRandom(trimmed);
+    if (random) return { id: 'random', focused: false, random };
+
+    // 7. Math (broadest match, lowest priority)
     if (isMathExpression(trimmed)) {
       const calc = evaluateMath(trimmed);
       if (calc) return { id: 'calculator', focused: false, calculator: calc };
@@ -146,6 +153,11 @@ export function useContour() {
         if (!trimmed) return { id: 'timer', focused: true };
         const timer = createTimerState(trimmed);
         return { id: 'timer', focused: true, timer: timer || undefined };
+      }
+      case 'random': {
+        if (!trimmed) return { id: 'random', focused: true };
+        const random = detectRandom(trimmed);
+        return { id: 'random', focused: true, random: random || undefined };
       }
     }
   }, []);

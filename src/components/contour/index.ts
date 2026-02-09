@@ -10,3 +10,4 @@ export { detectTimezone } from './modules/timezoneConverter';
 export { detectColor } from './modules/colorConverter';
 export { detectDate } from './modules/dateCalculator';
 export { createTimerState, tickTimer, formatDuration, parseDuration } from './modules/timer';
+export { detectRandom, regenerate, QUICK_ACTIONS } from './modules/randomGenerator';
