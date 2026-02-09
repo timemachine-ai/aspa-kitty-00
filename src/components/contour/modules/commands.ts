@@ -129,6 +129,15 @@ export const CONTOUR_COMMANDS: ContourCommand[] = [
     keywords: ['translate', 'translation', 'language', 'bangla', 'spanish', 'french', 'hindi', 'japanese', 'korean', 'chinese', 'arabic'],
     action: { type: 'inline', handler: 'translator' },
   },
+  {
+    id: 'dictionary',
+    name: 'Dictionary',
+    description: 'Look up word definitions, synonyms, and examples',
+    icon: 'BookOpen',
+    category: 'utility',
+    keywords: ['dictionary', 'define', 'meaning', 'definition', 'synonym', 'antonym', 'word', 'lookup'],
+    action: { type: 'inline', handler: 'dictionary' },
+  },
 
   // Developer Tools
   {

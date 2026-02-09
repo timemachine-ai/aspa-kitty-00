@@ -13,3 +13,4 @@ export { createTimerState, tickTimer, formatDuration, parseDuration } from './mo
 export { detectRandom, regenerate, QUICK_ACTIONS } from './modules/randomGenerator';
 export { detectWordCount, analyzeText, getStatItems } from './modules/wordCounter';
 export { detectTranslation, resolveTranslation, getLanguageList, POPULAR_LANGUAGES } from './modules/translator';
+export { detectDictionary, resolveDictionary, lookupWord } from './modules/dictionary';
