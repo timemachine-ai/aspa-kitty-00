@@ -1723,8 +1723,11 @@ The memory tags will be processed and removed from the visible response, so writ
           const userPrompt = lastMsg.content === '[Image message]' ? '' : lastMsg.content;
 
           // Build enriched message combining extracted image content + user prompt
+          // Include image-edit context so persona models know images are attached and editable
+          const imageEditContext = `\n\n[IMPORTANT: The user has attached ${imageUrlsForOCR.length} image(s) to this message. If the user is asking to edit, modify, or transform the image — use the generate_image tool with process="edit" and write a detailed prompt describing the desired result. The image URLs and dimensions are automatically handled by the system.]`;
+
           const enrichedContent = userPrompt
-            ? `[Content extracted from the attached image(s):\n${extractedText}\n]\n\nUser's message: ${userPrompt}`
+            ? `[Content extracted from the attached image(s):\n${extractedText}\n]${imageEditContext}\n\nUser's message: ${userPrompt}`
             : `[Content extracted from the attached image(s):\n${extractedText}\n]\n\nThe user shared this image. Respond based on the extracted content above.`;
 
           apiMessages[lastMsgIndex] = { ...lastMsg, content: enrichedContent };
@@ -1737,7 +1740,7 @@ The memory tags will be processed and removed from the visible response, so writ
           apiMessages[lastMsgIndex] = {
             ...lastMsg,
             content: userPrompt
-              ? `[The user attached an image but text extraction failed. Please respond to their message as best you can.]\n\nUser's message: ${userPrompt}`
+              ? `[The user attached an image but text extraction failed. Please respond to their message as best you can. If the user wanted to edit the image, use the generate_image tool with process="edit" and describe what the user wants.]\n\nUser's message: ${userPrompt}`
               : `[The user attached an image but text extraction failed. Let them know you couldn't process the image and ask them to try again.]`
           };
         }
@@ -1987,8 +1990,12 @@ The memory tags will be processed and removed from the visible response, so writ
           const lastMsgIndex = apiMessages.length - 1;
           const lastMsg = apiMessages[lastMsgIndex];
           const userPrompt = lastMsg.content === '[Image message]' ? '' : lastMsg.content;
+
+          // Include image-edit context so persona models know images are attached and editable
+          const imageEditContext = `\n\n[IMPORTANT: The user has attached ${imageUrlsForOCR.length} image(s) to this message. If the user is asking to edit, modify, or transform the image — use the generate_image tool with process="edit" and write a detailed prompt describing the desired result. The image URLs and dimensions are automatically handled by the system.]`;
+
           const enrichedContent = userPrompt
-            ? `[Content extracted from the attached image(s):\n${extractedText}\n]\n\nUser's message: ${userPrompt}`
+            ? `[Content extracted from the attached image(s):\n${extractedText}\n]${imageEditContext}\n\nUser's message: ${userPrompt}`
             : `[Content extracted from the attached image(s):\n${extractedText}\n]\n\nThe user shared this image. Respond based on the extracted content above.`;
           apiMessages[lastMsgIndex] = { ...lastMsg, content: enrichedContent };
         } catch (ocrError) {
@@ -1999,7 +2006,7 @@ The memory tags will be processed and removed from the visible response, so writ
           apiMessages[lastMsgIndex] = {
             ...lastMsg,
             content: userPrompt
-              ? `[The user attached an image but text extraction failed. Please respond to their message as best you can.]\n\nUser's message: ${userPrompt}`
+              ? `[The user attached an image but text extraction failed. Please respond to their message as best you can. If the user wanted to edit the image, use the generate_image tool with process="edit" and describe what the user wants.]\n\nUser's message: ${userPrompt}`
               : `[The user attached an image but text extraction failed. Let them know you couldn't process the image and ask them to try again.]`
           };
         }
