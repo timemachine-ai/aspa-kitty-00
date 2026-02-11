@@ -77,7 +77,7 @@ const extractMentionedPersona = (message: string | null): keyof typeof AI_PERSON
 };
 
 // Helper to process memory tags and marker from content
-const processMemoryContent = (content: string): { cleanContent: string; hasSavedMemory: boolean } => {
+const processMemoryContent = (content: string): { cleanContent: string; hasSavedMemory: boolean; imageUrls: string[] } => {
   // Check for memory saved marker
   const hasSavedMemory = content.includes('[MEMORY_SAVED]');
 
@@ -85,10 +85,24 @@ const processMemoryContent = (content: string): { cleanContent: string; hasSaved
   let cleanContent = content
     .replace(/<memory>[\s\S]*?<\/memory>/gi, '') // Remove memory tags
     .replace(/\[MEMORY_SAVED\]/g, '') // Remove marker
-    .replace(/!\[Generated Image\]\([^)]*$/, '') // Hide incomplete image markdown during streaming
     .trim();
 
-  return { cleanContent, hasSavedMemory };
+  // Extract complete generated image URLs BEFORE ReactMarkdown sees them
+  // ReactMarkdown can choke on very long encoded URLs, causing raw URL text to leak into UI
+  const imageUrls: string[] = [];
+  const imageRegex = /!\[Generated Image\]\(([^)]+)\)/g;
+  let match;
+  while ((match = imageRegex.exec(cleanContent)) !== null) {
+    imageUrls.push(match[1]);
+  }
+
+  // Remove all generated image markdown (complete + incomplete during streaming)
+  cleanContent = cleanContent
+    .replace(/!\[Generated Image\]\([^)]+\)/g, '') // Complete image markdown
+    .replace(/!\[Generated Image\]\([^)]*$/, '') // Incomplete image markdown (streaming)
+    .trim();
+
+  return { cleanContent, hasSavedMemory, imageUrls };
 };
 
 function AIMessageComponent({
@@ -116,8 +130,8 @@ function AIMessageComponent({
   const contentEndRef = useRef<HTMLDivElement>(null);
   const { theme } = useTheme();
 
-  // Process content to handle memory tags
-  const { cleanContent, hasSavedMemory } = processMemoryContent(content);
+  // Process content to handle memory tags and extract generated image URLs
+  const { cleanContent, hasSavedMemory, imageUrls } = processMemoryContent(content);
 
   // Get persona-specific colors for reasoning display
   const getPersonaReasoningColors = (persona: keyof typeof AI_PERSONAS) => {
@@ -428,7 +442,7 @@ function AIMessageComponent({
         </div>
       )}
       {/* Show content when not generating or when generation is complete */}
-      {!isGeneratingImage && !isRecordingVoice && !(isStreamingActive && !cleanContent && specialMode && SPECIAL_MODE_SHIMMER_TEXT[specialMode as string]) && (cleanContent || isStreamingActive) && !audioUrl && (
+      {!isGeneratingImage && !isRecordingVoice && !(isStreamingActive && !cleanContent && specialMode && SPECIAL_MODE_SHIMMER_TEXT[specialMode as string]) && (cleanContent || isStreamingActive || imageUrls.length > 0) && !audioUrl && (
         <>
           {isChatMode ? (
             <div className="flex flex-col gap-1">
@@ -453,6 +467,10 @@ function AIMessageComponent({
                     >
                       {cleanContent}
                     </ReactMarkdown>
+                    {/* Render generated images directly, outside ReactMarkdown */}
+                    {imageUrls.map((url, i) => (
+                      <GeneratedImage key={`gen-img-${i}-${url.slice(0, 50)}`} src={url} alt="Generated Image" persona={displayPersona} />
+                    ))}
                     {/* Saved to Memory indicator */}
                     {hasSavedMemory && (
                       <motion.div
@@ -491,6 +509,10 @@ function AIMessageComponent({
                   >
                     {cleanContent}
                   </ReactMarkdown>
+                  {/* Render generated images directly, outside ReactMarkdown */}
+                  {imageUrls.map((url, i) => (
+                    <GeneratedImage key={`gen-img-${i}-${url.slice(0, 50)}`} src={url} alt="Generated Image" persona={displayPersona} />
+                  ))}
                   {/* Saved to Memory indicator */}
                   {hasSavedMemory && (
                     <motion.div
