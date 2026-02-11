@@ -85,6 +85,7 @@ const processMemoryContent = (content: string): { cleanContent: string; hasSaved
   let cleanContent = content
     .replace(/<memory>[\s\S]*?<\/memory>/gi, '') // Remove memory tags
     .replace(/\[MEMORY_SAVED\]/g, '') // Remove marker
+    .replace(/!\[Generated Image\]\([^)]*$/, '') // Hide incomplete image markdown during streaming
     .trim();
 
   return { cleanContent, hasSavedMemory };
