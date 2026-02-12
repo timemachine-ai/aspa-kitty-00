@@ -51,6 +51,12 @@ import {
 import {
   DictionaryResult, resolveDictionary, lookupWord,
 } from './modules/dictionary';
+import { LoremResult, generateLorem } from './modules/loremIpsum';
+import { JsonFormatResult, formatJson } from './modules/jsonFormatter';
+import { Base64Result, processBase64 } from './modules/base64Codec';
+import { UrlEncodeResult, processUrl } from './modules/urlEncoder';
+import { HashResult, resolveHash, createHashResult } from './modules/hashGenerator';
+import { RegexResult, testRegex, REGEX_FLAGS, REGEX_PRESETS } from './modules/regexTester';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Calculator, ArrowLeftRight, DollarSign, Globe, Palette,
@@ -124,6 +130,12 @@ const MODULE_META: Record<ModuleId, { icon: React.ComponentType<{ className?: st
   wordcount: { icon: Type, label: 'Word Counter', placeholder: 'Type or paste text to count words, characters, sentences...' },
   translator: { icon: Globe, label: 'Translator', placeholder: 'e.g., food in bangla, hello in spanish, translate thanks to french' },
   dictionary: { icon: BookOpen, label: 'Dictionary', placeholder: 'e.g., perplexed meaning, define serendipity, what is ephemeral' },
+  lorem: { icon: FileText, label: 'Lorem Ipsum', placeholder: 'e.g., lorem 3p, lorem 5s, lorem 50w' },
+  'json-format': { icon: Braces, label: 'JSON Formatter', placeholder: 'Paste JSON to format or validate...' },
+  base64: { icon: Lock, label: 'Base64', placeholder: 'Type text to encode, or paste Base64 to decode' },
+  'url-encode': { icon: Link, label: 'URL Encoder', placeholder: 'Type text to encode, or paste encoded URL to decode' },
+  hash: { icon: Hash, label: 'Hash Generator', placeholder: 'Type text to generate MD5, SHA-1, SHA-256 hashes' },
+  regex: { icon: FileSearch, label: 'Regex Tester', placeholder: 'Type a regex pattern to test...' },
 };
 
 function getIcon(iconName: string): React.ComponentType<{ className?: string }> {
@@ -2093,6 +2105,673 @@ function DictionaryInteractive({ dict, accent, onCopyValue }: { dict?: Dictionar
   );
 }
 
+// ─── Lorem Ipsum View ──────────────────────────────────────────
+
+const LOREM_PRESETS = [
+  { label: '1 paragraph', type: 'paragraphs' as const, count: 1 },
+  { label: '3 paragraphs', type: 'paragraphs' as const, count: 3 },
+  { label: '5 paragraphs', type: 'paragraphs' as const, count: 5 },
+  { label: '5 sentences', type: 'sentences' as const, count: 5 },
+  { label: '10 sentences', type: 'sentences' as const, count: 10 },
+  { label: '50 words', type: 'words' as const, count: 50 },
+  { label: '100 words', type: 'words' as const, count: 100 },
+];
+
+function LoremView({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const lorem = module.lorem;
+  const [current, setCurrent] = useState<LoremResult | null>(lorem && !lorem.isPartial ? lorem : null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (lorem && !lorem.isPartial) setCurrent(lorem);
+  }, [lorem]);
+
+  const handlePreset = (type: 'paragraphs' | 'sentences' | 'words', count: number) => {
+    setCurrent(generateLorem(type, count));
+    setCopied(false);
+  };
+
+  const handleCopy = () => {
+    if (current) {
+      onCopyValue?.(current.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  if (!current && module.focused) {
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <IconBadge icon={FileText} accent={accent} />
+          <div className="text-white/30 text-sm">{MODULE_META.lorem.placeholder}</div>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {LOREM_PRESETS.map(p => (
+            <button
+              key={p.label}
+              onClick={() => handlePreset(p.type, p.count)}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-white/40 hover:text-white/60 transition-all"
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!current) return null;
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-3 mb-3">
+        <IconBadge icon={FileText} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className="text-white/40 text-xs mb-1">{current.wordCount} words, {current.paragraphCount} paragraph{current.paragraphCount !== 1 ? 's' : ''}</div>
+        </div>
+      </div>
+      <div className="max-h-[140px] overflow-y-auto rounded-lg p-3 text-white/70 text-xs leading-relaxed font-mono [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-white/10"
+        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+      >
+        {current.text.split('\n\n').map((p, i) => (
+          <p key={i} className={i > 0 ? 'mt-2' : ''}>{p}</p>
+        ))}
+      </div>
+      {module.focused && (
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {LOREM_PRESETS.map(p => (
+            <button
+              key={p.label}
+              onClick={() => handlePreset(p.type, p.count)}
+              className="px-2 py-0.5 rounded-md text-[10px] font-medium text-white/35 hover:text-white/55 transition-all"
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+        >
+          {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+        <span className="text-[10px] text-white/20">Press Enter to copy</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── JSON Formatter View ───────────────────────────────────────
+
+function JsonFormatView({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const json = module.jsonFormat;
+  const [showMinified, setShowMinified] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [result, setResult] = useState<JsonFormatResult | null>(json && !json.isPartial ? json : null);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  useEffect(() => {
+    if (!hasInteracted && json && !json.isPartial) setResult(json);
+  }, [json, hasInteracted]);
+
+  useEffect(() => {
+    if (!hasInteracted || !inputText.trim()) { if (hasInteracted) setResult(null); return; }
+    setResult(formatJson(inputText));
+  }, [inputText, hasInteracted]);
+
+  const handleCopy = () => {
+    if (result && result.isValid) {
+      onCopyValue?.(showMinified ? result.minified : result.formatted);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  if (!result && module.focused) {
+    return <HintView icon={Braces} accent={accent} text={MODULE_META['json-format'].placeholder} />;
+  }
+
+  const displayResult = result || json;
+  if (!displayResult || displayResult.isPartial) return null;
+
+  const output = showMinified ? displayResult.minified : displayResult.formatted;
+
+  return (
+    <div className="p-4">
+      {module.focused && (
+        <textarea
+          value={inputText}
+          onChange={e => { setHasInteracted(true); setInputText(e.target.value); }}
+          placeholder="Paste JSON here..."
+          className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-xs font-mono placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors mb-3 resize-none"
+          rows={3}
+        />
+      )}
+      <div className="flex items-center gap-2 mb-2">
+        <IconBadge icon={Braces} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className={`text-sm font-medium ${displayResult.isValid ? 'text-green-400/80' : 'text-red-400/80'}`}>
+            {displayResult.isValid ? 'Valid JSON' : 'Invalid JSON'}
+          </div>
+          {displayResult.isValid && (
+            <div className="text-white/30 text-xs">{displayResult.keyCount} keys, depth {displayResult.depth}</div>
+          )}
+          {displayResult.error && (
+            <div className="text-red-400/60 text-xs">{displayResult.error}</div>
+          )}
+        </div>
+      </div>
+      {displayResult.isValid && (
+        <>
+          <div className="flex gap-1.5 mb-2">
+            <button
+              onClick={() => setShowMinified(false)}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${!showMinified ? 'text-white' : 'text-white/35'}`}
+              style={!showMinified ? { background: accent.bg, border: `1px solid ${accent.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+            >
+              Formatted
+            </button>
+            <button
+              onClick={() => setShowMinified(true)}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all ${showMinified ? 'text-white' : 'text-white/35'}`}
+              style={showMinified ? { background: accent.bg, border: `1px solid ${accent.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+            >
+              Minified
+            </button>
+          </div>
+          <div className="max-h-[140px] overflow-y-auto rounded-lg p-3 text-white/70 text-xs font-mono leading-relaxed [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-white/10 whitespace-pre-wrap break-all"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >
+            {output}
+          </div>
+        </>
+      )}
+      <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+        >
+          {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+        <span className="text-[10px] text-white/20">Press Enter to copy</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Base64 View ───────────────────────────────────────────────
+
+function Base64View({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const b64 = module.base64;
+  const [mode, setMode] = useState<'encode' | 'decode'>(b64?.mode || 'encode');
+  const [inputText, setInputText] = useState('');
+  const [result, setResult] = useState<Base64Result | null>(b64 && !b64.isPartial ? b64 : null);
+  const [copied, setCopied] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  useEffect(() => {
+    if (!hasInteracted && b64 && !b64.isPartial) {
+      setResult(b64);
+      setMode(b64.mode);
+    }
+  }, [b64, hasInteracted]);
+
+  useEffect(() => {
+    if (!hasInteracted || !inputText.trim()) { if (hasInteracted) setResult(null); return; }
+    setResult(processBase64(inputText, mode));
+  }, [inputText, mode, hasInteracted]);
+
+  const output = result ? (mode === 'encode' ? result.encoded : result.decoded) : '';
+
+  const handleCopy = () => {
+    if (output) {
+      onCopyValue?.(output);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  if (!result && module.focused) {
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <IconBadge icon={Lock} accent={accent} />
+          <div className="text-white/30 text-sm">{MODULE_META.base64.placeholder}</div>
+        </div>
+        <div className="flex gap-1.5 mb-3">
+          <button onClick={() => { setHasInteracted(true); setMode('encode'); }}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${mode === 'encode' ? 'text-white' : 'text-white/40'}`}
+            style={mode === 'encode' ? { background: accent.bg, border: `1px solid ${accent.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >Encode</button>
+          <button onClick={() => { setHasInteracted(true); setMode('decode'); }}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${mode === 'decode' ? 'text-white' : 'text-white/40'}`}
+            style={mode === 'decode' ? { background: accent.bg, border: `1px solid ${accent.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >Decode</button>
+        </div>
+        <input
+          type="text"
+          value={inputText}
+          onChange={e => { setHasInteracted(true); setInputText(e.target.value); }}
+          placeholder={mode === 'encode' ? 'Type text to encode...' : 'Paste Base64 to decode...'}
+          className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4">
+      {module.focused && (
+        <>
+          <div className="flex gap-1.5 mb-3">
+            <button onClick={() => { setHasInteracted(true); setMode('encode'); }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${mode === 'encode' ? 'text-white' : 'text-white/40'}`}
+              style={mode === 'encode' ? { background: accent.bg, border: `1px solid ${accent.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >Encode</button>
+            <button onClick={() => { setHasInteracted(true); setMode('decode'); }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${mode === 'decode' ? 'text-white' : 'text-white/40'}`}
+              style={mode === 'decode' ? { background: accent.bg, border: `1px solid ${accent.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >Decode</button>
+          </div>
+          <input
+            type="text"
+            value={inputText}
+            onChange={e => { setHasInteracted(true); setInputText(e.target.value); }}
+            placeholder={mode === 'encode' ? 'Type text to encode...' : 'Paste Base64 to decode...'}
+            className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors mb-3"
+          />
+        </>
+      )}
+      <div className="flex items-center gap-3">
+        <IconBadge icon={Lock} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className="text-white/40 text-xs mb-1">{mode === 'encode' ? 'Encoded' : 'Decoded'}</div>
+          <div className="text-sm font-mono text-white break-all">{output}</div>
+          {result?.error && <div className="text-red-400/60 text-xs mt-1">{result.error}</div>}
+        </div>
+      </div>
+      <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <button onClick={handleCopy}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+        >
+          {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+        <span className="text-[10px] text-white/20">Press Enter to copy</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── URL Encoder View ──────────────────────────────────────────
+
+function UrlEncodeView({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const url = module.urlEncode;
+  const [mode, setMode] = useState<'encode' | 'decode'>(url?.mode || 'encode');
+  const [inputText, setInputText] = useState('');
+  const [result, setResult] = useState<UrlEncodeResult | null>(url && !url.isPartial ? url : null);
+  const [copied, setCopied] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  useEffect(() => {
+    if (!hasInteracted && url && !url.isPartial) {
+      setResult(url);
+      setMode(url.mode);
+    }
+  }, [url, hasInteracted]);
+
+  useEffect(() => {
+    if (!hasInteracted || !inputText.trim()) { if (hasInteracted) setResult(null); return; }
+    setResult(processUrl(inputText, mode));
+  }, [inputText, mode, hasInteracted]);
+
+  const output = result ? (mode === 'encode' ? result.encoded : result.decoded) : '';
+
+  const handleCopy = () => {
+    if (output) {
+      onCopyValue?.(output);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  if (!result && module.focused) {
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <IconBadge icon={Link} accent={accent} />
+          <div className="text-white/30 text-sm">{MODULE_META['url-encode'].placeholder}</div>
+        </div>
+        <div className="flex gap-1.5 mb-3">
+          <button onClick={() => { setHasInteracted(true); setMode('encode'); }}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${mode === 'encode' ? 'text-white' : 'text-white/40'}`}
+            style={mode === 'encode' ? { background: accent.bg, border: `1px solid ${accent.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >Encode</button>
+          <button onClick={() => { setHasInteracted(true); setMode('decode'); }}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${mode === 'decode' ? 'text-white' : 'text-white/40'}`}
+            style={mode === 'decode' ? { background: accent.bg, border: `1px solid ${accent.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+          >Decode</button>
+        </div>
+        <input
+          type="text"
+          value={inputText}
+          onChange={e => { setHasInteracted(true); setInputText(e.target.value); }}
+          placeholder={mode === 'encode' ? 'Type text to encode...' : 'Paste URL-encoded text to decode...'}
+          className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4">
+      {module.focused && (
+        <>
+          <div className="flex gap-1.5 mb-3">
+            <button onClick={() => { setHasInteracted(true); setMode('encode'); }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${mode === 'encode' ? 'text-white' : 'text-white/40'}`}
+              style={mode === 'encode' ? { background: accent.bg, border: `1px solid ${accent.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >Encode</button>
+            <button onClick={() => { setHasInteracted(true); setMode('decode'); }}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${mode === 'decode' ? 'text-white' : 'text-white/40'}`}
+              style={mode === 'decode' ? { background: accent.bg, border: `1px solid ${accent.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >Decode</button>
+          </div>
+          <input
+            type="text"
+            value={inputText}
+            onChange={e => { setHasInteracted(true); setInputText(e.target.value); }}
+            placeholder={mode === 'encode' ? 'Type text to encode...' : 'Paste URL-encoded text to decode...'}
+            className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors mb-3"
+          />
+        </>
+      )}
+      <div className="flex items-center gap-3">
+        <IconBadge icon={Link} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className="text-white/40 text-xs mb-1">{mode === 'encode' ? 'Encoded' : 'Decoded'}</div>
+          <div className="text-sm font-mono text-white break-all">{output}</div>
+          {result?.error && <div className="text-red-400/60 text-xs mt-1">{result.error}</div>}
+        </div>
+      </div>
+      <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <button onClick={handleCopy}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+        >
+          {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+        <span className="text-[10px] text-white/20">Press Enter to copy</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Hash Generator View ───────────────────────────────────────
+
+function HashView({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const h = module.hash;
+  const [inputText, setInputText] = useState('');
+  const [result, setResult] = useState<HashResult | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const genRef = useRef(0);
+
+  useEffect(() => {
+    if (!hasInteracted && h && !h.isPartial) setResult(h);
+  }, [h, hasInteracted]);
+
+  useEffect(() => {
+    if (!hasInteracted || !inputText.trim()) { if (hasInteracted) setResult(null); return; }
+    const gen = ++genRef.current;
+    const initial = createHashResult(inputText);
+    setResult(initial);
+    resolveHash(initial).then(resolved => {
+      if (genRef.current !== gen) return;
+      setResult(resolved);
+    });
+  }, [inputText, hasInteracted]);
+
+  const handleCopy = (value: string, field: string) => {
+    onCopyValue?.(value);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 1500);
+  };
+
+  if (!result && module.focused) {
+    return <HintView icon={Hash} accent={accent} text={MODULE_META.hash.placeholder} />;
+  }
+
+  if (!result) return null;
+
+  const hashes = [
+    { label: 'MD5', value: result.md5 },
+    { label: 'SHA-1', value: result.sha1 },
+    { label: 'SHA-256', value: result.sha256 },
+    { label: 'SHA-512', value: result.sha512 },
+  ].filter(h => h.value);
+
+  return (
+    <div className="p-4">
+      {module.focused && (
+        <input
+          type="text"
+          value={inputText}
+          onChange={e => { setHasInteracted(true); setInputText(e.target.value); }}
+          placeholder="Type text to hash..."
+          className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors mb-3"
+        />
+      )}
+      <div className="flex items-center gap-3 mb-3">
+        <IconBadge icon={Hash} accent={accent} />
+        <div className="flex-1 min-w-0">
+          <div className="text-white/40 text-xs">Hash of &ldquo;{result.input.length > 30 ? result.input.slice(0, 30) + '...' : result.input}&rdquo;</div>
+        </div>
+        {result.isLoading && (
+          <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin flex-shrink-0" />
+        )}
+      </div>
+      <div className="space-y-2">
+        {hashes.map(({ label, value }) => (
+          <div key={label} className="flex items-start gap-2 group">
+            <span className="text-[10px] font-mono text-white/25 w-12 flex-shrink-0 pt-0.5">{label}</span>
+            <div className="flex-1 min-w-0 text-xs font-mono text-white/60 break-all leading-relaxed">{value}</div>
+            <button
+              onClick={() => handleCopy(value!, label)}
+              className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-white/[0.06] transition-all flex-shrink-0"
+            >
+              {copiedField === label ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3 text-white/30" />}
+            </button>
+          </div>
+        ))}
+      </div>
+      {result.error && <div className="text-red-400/60 text-xs mt-2">{result.error}</div>}
+      <FooterHint text="Hover over a hash to copy it" />
+    </div>
+  );
+}
+
+// ─── Regex Tester View ─────────────────────────────────────────
+
+function RegexView({ module, accent, onCopyValue }: { module: ModuleData; accent: AccentTheme; onCopyValue?: (value: string) => void }) {
+  const rx = module.regex;
+  const [pattern, setPattern] = useState('');
+  const [testStr, setTestStr] = useState('');
+  const [flags, setFlags] = useState('gi');
+  const [result, setResult] = useState<RegexResult | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!hasInteracted && rx && !rx.isPartial) {
+      setResult(rx);
+      setPattern(rx.pattern);
+      setTestStr(rx.testString);
+      setFlags(rx.flags);
+    }
+  }, [rx, hasInteracted]);
+
+  useEffect(() => {
+    if (!hasInteracted) return;
+    if (!pattern.trim()) { setResult(null); return; }
+    setResult(testRegex(pattern, testStr, flags));
+  }, [pattern, testStr, flags, hasInteracted]);
+
+  const toggleFlag = (flag: string) => {
+    setHasInteracted(true);
+    setFlags(prev => prev.includes(flag) ? prev.replace(flag, '') : prev + flag);
+  };
+
+  const handlePreset = (preset: typeof REGEX_PRESETS[number]) => {
+    setHasInteracted(true);
+    setPattern(preset.pattern);
+    setTestStr(preset.test);
+  };
+
+  const handleCopy = () => {
+    if (result) {
+      onCopyValue?.(`/${result.pattern}/${result.flags}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+
+  if (!result && module.focused) {
+    return (
+      <div className="p-4">
+        <div className="flex items-center gap-3 mb-3">
+          <IconBadge icon={FileSearch} accent={accent} />
+          <div className="text-white/30 text-sm">{MODULE_META.regex.placeholder}</div>
+        </div>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {REGEX_PRESETS.map(p => (
+            <button
+              key={p.name}
+              onClick={() => handlePreset(p)}
+              className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-white/40 hover:text-white/60 transition-all"
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+        <input
+          type="text"
+          value={pattern}
+          onChange={e => { setHasInteracted(true); setPattern(e.target.value); }}
+          placeholder="Enter regex pattern..."
+          className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm font-mono placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4">
+      {module.focused && (
+        <>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {REGEX_PRESETS.map(p => (
+              <button
+                key={p.name}
+                onClick={() => handlePreset(p)}
+                className="px-2 py-0.5 rounded-md text-[10px] font-medium text-white/35 hover:text-white/55 transition-all"
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-white/20 text-xs font-mono">/</span>
+            <input
+              type="text"
+              value={pattern}
+              onChange={e => { setHasInteracted(true); setPattern(e.target.value); }}
+              placeholder="pattern"
+              className="flex-1 bg-white/[0.06] border border-white/10 rounded-lg px-2.5 py-1.5 text-white text-xs font-mono placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors"
+            />
+            <span className="text-white/20 text-xs font-mono">/</span>
+            <div className="flex gap-0.5">
+              {REGEX_FLAGS.map(f => (
+                <button
+                  key={f.flag}
+                  onClick={() => toggleFlag(f.flag)}
+                  className={`w-6 h-6 rounded text-[11px] font-mono font-medium transition-all ${flags.includes(f.flag) ? 'text-white' : 'text-white/25'}`}
+                  style={flags.includes(f.flag) ? { background: accent.bg, border: `1px solid ${accent.border}` } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                  title={f.description}
+                >
+                  {f.flag}
+                </button>
+              ))}
+            </div>
+          </div>
+          <input
+            type="text"
+            value={testStr}
+            onChange={e => { setHasInteracted(true); setTestStr(e.target.value); }}
+            placeholder="Test string..."
+            className="w-full bg-white/[0.06] border border-white/10 rounded-lg px-3 py-2 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/25 transition-colors mb-3"
+          />
+        </>
+      )}
+
+      <div className="flex items-center gap-3 mb-2">
+        <IconBadge icon={FileSearch} accent={accent} />
+        <div className="flex-1 min-w-0">
+          {result?.isValid === false ? (
+            <div className="text-red-400/80 text-sm">{result.error}</div>
+          ) : (
+            <div className="text-white text-sm font-medium">
+              {result?.matchCount ?? 0} match{(result?.matchCount ?? 0) !== 1 ? 'es' : ''}
+            </div>
+          )}
+          {result?.isValid && result.pattern && (
+            <div className="text-white/30 text-xs font-mono">/{result.pattern}/{result.flags}</div>
+          )}
+        </div>
+      </div>
+
+      {result?.isValid && result.matches.length > 0 && (
+        <div className="space-y-1 max-h-[80px] overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-white/10">
+          {result.matches.slice(0, 10).map((m, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <span className="text-white/20 font-mono w-4 text-right">{i + 1}</span>
+              <span className={`font-mono px-1.5 py-0.5 rounded ${accent.text}`}
+                style={{ background: accent.bg, border: `1px solid ${accent.border}` }}
+              >
+                {m.match}
+              </span>
+              <span className="text-white/20 font-mono">@{m.index}</span>
+            </div>
+          ))}
+          {result.matches.length > 10 && (
+            <div className="text-white/20 text-[10px] pl-6">...and {result.matches.length - 10} more</div>
+          )}
+        </div>
+      )}
+
+      <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <button onClick={handleCopy}
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.06] transition-colors"
+        >
+          {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+          {copied ? 'Copied!' : 'Copy regex'}
+        </button>
+        <span className="text-[10px] text-white/20">Press Enter to copy</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Shared UI Helpers ─────────────────────────────────────────
 
 function IconBadge({ icon: Icon, accent }: { icon: React.ComponentType<{ className?: string }>; accent: AccentTheme }) {
@@ -2219,6 +2898,12 @@ export function ContourPanel({
                   {state.module.id === 'wordcount' && <WordCountView module={state.module} accent={accent} />}
                   {state.module.id === 'translator' && <TranslatorView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
                   {state.module.id === 'dictionary' && <DictionaryView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
+                  {state.module.id === 'lorem' && <LoremView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
+                  {state.module.id === 'json-format' && <JsonFormatView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
+                  {state.module.id === 'base64' && <Base64View module={state.module} accent={accent} onCopyValue={onCopyValue} />}
+                  {state.module.id === 'url-encode' && <UrlEncodeView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
+                  {state.module.id === 'hash' && <HashView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
+                  {state.module.id === 'regex' && <RegexView module={state.module} accent={accent} onCopyValue={onCopyValue} />}
                 </>
               )}
 

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Plus, X, CornerDownRight, ImagePlus, Code, Music, HeartPulse } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -15,7 +15,7 @@ import { uploadImage } from '../../services/image/imageService';
 import { GroupChatParticipant } from '../../types/groupChat';
 import { useContour } from '../contour/useContour';
 import { ContourPanel } from '../contour/ContourPanel';
-import { ContourCommand } from '../contour/modules/commands';
+import { ContourCommand, recordCommandUsage } from '../contour/modules/commands';
 
 type Persona = keyof typeof AI_PERSONAS;
 
@@ -161,9 +161,23 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [contour.isVisible, contour]);
 
-  // Global keydown listener for type-to-chat functionality
+  // Global keydown listener for Cmd+K shortcut and type-to-chat
   useEffect(() => {
     const handleGlobalKeyDown = (event: KeyboardEvent) => {
+      // Cmd+K / Ctrl+K: Toggle Contour command palette
+      if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+        event.preventDefault();
+        if (contour.isVisible) {
+          contour.dismiss();
+          setMessage('');
+        } else {
+          textareaRef.current?.focus();
+          setMessage('/');
+          contour.analyze('/');
+        }
+        return;
+      }
+
       // Check if any input element is currently focused
       const activeElement = document.activeElement;
       if (activeElement && (
@@ -180,8 +194,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
         event.key.length === 1 &&
         !event.ctrlKey &&
         !event.altKey &&
-        !event.metaKey &&
-        !event.shiftKey // Allow shift for capital letters
+        !event.metaKey
       ) {
         // Focus the textarea and let the browser handle the input
         textareaRef.current?.focus();
@@ -190,7 +203,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, []);
+  }, [contour]);
 
   const handlePlusMenuSelect = (option: PlusMenuOption) => {
     setSelectedPlusOption(option);
@@ -253,7 +266,12 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     }
   };
 
+  const handleCopyValue = useCallback((value: string) => {
+    navigator.clipboard.writeText(value).catch(() => {});
+  }, []);
+
   const handleContourCommandSelect = useCallback((command: ContourCommand) => {
+    recordCommandUsage(command.id);
     switch (command.action.type) {
       case 'navigate':
         navigate(command.action.path);
@@ -316,6 +334,19 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     if (mod.color) return mod.color.hex;
     if (mod.timezone && !mod.timezone.isPartial) return mod.timezone.toTime;
     if (mod.date && !mod.date.isPartial) return mod.date.display;
+    if (mod.random) return mod.random.value;
+    if (mod.translator?.translatedText && !mod.translator.isLoading) return mod.translator.translatedText;
+    if (mod.dictionary?.meanings?.length && !mod.dictionary.isLoading) {
+      const firstDef = mod.dictionary.meanings[0]?.definitions[0]?.definition;
+      return firstDef ? `${mod.dictionary.word}: ${firstDef}` : null;
+    }
+    if (mod.wordcount) return `${mod.wordcount.words} words, ${mod.wordcount.characters} characters`;
+    if (mod.lorem && !mod.lorem.isPartial) return mod.lorem.text;
+    if (mod.jsonFormat?.isValid && !mod.jsonFormat.isPartial) return mod.jsonFormat.formatted;
+    if (mod.base64 && !mod.base64.isPartial && !mod.base64.error) return mod.base64.mode === 'encode' ? mod.base64.encoded : mod.base64.decoded;
+    if (mod.urlEncode && !mod.urlEncode.isPartial && !mod.urlEncode.error) return mod.urlEncode.mode === 'encode' ? mod.urlEncode.encoded : mod.urlEncode.decoded;
+    if (mod.hash?.sha256 && !mod.hash.isLoading) return mod.hash.sha256;
+    if (mod.regex?.isValid && mod.regex.pattern) return `/${mod.regex.pattern}/${mod.regex.flags}`;
     return null;
   };
 
@@ -660,6 +691,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                 onTimerToggle={contour.toggleTimer}
                 onTimerReset={contour.resetTimer}
                 onSetTimerDuration={contour.setTimerDuration}
+                onCopyValue={handleCopyValue}
               />
             </div>
           </div>

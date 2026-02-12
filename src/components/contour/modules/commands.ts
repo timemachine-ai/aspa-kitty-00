@@ -22,7 +22,8 @@ export type ContourCategory =
   | 'system'
   | 'search'
   | 'developer'
-  | 'productivity';
+  | 'productivity'
+  | 'recents';
 
 export type ContourAction =
   | { type: 'inline'; handler: string }  // Runs inline in the contour panel
@@ -303,14 +304,53 @@ export const CATEGORY_INFO: Record<ContourCategory, { label: string; icon: strin
   search: { label: 'Search', icon: 'Search' },
   developer: { label: 'Developer', icon: 'Code' },
   productivity: { label: 'Productivity', icon: 'Zap' },
+  recents: { label: 'Recent', icon: 'Clock' },
 };
+
+// ─── Fuzzy scoring ─────────────────────────────────────────────
+
+function fuzzyScore(query: string, target: string): number {
+  const q = query.toLowerCase();
+  const t = target.toLowerCase();
+  if (q.length === 0) return 0;
+
+  let qi = 0;
+  let score = 0;
+  let consecutive = 0;
+
+  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+    const isBoundary = ti === 0 || /[\s\-_]/.test(t[ti - 1]);
+    if (t[ti] === q[qi]) {
+      score += 1 + consecutive;
+      if (isBoundary) score += 5; // word boundary bonus
+      if (ti === 0) score += 3;   // start of string bonus
+      consecutive++;
+      qi++;
+    } else {
+      consecutive = 0;
+    }
+  }
+
+  return qi === q.length ? score : 0; // 0 if not all chars matched
+}
 
 /**
  * Search/filter commands by query string.
- * Matches against name, description, and keywords.
+ * Uses fuzzy matching against name, description, keywords, and ID.
  */
 export function searchCommands(query: string): ContourCommand[] {
-  if (!query) return CONTOUR_COMMANDS;
+  if (!query) {
+    // Show recent commands at the top, then all commands
+    const recentIds = getRecentCommands();
+    if (recentIds.length === 0) return CONTOUR_COMMANDS;
+
+    const recentCmds = recentIds
+      .map(id => CONTOUR_COMMANDS.find(c => c.id === id))
+      .filter((c): c is ContourCommand => c != null)
+      .map(c => ({ ...c, category: 'recents' as ContourCategory }));
+
+    return [...recentCmds, ...CONTOUR_COMMANDS];
+  }
 
   const lower = query.toLowerCase();
 
@@ -326,19 +366,55 @@ export function searchCommands(query: string): ContourCommand[] {
       else if (nameLower.startsWith(lower)) score += 80;
       // Name contains query
       else if (nameLower.includes(lower)) score += 60;
+      // Fuzzy name match
+      else score += fuzzyScore(lower, nameLower) * 2;
+
       // Description contains query
       if (descLower.includes(lower)) score += 30;
+      else score += fuzzyScore(lower, descLower);
+
       // Keyword match
       for (const kw of cmd.keywords) {
-        if (kw.startsWith(lower)) score += 50;
-        else if (kw.includes(lower)) score += 20;
+        if (kw.startsWith(lower)) { score += 50; break; }
+        else if (kw.includes(lower)) { score += 20; break; }
+        else {
+          const fs = fuzzyScore(lower, kw);
+          if (fs > 0) { score += fs; break; }
+        }
       }
       // ID match
       if (cmd.id.includes(lower)) score += 40;
+      else score += fuzzyScore(lower, cmd.id);
 
       return { cmd, score };
     })
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score)
     .map(({ cmd }) => cmd);
+}
+
+// ─── Recent commands ───────────────────────────────────────────
+
+const RECENT_KEY = 'contour-recent-commands';
+const MAX_RECENTS = 5;
+
+export function getRecentCommands(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.slice(0, MAX_RECENTS) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function recordCommandUsage(commandId: string): void {
+  try {
+    const recents = getRecentCommands().filter(id => id !== commandId);
+    recents.unshift(commandId);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(recents.slice(0, MAX_RECENTS)));
+  } catch {
+    // localStorage might be unavailable
+  }
 }
