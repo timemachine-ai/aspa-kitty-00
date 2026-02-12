@@ -1,22 +1,41 @@
+// ─── Core components & hook ────────────────────────────────────
 export { ContourPanel } from './ContourPanel';
 export { useContour } from './useContour';
-export type { ContourState, ContourMode, ModuleId, ModuleData } from './useContour';
+
+// ─── Types (from centralized registry) ────────────────────────
+export type { ContourState, ContourMode, ModuleId, ModuleData } from './moduleRegistry';
+export { MODULE_META, HANDLER_TO_MODULE } from './moduleRegistry';
+
+// ─── Commands ─────────────────────────────────────────────────
 export type { ContourCommand, ContourCategory, ContourAction } from './modules/commands';
 export { searchCommands, CONTOUR_COMMANDS, CATEGORY_INFO, getRecentCommands, recordCommandUsage } from './modules/commands';
-export { evaluateMath, isMathExpression } from './modules/calculator';
-export { detectUnits } from './modules/unitConverter';
-export { detectCurrency, resolveCurrency } from './modules/currencyConverter';
-export { detectTimezone } from './modules/timezoneConverter';
-export { detectColor } from './modules/colorConverter';
-export { detectDate } from './modules/dateCalculator';
-export { createTimerState, tickTimer, formatDuration, parseDuration } from './modules/timer';
-export { detectRandom, regenerate, QUICK_ACTIONS } from './modules/randomGenerator';
-export { detectWordCount, analyzeText, getStatItems } from './modules/wordCounter';
-export { detectTranslation, resolveTranslation, getLanguageList, POPULAR_LANGUAGES } from './modules/translator';
-export { detectDictionary, resolveDictionary, lookupWord } from './modules/dictionary';
-export { detectLorem, generateLorem } from './modules/loremIpsum';
-export { detectJson, formatJson } from './modules/jsonFormatter';
-export { detectBase64, processBase64 } from './modules/base64Codec';
-export { detectUrlEncoded, processUrl } from './modules/urlEncoder';
-export { createHashResult, resolveHash } from './modules/hashGenerator';
-export { testRegex, REGEX_FLAGS, REGEX_PRESETS } from './modules/regexTester';
+
+// ─── Module functions (re-exported from registry) ─────────────
+export {
+  evaluateMath, isMathExpression,
+  detectUnits,
+  detectCurrency, resolveCurrency,
+  detectTimezone,
+  detectColor,
+  detectDate,
+  createTimerState, tickTimer, formatDuration, formatDurationLabel,
+  detectRandom,
+  detectWordCount, analyzeText,
+  detectTranslation, resolveTranslation,
+  detectDictionary, resolveDictionary,
+  detectLorem,
+  detectJson, formatJson,
+  detectBase64, processBase64,
+  detectUrlEncoded, processUrl,
+  createHashResult, resolveHash,
+  testRegex,
+} from './moduleRegistry';
+
+// ─── Module-specific extras (not in registry) ─────────────────
+export { parseDuration } from './modules/timer';
+export { regenerate, QUICK_ACTIONS } from './modules/randomGenerator';
+export { getStatItems } from './modules/wordCounter';
+export { getLanguageList, POPULAR_LANGUAGES } from './modules/translator';
+export { lookupWord } from './modules/dictionary';
+export { generateLorem } from './modules/loremIpsum';
+export { REGEX_FLAGS, REGEX_PRESETS } from './modules/regexTester';
