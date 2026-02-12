@@ -13,58 +13,33 @@
  */
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { evaluateMath, isMathExpression, CalculatorResult } from './modules/calculator';
-import { detectUnits, UnitResult } from './modules/unitConverter';
-import { detectCurrency, resolveCurrency, CurrencyResult } from './modules/currencyConverter';
-import { detectTimezone, TimezoneResult } from './modules/timezoneConverter';
-import { detectColor, ColorResult } from './modules/colorConverter';
-import { detectDate, DateResult } from './modules/dateCalculator';
-import { createTimerState, tickTimer, formatDuration, TimerState, formatDurationLabel } from './modules/timer';
-import { detectRandom, RandomResult } from './modules/randomGenerator';
-import { detectWordCount, analyzeText, WordCountResult } from './modules/wordCounter';
-import { detectTranslation, resolveTranslation, TranslationResult } from './modules/translator';
-import { detectDictionary, resolveDictionary, DictionaryResult } from './modules/dictionary';
-import { detectLorem, generateLorem, LoremResult } from './modules/loremIpsum';
-import { detectJson, formatJson, JsonFormatResult } from './modules/jsonFormatter';
-import { detectBase64, processBase64, Base64Result } from './modules/base64Codec';
-import { detectUrlEncoded, processUrl, UrlEncodeResult } from './modules/urlEncoder';
-import { createHashResult, resolveHash, HashResult } from './modules/hashGenerator';
-import { testRegex, RegexResult } from './modules/regexTester';
-import { searchCommands, ContourCommand } from './modules/commands';
+import {
+  // Types (re-exported from registry)
+  ModuleId, ModuleData, ContourState, ContourMode,
+  // Handler mapping
+  HANDLER_TO_MODULE,
+  // Detect & process functions
+  evaluateMath, isMathExpression,
+  detectUnits,
+  detectCurrency, resolveCurrency,
+  detectTimezone,
+  detectColor,
+  detectDate,
+  createTimerState, tickTimer, formatDuration, formatDurationLabel,
+  detectRandom,
+  detectWordCount, analyzeText,
+  detectTranslation, resolveTranslation,
+  detectDictionary, resolveDictionary,
+  detectLorem,
+  detectJson, formatJson,
+  detectBase64, processBase64,
+  detectUrlEncoded, processUrl,
+  createHashResult,
+  testRegex,
+  searchCommands,
+} from './moduleRegistry';
 
-export type ModuleId = 'calculator' | 'units' | 'currency' | 'timezone' | 'color' | 'date' | 'timer' | 'random' | 'wordcount' | 'translator' | 'dictionary' | 'lorem' | 'json-format' | 'base64' | 'url-encode' | 'hash' | 'regex';
-
-export type ContourMode = 'hidden' | 'commands' | 'module';
-
-export interface ModuleData {
-  id: ModuleId;
-  focused: boolean;
-  calculator?: CalculatorResult;
-  units?: UnitResult;
-  currency?: CurrencyResult;
-  timezone?: TimezoneResult;
-  color?: ColorResult;
-  date?: DateResult;
-  timer?: TimerState;
-  random?: RandomResult;
-  wordcount?: WordCountResult;
-  translator?: TranslationResult;
-  dictionary?: DictionaryResult;
-  lorem?: LoremResult;
-  jsonFormat?: JsonFormatResult;
-  base64?: Base64Result;
-  urlEncode?: UrlEncodeResult;
-  hash?: HashResult;
-  regex?: RegexResult;
-}
-
-export interface ContourState {
-  mode: ContourMode;
-  module: ModuleData | null;
-  commands: ContourCommand[];
-  commandQuery: string;
-  selectedIndex: number;
-}
+export type { ModuleId, ModuleData, ContourState, ContourMode };
 
 const INITIAL_STATE: ContourState = {
   mode: 'hidden',
@@ -72,26 +47,6 @@ const INITIAL_STATE: ContourState = {
   commands: [],
   commandQuery: '',
   selectedIndex: 0,
-};
-
-const HANDLER_TO_MODULE: Record<string, ModuleId> = {
-  'calculator': 'calculator',
-  'unit-converter': 'units',
-  'currency-converter': 'currency',
-  'timezone': 'timezone',
-  'color-converter': 'color',
-  'date-calculator': 'date',
-  'timer': 'timer',
-  'random': 'random',
-  'word-count': 'wordcount',
-  'translator': 'translator',
-  'dictionary': 'dictionary',
-  'lorem': 'lorem',
-  'json-format': 'json-format',
-  'base64': 'base64',
-  'url-encode': 'url-encode',
-  'hash': 'hash',
-  'regex': 'regex',
 };
 
 export function useContour() {
