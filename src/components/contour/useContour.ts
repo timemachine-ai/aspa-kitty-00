@@ -19,14 +19,20 @@ import { detectCurrency, resolveCurrency, CurrencyResult } from './modules/curre
 import { detectTimezone, TimezoneResult } from './modules/timezoneConverter';
 import { detectColor, ColorResult } from './modules/colorConverter';
 import { detectDate, DateResult } from './modules/dateCalculator';
-import { createTimerState, tickTimer, formatDuration, TimerState, parseDuration, formatDurationLabel } from './modules/timer';
+import { createTimerState, tickTimer, formatDuration, TimerState, formatDurationLabel } from './modules/timer';
 import { detectRandom, RandomResult } from './modules/randomGenerator';
 import { detectWordCount, analyzeText, WordCountResult } from './modules/wordCounter';
 import { detectTranslation, resolveTranslation, TranslationResult } from './modules/translator';
 import { detectDictionary, resolveDictionary, DictionaryResult } from './modules/dictionary';
+import { detectLorem, generateLorem, LoremResult } from './modules/loremIpsum';
+import { detectJson, formatJson, JsonFormatResult } from './modules/jsonFormatter';
+import { detectBase64, processBase64, Base64Result } from './modules/base64Codec';
+import { detectUrlEncoded, processUrl, UrlEncodeResult } from './modules/urlEncoder';
+import { createHashResult, resolveHash, HashResult } from './modules/hashGenerator';
+import { testRegex, RegexResult } from './modules/regexTester';
 import { searchCommands, ContourCommand } from './modules/commands';
 
-export type ModuleId = 'calculator' | 'units' | 'currency' | 'timezone' | 'color' | 'date' | 'timer' | 'random' | 'wordcount' | 'translator' | 'dictionary';
+export type ModuleId = 'calculator' | 'units' | 'currency' | 'timezone' | 'color' | 'date' | 'timer' | 'random' | 'wordcount' | 'translator' | 'dictionary' | 'lorem' | 'json-format' | 'base64' | 'url-encode' | 'hash' | 'regex';
 
 export type ContourMode = 'hidden' | 'commands' | 'module';
 
@@ -44,6 +50,12 @@ export interface ModuleData {
   wordcount?: WordCountResult;
   translator?: TranslationResult;
   dictionary?: DictionaryResult;
+  lorem?: LoremResult;
+  jsonFormat?: JsonFormatResult;
+  base64?: Base64Result;
+  urlEncode?: UrlEncodeResult;
+  hash?: HashResult;
+  regex?: RegexResult;
 }
 
 export interface ContourState {
@@ -74,6 +86,12 @@ const HANDLER_TO_MODULE: Record<string, ModuleId> = {
   'word-count': 'wordcount',
   'translator': 'translator',
   'dictionary': 'dictionary',
+  'lorem': 'lorem',
+  'json-format': 'json-format',
+  'base64': 'base64',
+  'url-encode': 'url-encode',
+  'hash': 'hash',
+  'regex': 'regex',
 };
 
 export function useContour() {
@@ -82,6 +100,7 @@ export function useContour() {
   const currencyGenRef = useRef<number>(0);
   const translatorGenRef = useRef<number>(0);
   const dictionaryGenRef = useRef<number>(0);
+  const isFocusedRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -129,7 +148,23 @@ export function useContour() {
     const wordcount = detectWordCount(trimmed);
     if (wordcount) return { id: 'wordcount', focused: false, wordcount };
 
-    // 10. Math (broadest match, lowest priority)
+    // 10. Lorem Ipsum
+    const lorem = detectLorem(trimmed);
+    if (lorem) return { id: 'lorem', focused: false, lorem };
+
+    // 11. JSON formatter
+    const json = detectJson(trimmed);
+    if (json) return { id: 'json-format', focused: false, jsonFormat: json };
+
+    // 12. Base64 decode
+    const base64 = detectBase64(trimmed);
+    if (base64) return { id: 'base64', focused: false, base64 };
+
+    // 13. URL decode
+    const urlEncode = detectUrlEncoded(trimmed);
+    if (urlEncode) return { id: 'url-encode', focused: false, urlEncode };
+
+    // 14. Math (broadest match, lowest priority)
     if (isMathExpression(trimmed)) {
       const calc = evaluateMath(trimmed);
       if (calc) return { id: 'calculator', focused: false, calculator: calc };
@@ -197,6 +232,36 @@ export function useContour() {
         const dictionary = detectDictionary(trimmed);
         return { id: 'dictionary', focused: true, dictionary: dictionary || undefined };
       }
+      case 'lorem': {
+        if (!trimmed) return { id: 'lorem', focused: true };
+        const lorem = detectLorem(trimmed);
+        return { id: 'lorem', focused: true, lorem: lorem || undefined };
+      }
+      case 'json-format': {
+        if (!trimmed) return { id: 'json-format', focused: true };
+        const jsonFormat = formatJson(trimmed);
+        return { id: 'json-format', focused: true, jsonFormat };
+      }
+      case 'base64': {
+        if (!trimmed) return { id: 'base64', focused: true };
+        const base64 = processBase64(trimmed, 'encode');
+        return { id: 'base64', focused: true, base64 };
+      }
+      case 'url-encode': {
+        if (!trimmed) return { id: 'url-encode', focused: true };
+        const urlEncode = processUrl(trimmed, 'encode');
+        return { id: 'url-encode', focused: true, urlEncode };
+      }
+      case 'hash': {
+        if (!trimmed) return { id: 'hash', focused: true };
+        const hash = createHashResult(trimmed);
+        return { id: 'hash', focused: true, hash };
+      }
+      case 'regex': {
+        if (!trimmed) return { id: 'regex', focused: true };
+        const regex = testRegex(trimmed, '');
+        return { id: 'regex', focused: true, regex };
+      }
     }
   }, []);
 
@@ -204,6 +269,7 @@ export function useContour() {
     setState(prev => {
       // Focused mode: only detect for the focused module
       if (prev.mode === 'module' && prev.module?.focused) {
+        isFocusedRef.current = true;
         const moduleId = prev.module.id;
         // Don't re-detect if timer is running
         if (moduleId === 'timer' && prev.module.timer?.isRunning) return prev;
@@ -211,6 +277,7 @@ export function useContour() {
         return result ? { ...prev, module: result } : { ...prev, module: { id: moduleId, focused: true } };
       }
 
+      isFocusedRef.current = false;
       const trimmed = input.trim();
       if (!trimmed) return INITIAL_STATE;
 
@@ -230,7 +297,10 @@ export function useContour() {
       return INITIAL_STATE;
     });
 
-    // Async currency resolution (for auto-detect and focused mode)
+    // Async resolution — skip in focused mode (focused detect handles its own state)
+    if (isFocusedRef.current) return;
+
+    // Async currency resolution (for auto-detect)
     const trimmed = input.trim();
     if (trimmed && !trimmed.startsWith('/')) {
       const currency = detectCurrency(trimmed);
@@ -288,6 +358,10 @@ export function useContour() {
 
   // Timer controls
   const startTimer = useCallback(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
     setState(prev => {
       if (prev.module?.id !== 'timer' || !prev.module.timer) return prev;
       return { ...prev, module: { ...prev.module, timer: { ...prev.module.timer, isRunning: true } } };
