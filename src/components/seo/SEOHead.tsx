@@ -9,7 +9,7 @@ interface SEOHeadProps {
 
 const SITE_NAME = 'TimeMachine Chat';
 const BASE_URL = 'https://timemachinechat.com';
-const DEFAULT_DESCRIPTION = 'TimeMachine Chat is an AI-powered chat app with multiple personas including ChatGPT, Gemini, Claude, and Grok. Chat with different AI personalities, generate images, and collaborate in group chats.';
+const DEFAULT_DESCRIPTION = 'TimeMachine Chat is the super app that brings your tech essentials into a intelligent, safe and secured chat interface.';
 
 export function SEOHead({
   title,
@@ -17,7 +17,7 @@ export function SEOHead({
   path = '/',
   noIndex = false,
 }: SEOHeadProps) {
-  const fullTitle = title ? `${title} — ${SITE_NAME}` : `${SITE_NAME} — AI Chat with Multiple Personas`;
+  const fullTitle = title ? `${title} — ${SITE_NAME}` : SITE_NAME;
   const canonicalUrl = `${BASE_URL}${path}`;
 
   return (
