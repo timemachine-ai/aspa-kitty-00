@@ -7,7 +7,7 @@ interface SEOHeadProps {
   noIndex?: boolean;
 }
 
-const SITE_NAME = 'TimeMachine Chat';
+const SITE_NAME = 'TimeMachine';
 const BASE_URL = 'https://timemachinechat.com';
 const DEFAULT_DESCRIPTION = 'TimeMachine Chat is the super app that brings your tech essentials into an intelligent, safe and secured chat interface.';
 

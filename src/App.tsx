@@ -22,6 +22,8 @@ import { SettingsPage } from './components/settings/SettingsPage';
 import { AlbumPage } from './components/album/AlbumPage';
 import { MemoriesPage } from './components/memories/MemoriesPage';
 import { HelpPage } from './components/help/HelpPage';
+import { PersonasPage } from './components/personas/PersonasPage';
+import { FeaturesPage } from './components/features/FeaturesPage';
 import { GroupChatModal } from './components/groupchat/GroupChatModal';
 import { GroupSettingsPage } from './components/groupchat/GroupSettingsPage';
 import {
@@ -857,11 +859,13 @@ function AppContent() {
         </>
       } />
       <Route path="/settings" element={<><SEOHead title="Settings" description="Customize your TimeMachine Chat experience with themes, personas, and preferences." path="/settings" noIndex /><SettingsPage /></>} />
-      <Route path="/about" element={<><SEOHead title="About" description="Learn about TimeMachine Chat — an AI-powered chat app with multiple personas including ChatGPT, Gemini, Claude, and Grok." path="/about" /><AboutPage /></>} />
-      <Route path="/contact" element={<><SEOHead title="Contact" description="Get in touch with the TimeMachine Chat team for support, feedback, or collaboration." path="/contact" /><ContactPage /></>} />
+      <Route path="/about" element={<><SEOHead title="About" description="Learn about TimeMachine — the super app bringing AI personas, privacy-first design, and intelligent tools into one chat interface. Built by TimeMachine Mafia." path="/about" /><AboutPage /></>} />
+      <Route path="/personas" element={<><SEOHead title="Personas" description="Meet TimeMachine AI personas — TimeMachine Air for everyday speed, TimeMachine Girlie for vibe-check conversations, and TimeMachine PRO for advanced intelligence. Plus ChatGPT, Gemini, Claude, and Grok." path="/personas" /><PersonasPage /></>} />
+      <Route path="/features" element={<><SEOHead title="Features" description="Explore TimeMachine features — Contour command palette with 30+ tools, group chat, TM Healthcare, image generation, music streaming, memory system, voice input, and more." path="/features" /><FeaturesPage /></>} />
+      <Route path="/contact" element={<><SEOHead title="Contact" description="Get in touch with the TimeMachine team for support, feedback, or collaboration." path="/contact" /><ContactPage /></>} />
       <Route path="/album" element={<><SEOHead title="Album" path="/album" noIndex /><AlbumPage /></>} />
       <Route path="/memories" element={<><SEOHead title="Memories" path="/memories" noIndex /><MemoriesPage /></>} />
-      <Route path="/help" element={<><SEOHead title="Help" description="Get help with TimeMachine Chat — learn about AI personas, group chats, image generation, and all features." path="/help" /><HelpPage /></>} />
+      <Route path="/help" element={<><SEOHead title="Help" description="Get help with TimeMachine — learn about AI personas, group chats, image generation, and all features." path="/help" /><HelpPage /></>} />
       <Route path="/chat/:id" element={<><SEOHead title="Chat" noIndex /><ChatByIdPage /></>} />
       <Route path="/groupchat/:id" element={<><SEOHead title="Group Chat" noIndex /><GroupChatWrapper /></>} />
       <Route path="/groupchat/:id/settings" element={<><SEOHead title="Group Settings" noIndex /><GroupSettingsPage /></>} />
