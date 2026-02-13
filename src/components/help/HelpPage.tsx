@@ -17,6 +17,7 @@ import {
   Globe
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
+import { Helmet } from 'react-helmet-async';
 
 interface FAQItem {
   question: string;
@@ -114,6 +115,20 @@ export function HelpPage() {
 
   return (
     <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
+      <Helmet>
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": faqs.map(faq => ({
+            "@type": "Question",
+            "name": faq.question,
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": faq.answer
+            }
+          }))
+        })}</script>
+      </Helmet>
       {/* Ambient background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-[120px] animate-pulse" />

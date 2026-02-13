@@ -22,6 +22,8 @@ import { SettingsPage } from './components/settings/SettingsPage';
 import { AlbumPage } from './components/album/AlbumPage';
 import { MemoriesPage } from './components/memories/MemoriesPage';
 import { HelpPage } from './components/help/HelpPage';
+import { PersonasPage } from './components/personas/PersonasPage';
+import { FeaturesPage } from './components/features/FeaturesPage';
 import { GroupChatModal } from './components/groupchat/GroupChatModal';
 import { GroupSettingsPage } from './components/groupchat/GroupSettingsPage';
 import {
@@ -34,6 +36,7 @@ import {
 import { GroupChat } from './types/groupChat';
 import { ACCESS_TOKEN_REQUIRED, MAINTENANCE_MODE, PRO_HEAT_LEVELS, AI_PERSONAS } from './config/constants';
 import { ChatSession, getSupabaseSessions, getLocalSessions } from './services/chat/chatService';
+import { SEOHead } from './components/seo/SEOHead';
 
 // Chat by ID page component - defined OUTSIDE to prevent re-renders
 function ChatByIdPage() {
@@ -839,27 +842,33 @@ function AppContent() {
 
   return (
     <Routes>
-      <Route path="/" element={<MainChatPage />} />
+      <Route path="/" element={<><SEOHead /><MainChatPage /></>} />
       <Route path="/account" element={
         <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
+          <SEOHead title="Account" description="Manage your TimeMachine Chat account settings and profile." path="/account" noIndex />
           <AccountPage onBack={() => navigate('/')} />
         </div>
       } />
       <Route path="/history" element={
-        <ChatHistoryPage onLoadChat={(session) => {
-          // Pass session via navigation state so MainChatPage can load it
-          navigate('/', { state: { sessionToLoad: session } });
-        }} />
+        <>
+          <SEOHead title="Chat History" description="View and continue your previous TimeMachine Chat conversations." path="/history" noIndex />
+          <ChatHistoryPage onLoadChat={(session) => {
+            // Pass session via navigation state so MainChatPage can load it
+            navigate('/', { state: { sessionToLoad: session } });
+          }} />
+        </>
       } />
-      <Route path="/settings" element={<SettingsPage />} />
-      <Route path="/about" element={<AboutPage />} />
-      <Route path="/contact" element={<ContactPage />} />
-      <Route path="/album" element={<AlbumPage />} />
-      <Route path="/memories" element={<MemoriesPage />} />
-      <Route path="/help" element={<HelpPage />} />
-      <Route path="/chat/:id" element={<ChatByIdPage />} />
-      <Route path="/groupchat/:id" element={<GroupChatWrapper />} />
-      <Route path="/groupchat/:id/settings" element={<GroupSettingsPage />} />
+      <Route path="/settings" element={<><SEOHead title="Settings" description="Customize your TimeMachine Chat experience with themes, personas, and preferences." path="/settings" noIndex /><SettingsPage /></>} />
+      <Route path="/about" element={<><SEOHead title="About" description="Learn about TimeMachine — the super app bringing AI personas, privacy-first design, and intelligent tools into one chat interface. Built by TimeMachine Mafia." path="/about" /><AboutPage /></>} />
+      <Route path="/personas" element={<><SEOHead title="Personas" description="Meet TimeMachine AI personas — TimeMachine Air for everyday speed, TimeMachine Girlie for vibe-check conversations, and TimeMachine PRO for advanced intelligence. Plus ChatGPT, Gemini, Claude, and Grok." path="/personas" /><PersonasPage /></>} />
+      <Route path="/features" element={<><SEOHead title="Features" description="Explore TimeMachine features — Contour command palette with 30+ tools, group chat, TM Healthcare, image generation, music streaming, memory system, voice input, and more." path="/features" /><FeaturesPage /></>} />
+      <Route path="/contact" element={<><SEOHead title="Contact" description="Get in touch with the TimeMachine team for support, feedback, or collaboration." path="/contact" /><ContactPage /></>} />
+      <Route path="/album" element={<><SEOHead title="Album" path="/album" noIndex /><AlbumPage /></>} />
+      <Route path="/memories" element={<><SEOHead title="Memories" path="/memories" noIndex /><MemoriesPage /></>} />
+      <Route path="/help" element={<><SEOHead title="Help" description="Get help with TimeMachine — learn about AI personas, group chats, image generation, and all features." path="/help" /><HelpPage /></>} />
+      <Route path="/chat/:id" element={<><SEOHead title="Chat" noIndex /><ChatByIdPage /></>} />
+      <Route path="/groupchat/:id" element={<><SEOHead title="Group Chat" noIndex /><GroupChatWrapper /></>} />
+      <Route path="/groupchat/:id/settings" element={<><SEOHead title="Group Settings" noIndex /><GroupSettingsPage /></>} />
     </Routes>
   );
 }
