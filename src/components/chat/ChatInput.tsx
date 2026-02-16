@@ -615,7 +615,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                 value={message}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Explore future"
+                placeholder="Type / for contour"
                 disabled={isLoading || isUploading}
                 className={`w-full px-6 pr-32 rounded-[28px]
                   ${theme.input.text} placeholder-gray-400

@@ -33,8 +33,8 @@ const WORD_MEANING_PATTERN = /^(\w[\w\s-]{0,30}?)\s+(?:meaning|means|definition)
 // "meaning of perplexed" / "definition of perplexed"
 const MEANING_OF_PATTERN = /^(?:meaning|definition|meanings|definitions)\s+(?:of\s+)?(\w[\w\s-]{0,30}?)$/i;
 
-// "define perplexed" / "what is perplexed" / "what does perplexed mean"
-const DEFINE_PATTERN = /^(?:define|whats|what'?s|what\s+is|what\s+does)\s+(\w[\w\s-]{0,30}?)(?:\s+mean)?$/i;
+// "define perplexed"
+const DEFINE_PATTERN = /^define\s+(\w[\w\s-]{0,30}?)$/i;
 
 // "perplexed?" — single word with question mark
 const QUESTION_PATTERN = /^(\w{2,30})\?$/i;
