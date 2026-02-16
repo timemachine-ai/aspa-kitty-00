@@ -19,6 +19,7 @@ export { Base64View } from './Base64View';
 export { UrlEncodeView } from './UrlEncodeView';
 export { HashView } from './HashView';
 export { RegexView } from './RegexView';
+export { HelpView } from './HelpView';
 
 // Re-export shared primitives that ContourPanel needs
 export type { AccentTheme } from './shared';

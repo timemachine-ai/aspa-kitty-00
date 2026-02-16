@@ -239,8 +239,8 @@ export const CONTOUR_COMMANDS: ContourCommand[] = [
     description: 'Get help and documentation',
     icon: 'HelpCircle',
     category: 'system',
-    keywords: ['help', 'docs', 'documentation', 'how', 'guide'],
-    action: { type: 'navigate', path: '/help' },
+    keywords: ['help', 'docs', 'documentation', 'how', 'guide', 'contour'],
+    action: { type: 'inline', handler: 'help' },
   },
 
   // Modes

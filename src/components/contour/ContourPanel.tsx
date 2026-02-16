@@ -16,7 +16,7 @@ import {
   CalculatorView, UnitsView, CurrencyView, TimezoneView,
   ColorView, DateView, TimerView, RandomView, WordCountView,
   TranslatorView, DictionaryView, LoremView, JsonFormatView,
-  Base64View, UrlEncodeView, HashView, RegexView,
+  Base64View, UrlEncodeView, HashView, RegexView, HelpView,
   getIcon,
 } from './views';
 
@@ -132,6 +132,8 @@ function ModuleContent({
       return <HashView module={module} accent={accent} onCopyValue={onCopyValue} />;
     case 'regex':
       return <RegexView module={module} accent={accent} onCopyValue={onCopyValue} />;
+    case 'help':
+      return <HelpView module={module} accent={accent} />;
     default:
       return null;
   }

@@ -217,6 +217,9 @@ export function useContour() {
         const regex = testRegex(trimmed, '');
         return { id: 'regex', focused: true, regex };
       }
+      case 'help': {
+        return { id: 'help', focused: true };
+      }
     }
   }, []);
 
