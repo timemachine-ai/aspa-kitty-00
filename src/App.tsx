@@ -89,7 +89,7 @@ function ChatByIdPage() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/home')}
             className="px-6 py-3 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-200"
           >
             Go Home
@@ -848,7 +848,7 @@ function AppContent() {
       <Route path="/account" element={
         <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
           <SEOHead title="Account" description="Manage your TimeMachine Chat account settings and profile." path="/account" noIndex />
-          <AccountPage onBack={() => navigate('/')} />
+          <AccountPage onBack={() => navigate('/home')} />
         </div>
       } />
       <Route path="/history" element={

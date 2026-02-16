@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -22,8 +22,7 @@ import {
   Settings,
   User,
   History,
-  ArrowRight,
-  Sparkles,
+  Send,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -52,14 +51,22 @@ function formatTime(): string {
   });
 }
 
-// ─── glass style ─────────────────────────────────────────────────────
+// ─── brand glass (matches UniversalGlassKit) ─────────────────────────
 
-const glass = {
-  background: 'rgba(255, 255, 255, 0.04)',
-  backdropFilter: 'blur(24px)',
-  WebkitBackdropFilter: 'blur(24px)',
-  border: '1px solid rgba(255, 255, 255, 0.07)',
-  boxShadow: '0 4px 24px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.06)',
+const glassCard = {
+  background: 'rgba(255, 255, 255, 0.05)',
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+} as const;
+
+const glassInput = {
+  background: 'rgba(255, 255, 255, 0.05)',
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
+  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
 } as const;
 
 // ─── tile data ───────────────────────────────────────────────────────
@@ -69,37 +76,36 @@ interface AppTile {
   label: string;
   description?: string;
   icon: React.ReactNode;
-  accent: string;
   route: string | null;
   ready: boolean;
 }
 
 const allApps: AppTile[] = [
-  { id: 'chat',          label: 'Chat',          description: 'AI-powered conversations',      icon: <MessageCircle />, accent: '#a855f7', route: '/',  ready: true  },
-  { id: 'canvas',        label: 'Canvas',        description: 'Draw and design',               icon: <Pen />,           accent: '#f97316', route: null, ready: false },
-  { id: 'education',     label: 'Education',     description: 'Learn anything',                icon: <GraduationCap />, accent: '#3b82f6', route: null, ready: false },
-  { id: 'healthcare',    label: 'Healthcare',    description: 'Health companion',              icon: <HeartPulse />,    accent: '#ef4444', route: null, ready: false },
-  { id: 'shopping',      label: 'Shopping',      description: 'Smart shopping assistant',      icon: <ShoppingBag />,   accent: '#10b981', route: null, ready: false },
-  { id: 'music',         label: 'Music',         description: 'Stream and discover',           icon: <Music />,         accent: '#ec4899', route: null, ready: false },
-  { id: 'finance',       label: 'Finance',       description: 'Track and manage money',        icon: <Landmark />,      accent: '#14b8a6', route: null, ready: false },
-  { id: 'news',          label: 'News',          description: 'Stay informed',                 icon: <Newspaper />,     accent: '#8b5cf6', route: null, ready: false },
-  { id: 'games',         label: 'Games',         description: 'Play and compete',              icon: <Gamepad2 />,      accent: '#f59e0b', route: null, ready: false },
-  { id: 'code',          label: 'Code',          description: 'Write and debug code',          icon: <Code />,          accent: '#22d3ee', route: null, ready: false },
-  { id: 'translate',     label: 'Translate',     description: 'Break language barriers',       icon: <Languages />,     accent: '#6366f1', route: null, ready: false },
-  { id: 'entertainment', label: 'Entertainment', description: 'Movies, shows & more',          icon: <Clapperboard />,  accent: '#e11d48', route: null, ready: false },
-  { id: 'photos',        label: 'Photos',        description: 'AI-powered gallery',            icon: <Camera />,        accent: '#f472b6', route: null, ready: false },
-  { id: 'weather',       label: 'Weather',       description: 'Forecasts and alerts',          icon: <Cloud />,         accent: '#38bdf8', route: null, ready: false },
-  { id: 'notes',         label: 'Notes',         description: 'Capture your thoughts',         icon: <BookOpen />,      accent: '#fbbf24', route: null, ready: false },
-  { id: 'recipes',       label: 'Recipes',       description: 'Cooking assistant',             icon: <Utensils />,      accent: '#fb923c', route: null, ready: false },
+  { id: 'chat',          label: 'Chat',          description: 'AI-powered conversations',      icon: <MessageCircle />, route: '/',  ready: true  },
+  { id: 'canvas',        label: 'Canvas',        description: 'Draw and design',               icon: <Pen />,           route: null, ready: false },
+  { id: 'education',     label: 'Education',     description: 'Learn anything',                icon: <GraduationCap />, route: null, ready: false },
+  { id: 'healthcare',    label: 'Healthcare',    description: 'Health companion',              icon: <HeartPulse />,    route: null, ready: false },
+  { id: 'shopping',      label: 'Shopping',      description: 'Smart shopping assistant',      icon: <ShoppingBag />,   route: null, ready: false },
+  { id: 'music',         label: 'Music',         description: 'Stream and discover',           icon: <Music />,         route: null, ready: false },
+  { id: 'finance',       label: 'Finance',       description: 'Track and manage money',        icon: <Landmark />,      route: null, ready: false },
+  { id: 'news',          label: 'News',          description: 'Stay informed',                 icon: <Newspaper />,     route: null, ready: false },
+  { id: 'games',         label: 'Games',         description: 'Play and compete',              icon: <Gamepad2 />,      route: null, ready: false },
+  { id: 'code',          label: 'Code',          description: 'Write and debug code',          icon: <Code />,          route: null, ready: false },
+  { id: 'translate',     label: 'Translate',     description: 'Break language barriers',       icon: <Languages />,     route: null, ready: false },
+  { id: 'entertainment', label: 'Entertainment', description: 'Movies, shows & more',          icon: <Clapperboard />,  route: null, ready: false },
+  { id: 'photos',        label: 'Photos',        description: 'AI-powered gallery',            icon: <Camera />,        route: null, ready: false },
+  { id: 'weather',       label: 'Weather',       description: 'Forecasts and alerts',          icon: <Cloud />,         route: null, ready: false },
+  { id: 'notes',         label: 'Notes',         description: 'Capture your thoughts',         icon: <BookOpen />,      route: null, ready: false },
+  { id: 'recipes',       label: 'Recipes',       description: 'Cooking assistant',             icon: <Utensils />,      route: null, ready: false },
 ];
 
 // sidebar icons
 const sidebarItems = [
-  { icon: <Home />,    label: 'Home',     route: '/home'     },
-  { icon: <MessageCircle />, label: 'Chat', route: '/'       },
-  { icon: <History />, label: 'History',   route: '/history'  },
-  { icon: <User />,    label: 'Account',   route: '/account'  },
-  { icon: <Settings />,label: 'Settings',  route: '/settings' },
+  { icon: <Home />,           label: 'Home',     route: '/home'     },
+  { icon: <MessageCircle />,  label: 'Chat',     route: '/'         },
+  { icon: <History />,        label: 'History',   route: '/history'  },
+  { icon: <User />,           label: 'Account',   route: '/account'  },
+  { icon: <Settings />,       label: 'Settings',  route: '/settings' },
 ];
 
 // ─── animation ───────────────────────────────────────────────────────
@@ -115,6 +121,8 @@ const fadeUp = (delay = 0) => ({
 export function HomePage() {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [draft, setDraft] = useState('');
 
   const [time, setTime] = useState(formatTime);
   useEffect(() => {
@@ -130,7 +138,21 @@ export function HomePage() {
     if (app.ready && app.route) navigate(app.route);
   };
 
-  // bottom bento cards — pick 3 feature areas
+  // Submit from the home textbar → navigate to chat with the message
+  const handleHomeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!draft.trim()) return;
+    navigate('/', { state: { initialMessage: draft.trim() } });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleHomeSubmit(e);
+    }
+  };
+
+  // bottom bento cards
   const bottomCards = [
     allApps.find((a) => a.id === 'education')!,
     allApps.find((a) => a.id === 'healthcare')!,
@@ -181,21 +203,16 @@ export function HomePage() {
             {/* ── TOP ROW: hero + side panel ─────────────────── */}
             <div className="flex-[1.3] flex flex-col md:flex-row gap-4 min-h-0">
 
-              {/* HERO CARD — Chat / Greeting */}
+              {/* HERO CARD */}
               <motion.div
                 {...fadeUp(0)}
-                onClick={() => navigate('/')}
-                className="flex-[1.6] rounded-3xl overflow-hidden relative cursor-pointer group min-h-[260px] md:min-h-0"
-                style={glass}
+                className="flex-[1.6] rounded-3xl overflow-hidden relative min-h-[280px] md:min-h-0"
+                style={glassCard}
               >
-                {/* hero accent glow */}
+                {/* subtle accent glow */}
                 <div
-                  className="absolute inset-0 opacity-[0.12] transition-opacity duration-500 group-hover:opacity-[0.18]"
+                  className="absolute inset-0 opacity-[0.08]"
                   style={{ background: 'radial-gradient(ellipse at 30% 80%, #a855f7, transparent 60%)' }}
-                />
-                <div
-                  className="absolute inset-0 opacity-[0.06]"
-                  style={{ background: 'radial-gradient(ellipse at 80% 20%, #7c3aed, transparent 50%)' }}
                 />
 
                 <div className="relative h-full flex flex-col justify-between p-6 sm:p-8">
@@ -205,31 +222,59 @@ export function HomePage() {
                     <span className="text-white/30 text-xs sm:text-sm font-medium">{time}</span>
                   </div>
 
-                  {/* center: greeting */}
+                  {/* center: greeting — same size for both lines */}
                   <div>
-                    <p className="text-white/40 text-sm font-medium mb-1">
+                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
                       {greeting}{name ? ',' : '.'}
-                    </p>
+                    </h1>
                     {name && (
-                      <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-tight">
-                        {name}
-                      </h1>
-                    )}
-                    {!name && (
-                      <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-tight">
-                        Welcome
+                      <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
+                        {name}.
                       </h1>
                     )}
                   </div>
 
-                  {/* bottom: CTA */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/[0.08] border border-white/[0.08] text-white/70 text-sm font-medium group-hover:bg-white/[0.12] group-hover:text-white transition-all duration-300">
-                      <Sparkles className="w-4 h-4" />
-                      <span>Start chatting</span>
-                      <ArrowRight className="w-4 h-4 opacity-0 -ml-2 group-hover:opacity-100 group-hover:ml-0 transition-all duration-300" />
+                  {/* bottom: textbar — same style as ChatInput */}
+                  <form onSubmit={handleHomeSubmit} className="relative flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <textarea
+                        ref={textareaRef}
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Type / for contour"
+                        className="w-full px-6 pr-16 rounded-[28px] text-white placeholder-gray-400 outline-none text-base resize-none overflow-hidden"
+                        style={{
+                          ...glassInput,
+                          fontSize: '1rem',
+                          minHeight: '56px',
+                          maxHeight: '56px',
+                          paddingTop: '16px',
+                          paddingBottom: '16px',
+                          lineHeight: '24px',
+                        }}
+                        rows={1}
+                      />
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <motion.button
+                          type="submit"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          disabled={!draft.trim()}
+                          className="p-3 rounded-full text-white disabled:opacity-50 transition-all duration-300"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(255, 255, 255, 0.05))',
+                            backdropFilter: 'blur(20px)',
+                            WebkitBackdropFilter: 'blur(20px)',
+                            border: '1px solid rgba(168, 85, 247, 0.4)',
+                            boxShadow: '0 0 15px rgba(168, 85, 247, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+                          }}
+                        >
+                          <Send className="w-5 h-5" />
+                        </motion.button>
+                      </div>
                     </div>
-                  </div>
+                  </form>
                 </div>
               </motion.div>
 
@@ -237,7 +282,7 @@ export function HomePage() {
               <motion.div
                 {...fadeUp(0.08)}
                 className="flex-1 rounded-3xl overflow-hidden relative min-h-[300px] md:min-h-0"
-                style={glass}
+                style={glassCard}
               >
                 <div className="relative h-full flex flex-col p-5">
                   <p className="text-white/30 text-[11px] font-semibold uppercase tracking-widest mb-4">All Apps</p>
@@ -254,11 +299,8 @@ export function HomePage() {
                             : 'cursor-default opacity-50'
                         }`}
                       >
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                          style={{ background: `${app.accent}15` }}
-                        >
-                          <span style={{ color: app.accent }}>
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-white/[0.06]">
+                          <span className="text-white/70">
                             {React.cloneElement(app.icon as React.ReactElement, { className: 'w-4 h-4' })}
                           </span>
                         </div>
@@ -290,20 +332,11 @@ export function HomePage() {
                   className={`flex-1 rounded-3xl overflow-hidden relative ${
                     app.ready ? 'cursor-pointer' : 'cursor-default'
                   }`}
-                  style={glass}
+                  style={glassCard}
                 >
-                  {/* accent wash */}
-                  <div
-                    className="absolute inset-0 opacity-[0.08]"
-                    style={{ background: `radial-gradient(ellipse at 50% 100%, ${app.accent}, transparent 60%)` }}
-                  />
-
                   <div className="relative h-full flex flex-col justify-between p-5 sm:p-6">
-                    <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                      style={{ background: `${app.accent}15` }}
-                    >
-                      <span style={{ color: app.accent }}>
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/[0.06]">
+                      <span className="text-white/70">
                         {React.cloneElement(app.icon as React.ReactElement, { className: 'w-6 h-6' })}
                       </span>
                     </div>
