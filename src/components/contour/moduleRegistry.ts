@@ -73,8 +73,8 @@ import type { UrlEncodeResult } from './modules/urlEncoder';
 import type { HashResult } from './modules/hashGenerator';
 import type { RegexResult } from './modules/regexTester';
 
-import { ContourCommand, searchCommands } from './modules/commands';
-export { searchCommands };
+import { ContourCommand, searchCommands, groupByCategory } from './modules/commands';
+export { searchCommands, groupByCategory };
 export type { ContourCommand };
 
 export type ModuleId =

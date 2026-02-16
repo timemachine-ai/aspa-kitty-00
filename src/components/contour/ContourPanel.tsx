@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search } from 'lucide-react';
 import { ContourState, ModuleData } from './moduleRegistry';
 import { MODULE_META } from './moduleRegistry';
-import { ContourCommand, ContourCategory, CATEGORY_INFO } from './modules/commands';
+import { ContourCommand, ContourCategory, CATEGORY_INFO, groupByCategory } from './modules/commands';
 import {
   CalculatorView, UnitsView, CurrencyView, TimezoneView,
   ColorView, DateView, TimerView, RandomView, WordCountView,
@@ -66,18 +66,6 @@ const personaAccent: Record<string, AccentTheme> = {
     solid: '#22d3ee',
   },
 };
-
-// ─── Helpers ───────────────────────────────────────────────────
-
-function groupByCategory(commands: ContourCommand[]): { category: ContourCategory; commands: ContourCommand[] }[] {
-  const grouped = new Map<ContourCategory, ContourCommand[]>();
-  for (const cmd of commands) {
-    const list = grouped.get(cmd.category) || [];
-    list.push(cmd);
-    grouped.set(cmd.category, list);
-  }
-  return Array.from(grouped.entries()).map(([category, commands]) => ({ category, commands }));
-}
 
 // ─── Module View Router ────────────────────────────────────────
 

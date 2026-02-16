@@ -37,6 +37,7 @@ import {
   createHashResult,
   testRegex,
   searchCommands,
+  groupByCategory,
 } from './moduleRegistry';
 
 export type { ModuleId, ModuleData, ContourState, ContourMode };
@@ -417,7 +418,10 @@ export function useContour() {
 
   const selectedCommand = useMemo(() => {
     if (state.mode !== 'commands' || state.commands.length === 0) return null;
-    return state.commands[state.selectedIndex] || null;
+    // Flatten in the same grouped-by-category order that ContourPanel renders,
+    // so the keyboard selectedIndex matches the visually highlighted command.
+    const flat = groupByCategory(state.commands).flatMap(g => g.commands);
+    return flat[state.selectedIndex] || null;
   }, [state.mode, state.commands, state.selectedIndex]);
 
   const dismiss = useCallback(() => {

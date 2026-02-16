@@ -307,6 +307,20 @@ export const CATEGORY_INFO: Record<ContourCategory, { label: string; icon: strin
   recents: { label: 'Recent', icon: 'Clock' },
 };
 
+/**
+ * Group commands by category, preserving insertion order.
+ * Used by both ContourPanel (render) and useContour (selection).
+ */
+export function groupByCategory(commands: ContourCommand[]): { category: ContourCategory; commands: ContourCommand[] }[] {
+  const grouped = new Map<ContourCategory, ContourCommand[]>();
+  for (const cmd of commands) {
+    const list = grouped.get(cmd.category) || [];
+    list.push(cmd);
+    grouped.set(cmd.category, list);
+  }
+  return Array.from(grouped.entries()).map(([category, commands]) => ({ category, commands }));
+}
+
 // ─── Fuzzy scoring ─────────────────────────────────────────────
 
 function fuzzyScore(query: string, target: string): number {
