@@ -114,7 +114,7 @@ export function GroupSettingsPage() {
       .eq('user_id', user.id);
 
     if (!error) {
-      navigate('/');
+      navigate('/home');
     }
   };
 
@@ -125,7 +125,7 @@ export function GroupSettingsPage() {
     const success = await disableGroupChat(groupChat.id, user.id);
 
     if (success) {
-      navigate('/');
+      navigate('/home');
     }
     setIsDeleting(false);
   };
@@ -159,7 +159,7 @@ export function GroupSettingsPage() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/home')}
             className="px-6 py-3 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-200"
           >
             Go Home

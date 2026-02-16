@@ -411,7 +411,7 @@ export function GroupChatPage() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/home')}
             className="px-6 py-3 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-200"
           >
             Go Home
@@ -462,7 +462,7 @@ export function GroupChatPage() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/home')}
                 className={`w-full py-4 rounded-xl bg-gradient-to-r ${personaColors[inviteInfo.persona] || personaColors.default} text-white font-semibold`}
               >
                 Sign In to Join
@@ -546,7 +546,7 @@ export function GroupChatPage() {
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/home')}
               className="p-2 rounded-full bg-white/5 hover:bg-white/10"
             >
               <ArrowLeft className="w-5 h-5 text-white/70" />
