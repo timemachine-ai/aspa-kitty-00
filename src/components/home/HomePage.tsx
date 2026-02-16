@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageCircle,
   Pen,
@@ -22,9 +22,14 @@ import {
   Settings,
   User,
   History,
-  Send,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useChat } from '../../hooks/useChat';
+import { useAnonymousRateLimit } from '../../hooks/useAnonymousRateLimit';
+import { ChatInput } from '../chat/ChatInput';
+import { ChatMode } from '../chat/ChatMode';
+import { ImageDimensions, ReplyToData } from '../../types/chat';
 
 // ─── helpers ─────────────────────────────────────────────────────────
 
@@ -59,14 +64,6 @@ const glassCard = {
   WebkitBackdropFilter: 'blur(20px)',
   border: '1px solid rgba(255, 255, 255, 0.1)',
   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
-} as const;
-
-const glassInput = {
-  background: 'rgba(255, 255, 255, 0.05)',
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
-  boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
 } as const;
 
 // ─── tile data ───────────────────────────────────────────────────────
@@ -120,10 +117,73 @@ const fadeUp = (delay = 0) => ({
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { profile } = useAuth();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [draft, setDraft] = useState('');
+  const { user, profile, loading: authLoading } = useAuth();
 
+  // ── Live chat engine ────────────────────────────────────────────
+  const {
+    messages,
+    isLoading,
+    currentPersona,
+    currentSessionId,
+    error,
+    streamingMessageId,
+    loadingPhase,
+    handleSendMessage,
+    markMessageAsAnimated,
+  } = useChat(
+    user?.id,
+    profile ? { nickname: profile.nickname, about_me: profile.about_me } : undefined,
+    undefined,
+    authLoading,
+  );
+
+  const { isRateLimited, incrementCount, isAnonymous } = useAnonymousRateLimit();
+
+  // Has the user started chatting? (more than just the initial AI welcome message)
+  const hasUserMessages = messages.some((m) => !m.isAI);
+
+  // Rate-limited send (same logic as MainChatPage)
+  const handleSendMessageWithRateLimit = useCallback(async (
+    message: string,
+    imageUrl?: string | string[],
+    audioData?: string,
+    imageUrls?: string[],
+    imageDimensions?: ImageDimensions,
+    replyToData?: ReplyToData,
+    specialMode?: string,
+  ) => {
+    const mentionMatch = message.match(/^@(chatgpt|gemini|claude|grok|girlie|pro)\s/i);
+    const targetModel = mentionMatch ? mentionMatch[1].toLowerCase() : currentPersona;
+
+    if (isAnonymous && isRateLimited(targetModel)) {
+      // Rate limited — redirect to chat UI where the auth modal will show
+      navigate('/');
+      return;
+    }
+
+    if (isAnonymous) incrementCount(targetModel);
+
+    await handleSendMessage(message, imageUrl, audioData, imageUrls, imageDimensions, replyToData, specialMode);
+  }, [currentPersona, isAnonymous, isRateLimited, incrementCount, handleSendMessage]);
+
+  // Open in Chat UI — navigates to / and passes the current session so MainChatPage
+  // loads THIS chat instead of starting fresh.
+  const handleOpenInChatUI = useCallback(() => {
+    navigate('/', {
+      state: {
+        sessionToLoad: {
+          id: currentSessionId,
+          name: messages.find((m) => !m.isAI)?.content?.slice(0, 50) || 'Home Chat',
+          messages,
+          persona: currentPersona,
+          createdAt: new Date().toISOString(),
+          lastModified: new Date().toISOString(),
+        },
+      },
+    });
+  }, [navigate, currentSessionId, messages, currentPersona]);
+
+  // ── Clock ─────────────────────────────────────────────────────
   const [time, setTime] = useState(formatTime);
   useEffect(() => {
     const id = setInterval(() => setTime(formatTime()), 30_000);
@@ -136,20 +196,6 @@ export function HomePage() {
 
   const handleTap = (app: AppTile) => {
     if (app.ready && app.route) navigate(app.route);
-  };
-
-  // Submit from the home textbar → navigate to chat with the message
-  const handleHomeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!draft.trim()) return;
-    navigate('/', { state: { initialMessage: draft.trim() } });
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleHomeSubmit(e);
-    }
   };
 
   // bottom bento cards
@@ -203,78 +249,86 @@ export function HomePage() {
             {/* ── TOP ROW: hero + side panel ─────────────────── */}
             <div className="flex-[1.3] flex flex-col md:flex-row gap-4 min-h-0">
 
-              {/* HERO CARD */}
+              {/* HERO CARD — greeting + live chat + real ChatInput */}
               <motion.div
                 {...fadeUp(0)}
-                className="flex-[1.6] rounded-3xl overflow-hidden relative min-h-[280px] md:min-h-0"
+                className="flex-[1.6] rounded-3xl overflow-hidden relative min-h-[280px] md:min-h-0 flex flex-col"
                 style={glassCard}
               >
                 {/* subtle accent glow */}
                 <div
-                  className="absolute inset-0 opacity-[0.08]"
+                  className="absolute inset-0 opacity-[0.08] pointer-events-none"
                   style={{ background: 'radial-gradient(ellipse at 30% 80%, #a855f7, transparent 60%)' }}
                 />
 
-                <div className="relative h-full flex flex-col justify-between p-6 sm:p-8">
-                  {/* top: date + time */}
-                  <div className="flex items-center justify-between">
+                <div className="relative flex-1 flex flex-col min-h-0">
+                  {/* top bar: date + time + open button */}
+                  <div className="flex items-center justify-between px-6 sm:px-8 pt-5 pb-2 shrink-0">
                     <span className="text-white/30 text-xs sm:text-sm font-medium tracking-wide">{date}</span>
-                    <span className="text-white/30 text-xs sm:text-sm font-medium">{time}</span>
+                    <div className="flex items-center gap-3">
+                      <AnimatePresence>
+                        {hasUserMessages && (
+                          <motion.button
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleOpenInChatUI}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-white/50 hover:text-white/80 transition-colors text-xs font-medium"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              border: '1px solid rgba(255, 255, 255, 0.1)',
+                              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                            }}
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>Open in Chat UI</span>
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
+                      <span className="text-white/30 text-xs sm:text-sm font-medium">{time}</span>
+                    </div>
                   </div>
 
-                  {/* center: greeting — same size for both lines */}
-                  <div>
-                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
-                      {greeting}{name ? ',' : '.'}
-                    </h1>
-                    {name && (
-                      <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
-                        {name}.
-                      </h1>
-                    )}
-                  </div>
-
-                  {/* bottom: textbar — same style as ChatInput */}
-                  <form onSubmit={handleHomeSubmit} className="relative flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <textarea
-                        ref={textareaRef}
-                        value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Type / for contour"
-                        className="w-full px-6 pr-16 rounded-[28px] text-white placeholder-gray-400 outline-none text-base resize-none overflow-hidden"
-                        style={{
-                          ...glassInput,
-                          fontSize: '1rem',
-                          minHeight: '56px',
-                          maxHeight: '56px',
-                          paddingTop: '16px',
-                          paddingBottom: '16px',
-                          lineHeight: '24px',
-                        }}
-                        rows={1}
-                      />
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                        <motion.button
-                          type="submit"
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          disabled={!draft.trim()}
-                          className="p-3 rounded-full text-white disabled:opacity-50 transition-all duration-300"
-                          style={{
-                            background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(255, 255, 255, 0.05))',
-                            backdropFilter: 'blur(20px)',
-                            WebkitBackdropFilter: 'blur(20px)',
-                            border: '1px solid rgba(168, 85, 247, 0.4)',
-                            boxShadow: '0 0 15px rgba(168, 85, 247, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
-                          }}
-                        >
-                          <Send className="w-5 h-5" />
-                        </motion.button>
+                  {/* greeting (shown when no user messages yet) */}
+                  {!hasUserMessages && (
+                    <div className="flex-1 flex items-center px-6 sm:px-8">
+                      <div>
+                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
+                          {greeting}{name ? ',' : '.'}
+                        </h1>
+                        {name && (
+                          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
+                            {name}.
+                          </h1>
+                        )}
                       </div>
                     </div>
-                  </form>
+                  )}
+
+                  {/* live chat messages (shown once user sends a message) */}
+                  {hasUserMessages && (
+                    <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+                      <ChatMode
+                        messages={messages}
+                        currentPersona={currentPersona}
+                        onMessageAnimated={markMessageAsAnimated}
+                        error={error}
+                        streamingMessageId={streamingMessageId}
+                        loadingPhase={loadingPhase}
+                      />
+                    </div>
+                  )}
+
+                  {/* real ChatInput — identical to the one in MainChatPage */}
+                  <div className="shrink-0 px-4 sm:px-6 pb-4 pt-2">
+                    <ChatInput
+                      onSendMessage={handleSendMessageWithRateLimit}
+                      isLoading={isLoading}
+                      currentPersona={currentPersona}
+                    />
+                  </div>
                 </div>
               </motion.div>
 
