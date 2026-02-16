@@ -27,6 +27,11 @@ const personaStyles = {
     default: '0 0 15px rgba(168, 85, 247, 0.35)',  // Purple glow (brighter, larger)
     girlie: '0 0 12px rgba(236, 72, 153, 0.25)',
     pro: '0 0 12px rgba(34, 211, 238, 0.25)'
+  },
+  iconColors: {
+    default: '#a855f7',   // Purple icon
+    girlie: '#ec4899',    // Pink icon
+    pro: '#22d3ee'        // Cyan icon
   }
 } as const;
 
@@ -156,7 +161,7 @@ export function VoiceRecorder({ onSendMessage, disabled, currentPersona = 'defau
               <Square className="w-5 h-5 text-white" />
             )
           ) : (
-            <AiMicIcon className="w-5 h-5 text-white" />
+            <AiMicIcon className="w-5 h-5" style={{ color: personaStyles.iconColors[currentPersona] }} />
           )}
         </div>
       </motion.button>

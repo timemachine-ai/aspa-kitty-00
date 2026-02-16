@@ -42,6 +42,11 @@ const personaStyles = {
     default: '0 0 15px rgba(168, 85, 247, 0.35)',  // Purple glow (brighter, larger)
     girlie: '0 0 12px rgba(236, 72, 153, 0.25)',
     pro: '0 0 12px rgba(34, 211, 238, 0.25)'
+  },
+  iconColors: {
+    default: '#a855f7',   // Purple icon
+    girlie: '#ec4899',    // Pink icon
+    pro: '#22d3ee'        // Cyan icon
   }
 } as const;
 
@@ -595,10 +600,10 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
               {selectedPlusOption ? (
                 (() => {
                   const IconComponent = plusOptionIcons[selectedPlusOption];
-                  return <IconComponent className="w-5 h-5 relative z-10" />;
+                  return <IconComponent className="w-5 h-5 relative z-10" style={{ color: personaStyles.iconColors[currentPersona] }} />;
                 })()
               ) : (
-                <Plus className="w-5 h-5 relative z-10" />
+                <Plus className="w-5 h-5 relative z-10" style={{ color: personaStyles.iconColors[currentPersona] }} />
               )}
             </motion.button>
 
@@ -664,7 +669,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                   {isLoading || isUploading ? (
                     <LoadingSpinner size="sm" />
                   ) : (
-                    <Send className="w-5 h-5 relative z-10" />
+                    <Send className="w-5 h-5 relative z-10" style={{ color: personaStyles.iconColors[currentPersona] }} />
                   )}
                 </motion.button>
               </div>
