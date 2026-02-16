@@ -26,6 +26,7 @@ import { PersonasPage } from './components/personas/PersonasPage';
 import { FeaturesPage } from './components/features/FeaturesPage';
 import { GroupChatModal } from './components/groupchat/GroupChatModal';
 import { GroupSettingsPage } from './components/groupchat/GroupSettingsPage';
+import { HomePage } from './components/home/HomePage';
 import {
   getGroupChat,
   getGroupChatInvite,
@@ -843,6 +844,7 @@ function AppContent() {
   return (
     <Routes>
       <Route path="/" element={<><SEOHead /><MainChatPage /></>} />
+      <Route path="/home" element={<><SEOHead title="Home" description="TimeMachine — the everything app. Chat, Canvas, Education, Healthcare, Shopping, and more." path="/home" /><HomePage /></>} />
       <Route path="/account" element={
         <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
           <SEOHead title="Account" description="Manage your TimeMachine Chat account settings and profile." path="/account" noIndex />
