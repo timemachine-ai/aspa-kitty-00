@@ -2,27 +2,17 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  MessageCircle,
-  Pen,
   GraduationCap,
   HeartPulse,
-  ShoppingBag,
   Music,
-  Landmark,
-  Newspaper,
-  Gamepad2,
-  Code,
-  Languages,
-  Clapperboard,
-  Camera,
-  Cloud,
-  BookOpen,
-  Utensils,
   Home,
+  MessageCircle,
   Settings,
   User,
   History,
   ExternalLink,
+  BookOpen,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../hooks/useChat';
@@ -65,36 +55,6 @@ const glassCard = {
   border: '1px solid rgba(255, 255, 255, 0.1)',
   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
 } as const;
-
-// ─── tile data ───────────────────────────────────────────────────────
-
-interface AppTile {
-  id: string;
-  label: string;
-  description?: string;
-  icon: React.ReactNode;
-  route: string | null;
-  ready: boolean;
-}
-
-const allApps: AppTile[] = [
-  { id: 'chat',          label: 'Chat',          description: 'AI-powered conversations',      icon: <MessageCircle />, route: '/',  ready: true  },
-  { id: 'canvas',        label: 'Canvas',        description: 'Draw and design',               icon: <Pen />,           route: null, ready: false },
-  { id: 'education',     label: 'Education',     description: 'Learn anything',                icon: <GraduationCap />, route: null, ready: false },
-  { id: 'healthcare',    label: 'Healthcare',    description: 'Health companion',              icon: <HeartPulse />,    route: null, ready: false },
-  { id: 'shopping',      label: 'Shopping',      description: 'Smart shopping assistant',      icon: <ShoppingBag />,   route: null, ready: false },
-  { id: 'music',         label: 'Music',         description: 'Stream and discover',           icon: <Music />,         route: null, ready: false },
-  { id: 'finance',       label: 'Finance',       description: 'Track and manage money',        icon: <Landmark />,      route: null, ready: false },
-  { id: 'news',          label: 'News',          description: 'Stay informed',                 icon: <Newspaper />,     route: null, ready: false },
-  { id: 'games',         label: 'Games',         description: 'Play and compete',              icon: <Gamepad2 />,      route: null, ready: false },
-  { id: 'code',          label: 'Code',          description: 'Write and debug code',          icon: <Code />,          route: null, ready: false },
-  { id: 'translate',     label: 'Translate',     description: 'Break language barriers',       icon: <Languages />,     route: null, ready: false },
-  { id: 'entertainment', label: 'Entertainment', description: 'Movies, shows & more',          icon: <Clapperboard />,  route: null, ready: false },
-  { id: 'photos',        label: 'Photos',        description: 'AI-powered gallery',            icon: <Camera />,        route: null, ready: false },
-  { id: 'weather',       label: 'Weather',       description: 'Forecasts and alerts',          icon: <Cloud />,         route: null, ready: false },
-  { id: 'notes',         label: 'Notes',         description: 'Capture your thoughts',         icon: <BookOpen />,      route: null, ready: false },
-  { id: 'recipes',       label: 'Recipes',       description: 'Cooking assistant',             icon: <Utensils />,      route: null, ready: false },
-];
 
 // sidebar icons
 const sidebarItems = [
@@ -156,7 +116,6 @@ export function HomePage() {
     const targetModel = mentionMatch ? mentionMatch[1].toLowerCase() : currentPersona;
 
     if (isAnonymous && isRateLimited(targetModel)) {
-      // Rate limited — redirect to chat UI where the auth modal will show
       navigate('/');
       return;
     }
@@ -166,8 +125,7 @@ export function HomePage() {
     await handleSendMessage(message, imageUrl, audioData, imageUrls, imageDimensions, replyToData, specialMode);
   }, [currentPersona, isAnonymous, isRateLimited, incrementCount, handleSendMessage]);
 
-  // Open in Chat UI — navigates to / and passes the current session so MainChatPage
-  // loads THIS chat instead of starting fresh.
+  // Open in Chat UI
   const handleOpenInChatUI = useCallback(() => {
     navigate('/', {
       state: {
@@ -183,6 +141,9 @@ export function HomePage() {
     });
   }, [navigate, currentSessionId, messages, currentPersona]);
 
+  // ── Notes quick-write state ─────────────────────────────────────
+  const [noteContent, setNoteContent] = useState('');
+
   // ── Clock ─────────────────────────────────────────────────────
   const [time, setTime] = useState(formatTime);
   useEffect(() => {
@@ -194,15 +155,11 @@ export function HomePage() {
   const date = useMemo(formatDate, []);
   const name = profile?.nickname || null;
 
-  const handleTap = (app: AppTile) => {
-    if (app.ready && app.route) navigate(app.route);
-  };
-
-  // bottom bento cards
+  // bottom bento cards — all are working
   const bottomCards = [
-    allApps.find((a) => a.id === 'education')!,
-    allApps.find((a) => a.id === 'healthcare')!,
-    allApps.find((a) => a.id === 'music')!,
+    { id: 'education',  label: 'Education',  description: 'Learn anything',     icon: <GraduationCap />, route: '/' },
+    { id: 'healthcare', label: 'Healthcare', description: 'Health companion',   icon: <HeartPulse />,    route: '/' },
+    { id: 'music',      label: 'Music',      description: 'Stream and discover', icon: <Music />,         route: '/' },
   ];
 
   return (
@@ -246,7 +203,7 @@ export function HomePage() {
         <div className="flex-1 h-full overflow-y-auto overflow-x-hidden p-4 md:pl-0 md:pr-5 md:py-5">
           <div className="h-full flex flex-col gap-4 min-h-[600px]">
 
-            {/* ── TOP ROW: hero + side panel ─────────────────── */}
+            {/* ── TOP ROW: hero + notes panel ─────────────────── */}
             <div className="flex-[1.3] flex flex-col md:flex-row gap-4 min-h-0">
 
               {/* HERO CARD — greeting + live chat + real ChatInput */}
@@ -332,43 +289,57 @@ export function HomePage() {
                 </div>
               </motion.div>
 
-              {/* SIDE PANEL — All Apps directory */}
+              {/* SIDE PANEL — Notes quick-write */}
               <motion.div
                 {...fadeUp(0.08)}
                 className="flex-1 rounded-3xl overflow-hidden relative min-h-[300px] md:min-h-0"
                 style={glassCard}
               >
+                {/* subtle notes accent glow */}
+                <div
+                  className="absolute inset-0 opacity-[0.06] pointer-events-none"
+                  style={{ background: 'radial-gradient(ellipse at 70% 20%, #a855f7, transparent 60%)' }}
+                />
+
                 <div className="relative h-full flex flex-col p-5">
-                  <p className="text-white/30 text-[11px] font-semibold uppercase tracking-widest mb-4">All Apps</p>
-                  <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 -mr-2 pr-2">
-                    {allApps.map((app) => (
-                      <motion.button
-                        key={app.id}
-                        whileHover={app.ready ? { x: 4 } : {}}
-                        whileTap={app.ready ? { scale: 0.98 } : {}}
-                        onClick={() => handleTap(app)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 outline-none ${
-                          app.ready
-                            ? 'cursor-pointer hover:bg-white/[0.05]'
-                            : 'cursor-default opacity-50'
-                        }`}
-                      >
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-white/[0.06]">
-                          <span className="text-white/70">
-                            {React.cloneElement(app.icon as React.ReactElement, { className: 'w-4 h-4' })}
-                          </span>
-                        </div>
-                        <div className="flex-1 text-left min-w-0">
-                          <p className="text-white/80 text-sm font-medium leading-tight">{app.label}</p>
-                          <p className="text-white/25 text-[11px] leading-tight truncate">{app.description}</p>
-                        </div>
-                        {!app.ready && (
-                          <span className="text-[9px] font-semibold text-white/20 bg-white/5 px-1.5 py-0.5 rounded-full shrink-0">
-                            Soon
-                          </span>
-                        )}
-                      </motion.button>
-                    ))}
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.25)' }}>
+                      <BookOpen className="w-3.5 h-3.5 text-purple-400" />
+                    </div>
+                    <p className="text-white/30 text-[11px] font-semibold uppercase tracking-widest">Notes</p>
+                  </div>
+
+                  {/* Quick-write area */}
+                  <div className="flex-1 overflow-hidden min-h-0">
+                    <textarea
+                      value={noteContent}
+                      onChange={(e) => setNoteContent(e.target.value)}
+                      placeholder="Start writing..."
+                      className="w-full h-full resize-none bg-transparent text-white/80 text-sm leading-relaxed placeholder-white/20 outline-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                      style={{ caretColor: '#a855f7' }}
+                    />
+                  </div>
+
+                  {/* Open in Notes UI pill button */}
+                  <div className="shrink-0 pt-3">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => navigate('/notes', { state: { initialContent: noteContent } })}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-300"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(139, 92, 246, 0.1))',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
+                        border: '1px solid rgba(168, 85, 247, 0.3)',
+                        boxShadow: '0 0 12px rgba(168, 85, 247, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                        color: '#c084fc',
+                      }}
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      <span>Open in Notes UI</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </motion.button>
                   </div>
                 </div>
               </motion.div>
@@ -380,12 +351,10 @@ export function HomePage() {
                 <motion.div
                   key={app.id}
                   {...fadeUp(0.14 + i * 0.06)}
-                  whileHover={app.ready ? { y: -4, scale: 1.01 } : {}}
-                  whileTap={app.ready ? { scale: 0.98 } : {}}
-                  onClick={() => handleTap(app)}
-                  className={`flex-1 rounded-3xl overflow-hidden relative ${
-                    app.ready ? 'cursor-pointer' : 'cursor-default'
-                  }`}
+                  whileHover={{ y: -4, scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate(app.route)}
+                  className="flex-1 rounded-3xl overflow-hidden relative cursor-pointer"
                   style={glassCard}
                 >
                   <div className="relative h-full flex flex-col justify-between p-5 sm:p-6">
@@ -398,11 +367,6 @@ export function HomePage() {
                       <p className="text-white/90 text-base font-semibold">{app.label}</p>
                       <p className="text-white/30 text-xs mt-0.5">{app.description}</p>
                     </div>
-                    {!app.ready && (
-                      <span className="absolute top-4 right-4 text-[9px] font-semibold text-white/20 bg-white/5 px-2 py-0.5 rounded-full">
-                        Coming Soon
-                      </span>
-                    )}
                   </div>
                 </motion.div>
               ))}
