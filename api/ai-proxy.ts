@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { SPECIAL_MODE_CONFIGS } from './specialModePrompts.js';
+import { PERSONA_AUDIO_CONFIGS } from './audio.js';
 
 // Initialize Supabase client for server-side operations
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://etpehiyzlkhknzceizar.supabase.co';
@@ -643,21 +644,12 @@ async function processMemoryTags(
   return { content: cleanedContent, memoryContent, hasSavedMemory };
 }
 
-// Audio-specific system prompt for voice message interactions
-const AUDIO_SYSTEM_PROMPT = `You are TimeMachine Voice Assistant, a specialized AI designed to process and respond to voice messages. Your primary goal is to understand the user's spoken intent, provide concise and helpful responses, and maintain a natural, conversational flow.
-
-When a user sends an audio message, focus on:
-1. **Summarizing the core request/question:** Briefly rephrase what the user is asking.
-2. **Providing a direct answer or next steps:** Be clear and to the point.
-3. **Acknowledging the audio format:** You can subtly refer to the fact that it was a voice message, e.g., "Got your voice message..." or "Based on what you just said...".
-4. **Maintaining a friendly and efficient tone:** Your responses should be easy to understand and helpful for someone communicating via voice.
-
-Avoid:
-- Long, rambling explanations.
-- Asking for clarification unless absolutely necessary (try to infer intent first).
-- Overly formal language.
-
-Your responses should be optimized for a quick, back-and-forth voice conversation experience.`;
+// Per-persona audio system prompts are now defined in audio.ts and imported via PERSONA_AUDIO_CONFIGS
+// Use getAudioSystemPrompt(persona) to get the correct prompt for each persona
+function getAudioSystemPrompt(persona: string): string {
+  const config = PERSONA_AUDIO_CONFIGS[persona] || PERSONA_AUDIO_CONFIGS.default;
+  return config.audioSystemPrompt;
+}
 
 // Pollinations API configuration
 const POLLINATIONS_API_KEY = process.env.POLLINATIONS_API_KEY || '';
@@ -1665,9 +1657,9 @@ The memory tags will be processed and removed from the visible response, so writ
         }
       }
 
-      // Override model and system prompt for audio input
-      modelToUse = 'meta-llama/llama-4-scout-17b-16e-instruct';
-      systemPromptToUse = AUDIO_SYSTEM_PROMPT;
+      // Override system prompt for audio input with per-persona audio prompt
+      // Keep the persona's own model so each persona sounds like itself
+      systemPromptToUse = getAudioSystemPrompt(persona);
       toolsToUse = []; // No tools for audio-only interaction
     }
 
@@ -1936,7 +1928,7 @@ The memory tags will be processed and removed from the visible response, so writ
           }
         }
 
-        // Generate audio response if needed
+        // Generate audio response if needed — use /api/audio proxy to keep secrets server-side
         if (isAudioInput && fullContent) {
           try {
             const cleanContent = fullContent
@@ -1945,30 +1937,10 @@ The memory tags will be processed and removed from the visible response, so writ
               .replace(/<memory>[\s\S]*?<\/memory>/gi, '') // Remove memory tags
               .trim();
 
-            const encodedText = encodeURIComponent(cleanContent);
-            const audioToken = process.env.POLLINATIONS_API_KEY || '';
+            // Build proxy URL — the /api/audio endpoint handles Pollinations key + voice selection
+            const audioProxyUrl = `/api/audio?message=${encodeURIComponent(cleanContent)}&persona=${encodeURIComponent(persona)}`;
 
-            // Persona-specific voice configurations
-            const voiceConfigs: Record<string, { voice: string; prompt: string }> = {
-              default: {
-                voice: 'onyx',
-                prompt: 'Repeat this text in a friendly conversational male voice:'
-              },
-              girlie: {
-                voice: 'nova',
-                prompt: 'Repeat this exact text in a cute bubbly feminine voice:'
-              },
-              pro: {
-                voice: 'echo',
-                prompt: 'Repeat this text in a professional confident voice:'
-              }
-            };
-
-            const config = voiceConfigs[persona] || voiceConfigs.default;
-            const encodedPrompt = encodeURIComponent(`${config.prompt} ${cleanContent}`);
-            const audioUrl = `https://text.pollinations.ai/${encodedPrompt}?model=openai-audio&voice=${config.voice}&token=${audioToken}`;
-
-            res.write(`\n\n[AUDIO_URL]${audioUrl}[/AUDIO_URL]`);
+            res.write(`\n\n[AUDIO_URL]${audioProxyUrl}[/AUDIO_URL]`);
           } catch (error) {
             console.error('Error generating audio URL:', error);
           }
@@ -2139,7 +2111,7 @@ The memory tags will be processed and removed from the visible response, so writ
       // Extract reasoning content for all personas
       const result = extractReasoningAndContent(fullContent);
 
-      // If this was an audio input, generate audio response using Pollinations.ai
+      // If this was an audio input, generate audio response using /api/audio proxy
       let audioUrl: string | undefined;
       if (isAudioInput && result.content) {
         try {
@@ -2149,27 +2121,8 @@ The memory tags will be processed and removed from the visible response, so writ
             .replace(/\n+/g, ' ') // Replace newlines with spaces
             .trim();
 
-          const audioToken = process.env.POLLINATIONS_API_KEY || '';
-
-          // Persona-specific voice configurations
-          const voiceConfigs: Record<string, { voice: string; prompt: string }> = {
-            default: {
-              voice: 'onyx',
-              prompt: 'Repeat this text in a friendly conversational male voice:'
-            },
-            girlie: {
-              voice: 'nova',
-              prompt: 'Repeat this exact text in a cute bubbly feminine voice:'
-            },
-            pro: {
-              voice: 'echo',
-              prompt: 'Repeat this text in a professional confident voice:'
-            }
-          };
-
-          const config = voiceConfigs[persona] || voiceConfigs.default;
-          const encodedPrompt = encodeURIComponent(`${config.prompt} ${cleanContent}`);
-          audioUrl = `https://text.pollinations.ai/${encodedPrompt}?model=openai-audio&voice=${config.voice}&token=${audioToken}`;
+          // Build proxy URL — the /api/audio endpoint handles Pollinations key + voice selection
+          audioUrl = `/api/audio?message=${encodeURIComponent(cleanContent)}&persona=${encodeURIComponent(persona)}`;
         } catch (error) {
           console.error('Error generating audio URL:', error);
           // Continue without audio URL if there's an error
