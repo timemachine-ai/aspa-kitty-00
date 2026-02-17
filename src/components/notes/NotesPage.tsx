@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import {
   ArrowLeft,
   Plus,
@@ -50,6 +50,8 @@ interface Block {
   checked?: boolean;
 }
 
+type NoteTheme = 'purple' | 'blue' | 'green' | 'pink' | 'orange' | 'red' | 'cyan' | 'yellow';
+
 interface Note {
   id: string;
   title: string;
@@ -58,6 +60,7 @@ interface Note {
   updatedAt: string;
   starred: boolean;
   emoji?: string;
+  noteTheme?: NoteTheme;
 }
 
 // ─── constants ──────────────────────────────────────────────────────
@@ -90,6 +93,30 @@ const emptyBlock = (): Block => ({ id: uid(), type: 'text', content: '' });
 
 const STORAGE_KEY = 'tm-notes';
 
+const EMOJI_CATEGORIES: { label: string; emojis: string[] }[] = [
+  { label: 'Smileys', emojis: ['😀', '😂', '🥹', '😍', '🤩', '😎', '🥳', '🤔', '😴', '🫠', '🤗', '😇'] },
+  { label: 'Objects', emojis: ['📝', '📒', '📕', '📗', '📘', '📙', '📓', '📔', '📖', '🗒️', '📋', '📎'] },
+  { label: 'Symbols', emojis: ['⭐', '🔥', '💡', '❤️', '🎯', '🚀', '✨', '💎', '🏆', '🎨', '🎵', '⚡'] },
+  { label: 'Nature', emojis: ['🌸', '🌻', '🍀', '🌈', '🌙', '☀️', '🌊', '🍁', '🌺', '🦋', '🐝', '🌿'] },
+  { label: 'Food', emojis: ['☕', '🍕', '🍩', '🧁', '🍎', '🍓', '🫐', '🍰', '🍪', '🧋', '🥑', '🍫'] },
+  { label: 'Travel', emojis: ['🏠', '🏖️', '⛰️', '🗺️', '✈️', '🚗', '🛸', '🎡', '🏕️', '🌃', '🗼', '🎢'] },
+];
+
+const NOTE_THEMES: { key: NoteTheme; label: string; dot: string; accent: string; accentBorder: string; checkBg: string; checkBorder: string; quoteBorder: string; calloutBg: string; calloutBorder: string }[] = [
+  { key: 'purple', label: 'Purple', dot: 'bg-purple-500', accent: 'rgba(168, 85, 247, 0.1)', accentBorder: 'rgba(168, 85, 247, 0.2)', checkBg: 'bg-purple-500', checkBorder: 'border-purple-400', quoteBorder: 'border-purple-400/50', calloutBg: 'bg-purple-500/10', calloutBorder: 'border-purple-500/20' },
+  { key: 'blue', label: 'Blue', dot: 'bg-blue-500', accent: 'rgba(59, 130, 246, 0.1)', accentBorder: 'rgba(59, 130, 246, 0.2)', checkBg: 'bg-blue-500', checkBorder: 'border-blue-400', quoteBorder: 'border-blue-400/50', calloutBg: 'bg-blue-500/10', calloutBorder: 'border-blue-500/20' },
+  { key: 'green', label: 'Green', dot: 'bg-green-500', accent: 'rgba(34, 197, 94, 0.1)', accentBorder: 'rgba(34, 197, 94, 0.2)', checkBg: 'bg-green-500', checkBorder: 'border-green-400', quoteBorder: 'border-green-400/50', calloutBg: 'bg-green-500/10', calloutBorder: 'border-green-500/20' },
+  { key: 'pink', label: 'Pink', dot: 'bg-pink-500', accent: 'rgba(236, 72, 153, 0.1)', accentBorder: 'rgba(236, 72, 153, 0.2)', checkBg: 'bg-pink-500', checkBorder: 'border-pink-400', quoteBorder: 'border-pink-400/50', calloutBg: 'bg-pink-500/10', calloutBorder: 'border-pink-500/20' },
+  { key: 'orange', label: 'Orange', dot: 'bg-orange-500', accent: 'rgba(249, 115, 22, 0.1)', accentBorder: 'rgba(249, 115, 22, 0.2)', checkBg: 'bg-orange-500', checkBorder: 'border-orange-400', quoteBorder: 'border-orange-400/50', calloutBg: 'bg-orange-500/10', calloutBorder: 'border-orange-500/20' },
+  { key: 'red', label: 'Red', dot: 'bg-red-500', accent: 'rgba(239, 68, 68, 0.1)', accentBorder: 'rgba(239, 68, 68, 0.2)', checkBg: 'bg-red-500', checkBorder: 'border-red-400', quoteBorder: 'border-red-400/50', calloutBg: 'bg-red-500/10', calloutBorder: 'border-red-500/20' },
+  { key: 'cyan', label: 'Cyan', dot: 'bg-cyan-500', accent: 'rgba(6, 182, 212, 0.1)', accentBorder: 'rgba(6, 182, 212, 0.2)', checkBg: 'bg-cyan-500', checkBorder: 'border-cyan-400', quoteBorder: 'border-cyan-400/50', calloutBg: 'bg-cyan-500/10', calloutBorder: 'border-cyan-500/20' },
+  { key: 'yellow', label: 'Yellow', dot: 'bg-yellow-500', accent: 'rgba(234, 179, 8, 0.1)', accentBorder: 'rgba(234, 179, 8, 0.2)', checkBg: 'bg-yellow-500', checkBorder: 'border-yellow-400', quoteBorder: 'border-yellow-400/50', calloutBg: 'bg-yellow-500/10', calloutBorder: 'border-yellow-500/20' },
+];
+
+function getNoteTheme(key?: NoteTheme) {
+  return NOTE_THEMES.find((t) => t.key === key) || NOTE_THEMES[0];
+}
+
 // ─── persistence ────────────────────────────────────────────────────
 
 function loadNotes(): Note[] {
@@ -111,6 +138,8 @@ interface BlockEditorProps {
   block: Block;
   index: number;
   focused: boolean;
+  noteTheme: NoteTheme;
+  dragControls: ReturnType<typeof useDragControls>;
   onFocus: () => void;
   onChange: (content: string) => void;
   onChangeType: (type: BlockType) => void;
@@ -120,7 +149,8 @@ interface BlockEditorProps {
   onDuplicate: () => void;
 }
 
-function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, onToggleCheck, onKeyDown, onDelete, onDuplicate }: BlockEditorProps) {
+function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, onChange, onChangeType, onToggleCheck, onKeyDown, onDelete, onDuplicate }: BlockEditorProps) {
+  const themeColors = getNoteTheme(noteTheme);
   const ref = useRef<HTMLTextAreaElement>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showTypeMenu, setShowTypeMenu] = useState(false);
@@ -174,11 +204,18 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
     onChange(text);
   };
 
-  const handleTypeSelect = (type: BlockType) => {
+  // Slash command: clear the slash text since user typed "/heading1" etc.
+  const handleSlashTypeSelect = (type: BlockType) => {
     onChangeType(type);
     setShowTypeMenu(false);
     setSlashFilter('');
     onChange('');
+    setTimeout(() => ref.current?.focus(), 0);
+  };
+
+  // Context menu (3-dot): preserve existing content
+  const handleContextTypeSelect = (type: BlockType) => {
+    onChangeType(type);
     setTimeout(() => ref.current?.focus(), 0);
   };
 
@@ -221,10 +258,10 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
     'bullet-list': '',
     'numbered-list': '',
     todo: '',
-    quote: 'border-l-2 border-purple-400/50 pl-4',
+    quote: `border-l-2 ${themeColors.quoteBorder} pl-4`,
     code: 'bg-white/[0.03] rounded-lg p-3',
     divider: '',
-    callout: 'bg-purple-500/10 border border-purple-500/20 rounded-xl p-4',
+    callout: `${themeColors.calloutBg} border ${themeColors.calloutBorder} rounded-xl p-4`,
   };
 
   const placeholders: Record<BlockType, string> = {
@@ -242,16 +279,19 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
   };
 
   return (
-    <div className="group relative flex items-start gap-1 py-0.5">
+    <div className="group relative flex items-start py-0.5">
       {/* Hover controls */}
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 pt-1 shrink-0 -ml-16 w-14 justify-end">
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -left-14 top-0 flex items-center gap-0.5 pt-1">
         <button
           onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
           className="p-1 rounded hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors"
         >
           <MoreHorizontal className="w-3.5 h-3.5" />
         </button>
-        <button className="p-1 rounded hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors cursor-grab">
+        <button
+          className="p-1 rounded hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors cursor-grab active:cursor-grabbing"
+          onPointerDown={(e) => dragControls.start(e)}
+        >
           <GripVertical className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -269,7 +309,7 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
             onClick={onToggleCheck}
             className={`mt-1.5 w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all ${
               block.checked
-                ? 'bg-purple-500 border-purple-400'
+                ? `${themeColors.checkBg} ${themeColors.checkBorder}`
                 : 'border-white/20 hover:border-white/40'
             }`}
           >
@@ -325,7 +365,7 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
               {BLOCK_MENU_OPTIONS.map((opt) => (
                 <button
                   key={opt.type}
-                  onClick={() => { handleTypeSelect(opt.type); setShowMenu(false); }}
+                  onClick={() => { handleContextTypeSelect(opt.type); setShowMenu(false); }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-white/5 transition-colors ${
                     block.type === opt.type ? 'text-purple-400' : 'text-white/70'
                   }`}
@@ -353,7 +393,7 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
               {filteredBlockOptions.map((opt) => (
                 <button
                   key={opt.type}
-                  onClick={() => handleTypeSelect(opt.type)}
+                  onClick={() => handleSlashTypeSelect(opt.type)}
                   className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 transition-colors"
                 >
                   <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/50">
@@ -385,6 +425,39 @@ interface NoteSidebarProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
 }
+
+// ─── draggable block wrapper ─────────────────────────────────────────
+
+interface DraggableBlockProps {
+  block: Block;
+  index: number;
+  focused: boolean;
+  noteTheme: NoteTheme;
+  onFocus: () => void;
+  onChange: (content: string) => void;
+  onChangeType: (type: BlockType) => void;
+  onToggleCheck: () => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+}
+
+function DraggableBlock(props: DraggableBlockProps) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={props.block}
+      dragListener={false}
+      dragControls={controls}
+      className="list-none"
+      whileDrag={{ scale: 1.02, opacity: 0.8 }}
+    >
+      <BlockEditor {...props} dragControls={controls} />
+    </Reorder.Item>
+  );
+}
+
+// ─── sidebar note list ──────────────────────────────────────────────
 
 function NoteSidebar({ notes, activeId, onSelect, onNew, onDelete, onToggleStar, searchQuery, onSearchChange }: NoteSidebarProps) {
   const filtered = notes.filter((n) =>
@@ -505,8 +578,27 @@ export function NotesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [focusedBlockIndex, setFocusedBlockIndex] = useState<number | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showThemeDropdown, setShowThemeDropdown] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const themeDropdownRef = useRef<HTMLDivElement>(null);
 
   const activeNote = useMemo(() => notes.find((n) => n.id === activeNoteId) || null, [notes, activeNoteId]);
+
+  // Close emoji picker / theme dropdown on outside click
+  useEffect(() => {
+    if (!showEmojiPicker && !showThemeDropdown) return;
+    const handle = (e: MouseEvent) => {
+      if (showEmojiPicker && emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+      if (showThemeDropdown && themeDropdownRef.current && !themeDropdownRef.current.contains(e.target as Node)) {
+        setShowThemeDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [showEmojiPicker, showThemeDropdown]);
 
   // Persist notes
   useEffect(() => { saveNotes(notes); }, [notes]);
@@ -596,6 +688,11 @@ export function NotesPage() {
     });
   }, [activeNoteId, activeNote, updateNote]);
 
+  const reorderBlocks = useCallback((newBlocks: Block[]) => {
+    if (!activeNoteId) return;
+    updateNote(activeNoteId, (n) => ({ ...n, blocks: newBlocks }));
+  }, [activeNoteId, updateNote]);
+
   const handleBlockKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -672,7 +769,7 @@ export function NotesPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </motion.button>
-            <h1 className="text-lg font-semibold text-white/80">Notes</h1>
+            <h1 className="text-lg font-semibold text-white/80">TimeMachine Notes</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -711,9 +808,102 @@ export function NotesPage() {
             {activeNote ? (
               <div className="flex-1 overflow-y-auto custom-scrollbar">
                 <div className="max-w-3xl mx-auto px-6 md:px-16 py-8 pb-40">
+                  {/* Theme pill dropdown - top right */}
+                  <div className="flex justify-end mb-4">
+                    <div className="relative" ref={themeDropdownRef}>
+                      <button
+                        onClick={() => setShowThemeDropdown(!showThemeDropdown)}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium text-white/50 hover:text-white/70 transition-all"
+                        style={{
+                          background: getNoteTheme(activeNote.noteTheme).accent,
+                          border: `1px solid ${getNoteTheme(activeNote.noteTheme).accentBorder}`,
+                        }}
+                      >
+                        <div className={`w-2.5 h-2.5 rounded-full ${getNoteTheme(activeNote.noteTheme).dot}`} />
+                        {getNoteTheme(activeNote.noteTheme).label}
+                        <Palette className="w-3 h-3" />
+                      </button>
+                      <AnimatePresence>
+                        {showThemeDropdown && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                            className="absolute right-0 top-full mt-2 z-50 rounded-2xl overflow-hidden min-w-[160px]"
+                            style={glassCard}
+                          >
+                            <div className="py-1.5">
+                              <p className="px-3 py-1 text-[10px] font-semibold text-white/30 uppercase tracking-wider">Theme</p>
+                              {NOTE_THEMES.map((t) => (
+                                <button
+                                  key={t.key}
+                                  onClick={() => {
+                                    updateNote(activeNote.id, (n) => ({ ...n, noteTheme: t.key }));
+                                    setShowThemeDropdown(false);
+                                  }}
+                                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-white/5 transition-colors ${
+                                    (activeNote.noteTheme || 'purple') === t.key ? 'text-white/90' : 'text-white/50'
+                                  }`}
+                                >
+                                  <div className={`w-3 h-3 rounded-full ${t.dot}`} />
+                                  {t.label}
+                                  {(activeNote.noteTheme || 'purple') === t.key && (
+                                    <svg className="w-3.5 h-3.5 ml-auto text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+
                   {/* Emoji + Title */}
                   <div className="mb-6">
-                    <div className="text-4xl mb-3 cursor-pointer">{activeNote.emoji || '📝'}</div>
+                    <div className="relative inline-block" ref={emojiPickerRef}>
+                      <div
+                        className="text-4xl mb-3 cursor-pointer hover:scale-110 transition-transform inline-block"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      >
+                        {activeNote.emoji || '📝'}
+                      </div>
+                      <AnimatePresence>
+                        {showEmojiPicker && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                            className="absolute left-0 top-full z-50 rounded-2xl overflow-hidden w-[320px] max-h-[340px] overflow-y-auto custom-scrollbar"
+                            style={glassCard}
+                          >
+                            <div className="p-3 space-y-3">
+                              {EMOJI_CATEGORIES.map((cat) => (
+                                <div key={cat.label}>
+                                  <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5">{cat.label}</p>
+                                  <div className="grid grid-cols-6 gap-1">
+                                    {cat.emojis.map((emoji) => (
+                                      <button
+                                        key={emoji}
+                                        onClick={() => {
+                                          updateNote(activeNote.id, (n) => ({ ...n, emoji }));
+                                          setShowEmojiPicker(false);
+                                        }}
+                                        className="text-2xl p-1.5 rounded-xl hover:bg-white/10 transition-colors text-center"
+                                      >
+                                        {emoji}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                     <input
                       value={activeNote.title}
                       onChange={(e) => updateNote(activeNote.id, (n) => ({ ...n, title: e.target.value }))}
@@ -732,30 +922,31 @@ export function NotesPage() {
                   </div>
 
                   {/* Blocks */}
-                  <div className="pl-16 space-y-0.5">
+                  <Reorder.Group axis="y" values={activeNote.blocks} onReorder={reorderBlocks} className="space-y-0.5 list-none p-0 m-0">
                     {activeNote.blocks.map((block, index) => (
-                      <BlockEditor
+                      <DraggableBlock
                         key={block.id}
                         block={block}
                         index={index}
                         focused={focusedBlockIndex === index}
+                        noteTheme={activeNote.noteTheme || 'purple'}
                         onFocus={() => setFocusedBlockIndex(index)}
                         onChange={(content) => updateBlock(block.id, { content })}
-                        onChangeType={(type) => updateBlock(block.id, { type, content: '' })}
+                        onChangeType={(type) => updateBlock(block.id, { type })}
                         onToggleCheck={() => updateBlock(block.id, { checked: !block.checked })}
                         onKeyDown={(e) => handleBlockKeyDown(e, index)}
                         onDelete={() => deleteBlock(index)}
                         onDuplicate={() => duplicateBlock(index)}
                       />
                     ))}
-                  </div>
+                  </Reorder.Group>
 
                   {/* Add block button */}
                   <motion.button
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => insertBlockAfter(activeNote.blocks.length - 1)}
-                    className="mt-4 ml-16 flex items-center gap-2 px-3 py-2 rounded-xl text-white/15 hover:text-white/40 hover:bg-white/[0.03] transition-all text-sm"
+                    className="mt-4 flex items-center gap-2 px-3 py-2 rounded-xl text-white/15 hover:text-white/40 hover:bg-white/[0.03] transition-all text-sm"
                   >
                     <Plus className="w-4 h-4" /> Add a block
                   </motion.button>
