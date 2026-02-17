@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import {
   ArrowLeft,
   Plus,
@@ -139,6 +139,7 @@ interface BlockEditorProps {
   index: number;
   focused: boolean;
   noteTheme: NoteTheme;
+  dragControls: ReturnType<typeof useDragControls>;
   onFocus: () => void;
   onChange: (content: string) => void;
   onChangeType: (type: BlockType) => void;
@@ -148,7 +149,7 @@ interface BlockEditorProps {
   onDuplicate: () => void;
 }
 
-function BlockEditor({ block, index, focused, noteTheme, onFocus, onChange, onChangeType, onToggleCheck, onKeyDown, onDelete, onDuplicate }: BlockEditorProps) {
+function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, onChange, onChangeType, onToggleCheck, onKeyDown, onDelete, onDuplicate }: BlockEditorProps) {
   const themeColors = getNoteTheme(noteTheme);
   const ref = useRef<HTMLTextAreaElement>(null);
   const [showMenu, setShowMenu] = useState(false);
@@ -280,7 +281,10 @@ function BlockEditor({ block, index, focused, noteTheme, onFocus, onChange, onCh
         >
           <MoreHorizontal className="w-3.5 h-3.5" />
         </button>
-        <button className="p-1 rounded hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors cursor-grab">
+        <button
+          className="p-1 rounded hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors cursor-grab active:cursor-grabbing"
+          onPointerDown={(e) => dragControls.start(e)}
+        >
           <GripVertical className="w-3.5 h-3.5" />
         </button>
       </div>
@@ -414,6 +418,39 @@ interface NoteSidebarProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
 }
+
+// ─── draggable block wrapper ─────────────────────────────────────────
+
+interface DraggableBlockProps {
+  block: Block;
+  index: number;
+  focused: boolean;
+  noteTheme: NoteTheme;
+  onFocus: () => void;
+  onChange: (content: string) => void;
+  onChangeType: (type: BlockType) => void;
+  onToggleCheck: () => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+}
+
+function DraggableBlock(props: DraggableBlockProps) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={props.block}
+      dragListener={false}
+      dragControls={controls}
+      className="list-none"
+      whileDrag={{ scale: 1.02, opacity: 0.8 }}
+    >
+      <BlockEditor {...props} dragControls={controls} />
+    </Reorder.Item>
+  );
+}
+
+// ─── sidebar note list ──────────────────────────────────────────────
 
 function NoteSidebar({ notes, activeId, onSelect, onNew, onDelete, onToggleStar, searchQuery, onSearchChange }: NoteSidebarProps) {
   const filtered = notes.filter((n) =>
@@ -644,6 +681,11 @@ export function NotesPage() {
     });
   }, [activeNoteId, activeNote, updateNote]);
 
+  const reorderBlocks = useCallback((newBlocks: Block[]) => {
+    if (!activeNoteId) return;
+    updateNote(activeNoteId, (n) => ({ ...n, blocks: newBlocks }));
+  }, [activeNoteId, updateNote]);
+
   const handleBlockKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -873,9 +915,9 @@ export function NotesPage() {
                   </div>
 
                   {/* Blocks */}
-                  <div className="space-y-0.5">
+                  <Reorder.Group axis="y" values={activeNote.blocks} onReorder={reorderBlocks} className="space-y-0.5 list-none p-0 m-0">
                     {activeNote.blocks.map((block, index) => (
-                      <BlockEditor
+                      <DraggableBlock
                         key={block.id}
                         block={block}
                         index={index}
@@ -883,14 +925,14 @@ export function NotesPage() {
                         noteTheme={activeNote.noteTheme || 'purple'}
                         onFocus={() => setFocusedBlockIndex(index)}
                         onChange={(content) => updateBlock(block.id, { content })}
-                        onChangeType={(type) => updateBlock(block.id, { type, content: '' })}
+                        onChangeType={(type) => updateBlock(block.id, { type })}
                         onToggleCheck={() => updateBlock(block.id, { checked: !block.checked })}
                         onKeyDown={(e) => handleBlockKeyDown(e, index)}
                         onDelete={() => deleteBlock(index)}
                         onDuplicate={() => duplicateBlock(index)}
                       />
                     ))}
-                  </div>
+                  </Reorder.Group>
 
                   {/* Add block button */}
                   <motion.button
