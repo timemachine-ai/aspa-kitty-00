@@ -837,7 +837,13 @@ export function NotesPage() {
   return (
     <div
       className={`fixed inset-0 overflow-hidden select-none ${theme.text}`}
-      style={{ minHeight: 'calc(var(--vh, 1vh) * 100)', background: '#000' }}
+      style={{
+        minHeight: 'calc(var(--vh, 1vh) * 100)',
+        background: activeNote
+          ? `linear-gradient(to top, rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 0.15) 0%, black 50%)`
+          : '#000',
+        transition: 'background 0.5s ease',
+      }}
     >
 
       <div className="h-full flex flex-col">
@@ -891,10 +897,6 @@ export function NotesPage() {
             {activeNote ? (
               <div
                 className="flex-1 overflow-y-auto custom-scrollbar transition-all duration-500"
-                style={{
-                  background: getNoteTheme(activeNote.noteTheme).editorGradient,
-                  boxShadow: getNoteTheme(activeNote.noteTheme).editorGlow,
-                }}
               >
                 <div className="max-w-3xl mx-auto px-6 md:px-16 py-8 pb-40">
                   {/* Theme pill dropdown - top right */}
