@@ -26,6 +26,7 @@ import {
   Palette,
 } from 'lucide-react';
 import { UniversalTextbox } from '../shared/UniversalTextbox';
+import { useTheme } from '../../context/ThemeContext';
 
 // ─── types ──────────────────────────────────────────────────────────
 
@@ -498,6 +499,7 @@ function NoteSidebar({ notes, activeId, onSelect, onNew, onDelete, onToggleStar,
 
 export function NotesPage() {
   const navigate = useNavigate();
+  const { theme } = useTheme();
   const [notes, setNotes] = useState<Note[]>(loadNotes);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -653,12 +655,10 @@ export function NotesPage() {
   }, []);
 
   return (
-    <div className="fixed inset-0 overflow-hidden select-none bg-black text-white">
-      {/* BG — matches chat UI: black with subtle purple glow at bottom */}
-      <div className="absolute inset-0 -z-10 bg-black">
-        <div className="absolute bottom-0 left-[30%] w-[600px] h-[400px] bg-purple-500/[0.07] rounded-full blur-[150px]" />
-        <div className="absolute bottom-[-10%] right-[20%] w-[400px] h-[300px] bg-violet-600/[0.05] rounded-full blur-[120px]" />
-      </div>
+    <div
+      className={`fixed inset-0 overflow-hidden select-none ${theme.background} ${theme.text}`}
+      style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}
+    >
 
       <div className="h-full flex flex-col">
         {/* Top bar */}
