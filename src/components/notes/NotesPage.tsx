@@ -102,15 +102,120 @@ const EMOJI_CATEGORIES: { label: string; emojis: string[] }[] = [
   { label: 'Travel', emojis: ['🏠', '🏖️', '⛰️', '🗺️', '✈️', '🚗', '🛸', '🎡', '🏕️', '🌃', '🗼', '🎢'] },
 ];
 
-const NOTE_THEMES: { key: NoteTheme; label: string; dot: string; accent: string; accentBorder: string; checkBg: string; checkBorder: string; quoteBorder: string; calloutBg: string; calloutBorder: string }[] = [
-  { key: 'purple', label: 'Purple', dot: 'bg-purple-500', accent: 'rgba(168, 85, 247, 0.1)', accentBorder: 'rgba(168, 85, 247, 0.2)', checkBg: 'bg-purple-500', checkBorder: 'border-purple-400', quoteBorder: 'border-purple-400/50', calloutBg: 'bg-purple-500/10', calloutBorder: 'border-purple-500/20' },
-  { key: 'blue', label: 'Blue', dot: 'bg-blue-500', accent: 'rgba(59, 130, 246, 0.1)', accentBorder: 'rgba(59, 130, 246, 0.2)', checkBg: 'bg-blue-500', checkBorder: 'border-blue-400', quoteBorder: 'border-blue-400/50', calloutBg: 'bg-blue-500/10', calloutBorder: 'border-blue-500/20' },
-  { key: 'green', label: 'Green', dot: 'bg-green-500', accent: 'rgba(34, 197, 94, 0.1)', accentBorder: 'rgba(34, 197, 94, 0.2)', checkBg: 'bg-green-500', checkBorder: 'border-green-400', quoteBorder: 'border-green-400/50', calloutBg: 'bg-green-500/10', calloutBorder: 'border-green-500/20' },
-  { key: 'pink', label: 'Pink', dot: 'bg-pink-500', accent: 'rgba(236, 72, 153, 0.1)', accentBorder: 'rgba(236, 72, 153, 0.2)', checkBg: 'bg-pink-500', checkBorder: 'border-pink-400', quoteBorder: 'border-pink-400/50', calloutBg: 'bg-pink-500/10', calloutBorder: 'border-pink-500/20' },
-  { key: 'orange', label: 'Orange', dot: 'bg-orange-500', accent: 'rgba(249, 115, 22, 0.1)', accentBorder: 'rgba(249, 115, 22, 0.2)', checkBg: 'bg-orange-500', checkBorder: 'border-orange-400', quoteBorder: 'border-orange-400/50', calloutBg: 'bg-orange-500/10', calloutBorder: 'border-orange-500/20' },
-  { key: 'red', label: 'Red', dot: 'bg-red-500', accent: 'rgba(239, 68, 68, 0.1)', accentBorder: 'rgba(239, 68, 68, 0.2)', checkBg: 'bg-red-500', checkBorder: 'border-red-400', quoteBorder: 'border-red-400/50', calloutBg: 'bg-red-500/10', calloutBorder: 'border-red-500/20' },
-  { key: 'cyan', label: 'Cyan', dot: 'bg-cyan-500', accent: 'rgba(6, 182, 212, 0.1)', accentBorder: 'rgba(6, 182, 212, 0.2)', checkBg: 'bg-cyan-500', checkBorder: 'border-cyan-400', quoteBorder: 'border-cyan-400/50', calloutBg: 'bg-cyan-500/10', calloutBorder: 'border-cyan-500/20' },
-  { key: 'yellow', label: 'Yellow', dot: 'bg-yellow-500', accent: 'rgba(234, 179, 8, 0.1)', accentBorder: 'rgba(234, 179, 8, 0.2)', checkBg: 'bg-yellow-500', checkBorder: 'border-yellow-400', quoteBorder: 'border-yellow-400/50', calloutBg: 'bg-yellow-500/10', calloutBorder: 'border-yellow-500/20' },
+interface NoteThemeConfig {
+  key: NoteTheme;
+  label: string;
+  dot: string;
+  // rgba base for dynamic opacity usage
+  rgb: string;
+  // pill button
+  accent: string;
+  accentBorder: string;
+  // block accents
+  checkBg: string;
+  checkBorder: string;
+  quoteBorder: string;
+  calloutBg: string;
+  calloutBorder: string;
+  // editor area
+  editorGradient: string;
+  editorGlow: string;
+  // text accent for active type in context menu
+  textAccent: string;
+  // sidebar new-note button
+  sidebarBtnBg: string;
+  sidebarBtnBorder: string;
+}
+
+const NOTE_THEMES: NoteThemeConfig[] = [
+  // Purple — from Default/Air persona: rgba(168, 85, 247)
+  {
+    key: 'purple', label: 'Purple', dot: 'bg-purple-500', rgb: '168, 85, 247',
+    accent: 'rgba(168, 85, 247, 0.1)', accentBorder: 'rgba(168, 85, 247, 0.2)',
+    checkBg: 'bg-purple-500', checkBorder: 'border-purple-400',
+    quoteBorder: 'border-purple-400/50', calloutBg: 'bg-purple-500/10', calloutBorder: 'border-purple-500/20',
+    editorGradient: 'linear-gradient(180deg, rgba(168,85,247,0.06) 0%, rgba(168,85,247,0.02) 40%, transparent 100%)',
+    editorGlow: '0 0 80px rgba(168,85,247,0.08)',
+    textAccent: 'text-purple-400',
+    sidebarBtnBg: 'rgba(168, 85, 247, 0.1)', sidebarBtnBorder: 'rgba(168, 85, 247, 0.2)',
+  },
+  // Pink — from Girlie persona: rgba(236, 72, 153)
+  {
+    key: 'pink', label: 'Pink', dot: 'bg-pink-500', rgb: '236, 72, 153',
+    accent: 'rgba(236, 72, 153, 0.1)', accentBorder: 'rgba(236, 72, 153, 0.2)',
+    checkBg: 'bg-pink-500', checkBorder: 'border-pink-400',
+    quoteBorder: 'border-pink-400/50', calloutBg: 'bg-pink-500/10', calloutBorder: 'border-pink-500/20',
+    editorGradient: 'linear-gradient(180deg, rgba(236,72,153,0.06) 0%, rgba(236,72,153,0.02) 40%, transparent 100%)',
+    editorGlow: '0 0 80px rgba(236,72,153,0.08)',
+    textAccent: 'text-pink-400',
+    sidebarBtnBg: 'rgba(236, 72, 153, 0.1)', sidebarBtnBorder: 'rgba(236, 72, 153, 0.2)',
+  },
+  // Cyan — from Pro persona: rgba(34, 211, 238)
+  {
+    key: 'cyan', label: 'Cyan', dot: 'bg-cyan-400', rgb: '34, 211, 238',
+    accent: 'rgba(34, 211, 238, 0.1)', accentBorder: 'rgba(34, 211, 238, 0.2)',
+    checkBg: 'bg-cyan-500', checkBorder: 'border-cyan-400',
+    quoteBorder: 'border-cyan-400/50', calloutBg: 'bg-cyan-500/10', calloutBorder: 'border-cyan-500/20',
+    editorGradient: 'linear-gradient(180deg, rgba(34,211,238,0.06) 0%, rgba(34,211,238,0.02) 40%, transparent 100%)',
+    editorGlow: '0 0 80px rgba(34,211,238,0.08)',
+    textAccent: 'text-cyan-400',
+    sidebarBtnBg: 'rgba(34, 211, 238, 0.1)', sidebarBtnBorder: 'rgba(34, 211, 238, 0.2)',
+  },
+  // Blue
+  {
+    key: 'blue', label: 'Blue', dot: 'bg-blue-500', rgb: '59, 130, 246',
+    accent: 'rgba(59, 130, 246, 0.1)', accentBorder: 'rgba(59, 130, 246, 0.2)',
+    checkBg: 'bg-blue-500', checkBorder: 'border-blue-400',
+    quoteBorder: 'border-blue-400/50', calloutBg: 'bg-blue-500/10', calloutBorder: 'border-blue-500/20',
+    editorGradient: 'linear-gradient(180deg, rgba(59,130,246,0.06) 0%, rgba(59,130,246,0.02) 40%, transparent 100%)',
+    editorGlow: '0 0 80px rgba(59,130,246,0.08)',
+    textAccent: 'text-blue-400',
+    sidebarBtnBg: 'rgba(59, 130, 246, 0.1)', sidebarBtnBorder: 'rgba(59, 130, 246, 0.2)',
+  },
+  // Green
+  {
+    key: 'green', label: 'Green', dot: 'bg-green-500', rgb: '34, 197, 94',
+    accent: 'rgba(34, 197, 94, 0.1)', accentBorder: 'rgba(34, 197, 94, 0.2)',
+    checkBg: 'bg-green-500', checkBorder: 'border-green-400',
+    quoteBorder: 'border-green-400/50', calloutBg: 'bg-green-500/10', calloutBorder: 'border-green-500/20',
+    editorGradient: 'linear-gradient(180deg, rgba(34,197,94,0.06) 0%, rgba(34,197,94,0.02) 40%, transparent 100%)',
+    editorGlow: '0 0 80px rgba(34,197,94,0.08)',
+    textAccent: 'text-green-400',
+    sidebarBtnBg: 'rgba(34, 197, 94, 0.1)', sidebarBtnBorder: 'rgba(34, 197, 94, 0.2)',
+  },
+  // Orange
+  {
+    key: 'orange', label: 'Orange', dot: 'bg-orange-500', rgb: '249, 115, 22',
+    accent: 'rgba(249, 115, 22, 0.1)', accentBorder: 'rgba(249, 115, 22, 0.2)',
+    checkBg: 'bg-orange-500', checkBorder: 'border-orange-400',
+    quoteBorder: 'border-orange-400/50', calloutBg: 'bg-orange-500/10', calloutBorder: 'border-orange-500/20',
+    editorGradient: 'linear-gradient(180deg, rgba(249,115,22,0.06) 0%, rgba(249,115,22,0.02) 40%, transparent 100%)',
+    editorGlow: '0 0 80px rgba(249,115,22,0.08)',
+    textAccent: 'text-orange-400',
+    sidebarBtnBg: 'rgba(249, 115, 22, 0.1)', sidebarBtnBorder: 'rgba(249, 115, 22, 0.2)',
+  },
+  // Red
+  {
+    key: 'red', label: 'Red', dot: 'bg-red-500', rgb: '239, 68, 68',
+    accent: 'rgba(239, 68, 68, 0.1)', accentBorder: 'rgba(239, 68, 68, 0.2)',
+    checkBg: 'bg-red-500', checkBorder: 'border-red-400',
+    quoteBorder: 'border-red-400/50', calloutBg: 'bg-red-500/10', calloutBorder: 'border-red-500/20',
+    editorGradient: 'linear-gradient(180deg, rgba(239,68,68,0.06) 0%, rgba(239,68,68,0.02) 40%, transparent 100%)',
+    editorGlow: '0 0 80px rgba(239,68,68,0.08)',
+    textAccent: 'text-red-400',
+    sidebarBtnBg: 'rgba(239, 68, 68, 0.1)', sidebarBtnBorder: 'rgba(239, 68, 68, 0.2)',
+  },
+  // Yellow
+  {
+    key: 'yellow', label: 'Yellow', dot: 'bg-yellow-500', rgb: '234, 179, 8',
+    accent: 'rgba(234, 179, 8, 0.1)', accentBorder: 'rgba(234, 179, 8, 0.2)',
+    checkBg: 'bg-yellow-500', checkBorder: 'border-yellow-400',
+    quoteBorder: 'border-yellow-400/50', calloutBg: 'bg-yellow-500/10', calloutBorder: 'border-yellow-500/20',
+    editorGradient: 'linear-gradient(180deg, rgba(234,179,8,0.06) 0%, rgba(234,179,8,0.02) 40%, transparent 100%)',
+    editorGlow: '0 0 80px rgba(234,179,8,0.08)',
+    textAccent: 'text-yellow-400',
+    sidebarBtnBg: 'rgba(234, 179, 8, 0.1)', sidebarBtnBorder: 'rgba(234, 179, 8, 0.2)',
+  },
 ];
 
 function getNoteTheme(key?: NoteTheme) {
@@ -367,7 +472,7 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
                   key={opt.type}
                   onClick={() => { handleContextTypeSelect(opt.type); setShowMenu(false); }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-white/5 transition-colors ${
-                    block.type === opt.type ? 'text-purple-400' : 'text-white/70'
+                    block.type === opt.type ? themeColors.textAccent : 'text-white/70'
                   }`}
                 >
                   {opt.icon} {opt.label}
@@ -418,6 +523,7 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
 interface NoteSidebarProps {
   notes: Note[];
   activeId: string | null;
+  activeTheme: NoteThemeConfig;
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
@@ -459,7 +565,7 @@ function DraggableBlock(props: DraggableBlockProps) {
 
 // ─── sidebar note list ──────────────────────────────────────────────
 
-function NoteSidebar({ notes, activeId, onSelect, onNew, onDelete, onToggleStar, searchQuery, onSearchChange }: NoteSidebarProps) {
+function NoteSidebar({ notes, activeId, activeTheme, onSelect, onNew, onDelete, onToggleStar, searchQuery, onSearchChange }: NoteSidebarProps) {
   const filtered = notes.filter((n) =>
     n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     n.blocks.some((b) => b.content.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -532,8 +638,8 @@ function NoteSidebar({ notes, activeId, onSelect, onNew, onDelete, onToggleStar,
           onClick={onNew}
           className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-white/60 hover:text-white/80 transition-all"
           style={{
-            background: 'rgba(168, 85, 247, 0.1)',
-            border: '1px solid rgba(168, 85, 247, 0.2)',
+            background: activeTheme.sidebarBtnBg,
+            border: `1px solid ${activeTheme.sidebarBtnBorder}`,
           }}
         >
           <Plus className="w-4 h-4" /> New Note
@@ -793,6 +899,7 @@ export function NotesPage() {
               <NoteSidebar
                 notes={notes}
                 activeId={activeNoteId}
+                activeTheme={getNoteTheme(activeNote?.noteTheme)}
                 onSelect={setActiveNoteId}
                 onNew={handleNewNote}
                 onDelete={handleDeleteNote}
@@ -806,7 +913,13 @@ export function NotesPage() {
           {/* Editor */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {activeNote ? (
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <div
+                className="flex-1 overflow-y-auto custom-scrollbar transition-all duration-500"
+                style={{
+                  background: getNoteTheme(activeNote.noteTheme).editorGradient,
+                  boxShadow: getNoteTheme(activeNote.noteTheme).editorGlow,
+                }}
+              >
                 <div className="max-w-3xl mx-auto px-6 md:px-16 py-8 pb-40">
                   {/* Theme pill dropdown - top right */}
                   <div className="flex justify-end mb-4">
@@ -820,7 +933,7 @@ export function NotesPage() {
                         }}
                       >
                         <div className={`w-2.5 h-2.5 rounded-full ${getNoteTheme(activeNote.noteTheme).dot}`} />
-                        {getNoteTheme(activeNote.noteTheme).label}
+                        {getNoteTheme(activeNote.noteTheme).label} Theme
                         <Palette className="w-3 h-3" />
                       </button>
                       <AnimatePresence>
@@ -846,7 +959,7 @@ export function NotesPage() {
                                   }`}
                                 >
                                   <div className={`w-3 h-3 rounded-full ${t.dot}`} />
-                                  {t.label}
+                                  {t.label} Theme
                                   {(activeNote.noteTheme || 'purple') === t.key && (
                                     <svg className="w-3.5 h-3.5 ml-auto text-white/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
