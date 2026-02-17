@@ -836,8 +836,8 @@ export function NotesPage() {
 
   return (
     <div
-      className={`fixed inset-0 overflow-hidden select-none ${theme.background} ${theme.text}`}
-      style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}
+      className={`fixed inset-0 overflow-hidden select-none ${theme.text}`}
+      style={{ minHeight: 'calc(var(--vh, 1vh) * 100)', background: '#000' }}
     >
 
       <div className="h-full flex flex-col">
@@ -902,10 +902,10 @@ export function NotesPage() {
                     <div className="relative" ref={themeDropdownRef}>
                       <button
                         onClick={() => setShowThemeDropdown(!showThemeDropdown)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${getNoteTheme(activeNote.noteTheme).textAccent} hover:brightness-125 transition-all`}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium text-white/70 hover:text-white/90 transition-all"
                         style={{
-                          background: `rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 0.15)`,
-                          border: `1px solid rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 0.3)`,
+                          background: `rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 0.1)`,
+                          border: `1px solid rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 0.2)`,
                         }}
                       >
                         <div className={`w-2.5 h-2.5 rounded-full ${getNoteTheme(activeNote.noteTheme).dot}`} />
