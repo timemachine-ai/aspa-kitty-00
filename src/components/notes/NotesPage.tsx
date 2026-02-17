@@ -720,7 +720,7 @@ export function NotesPage() {
             >
               <ArrowLeft className="w-5 h-5" />
             </motion.button>
-            <h1 className="text-lg font-semibold text-white/80">Notes</h1>
+            <h1 className="text-lg font-semibold text-white/80">TimeMachine Notes</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
