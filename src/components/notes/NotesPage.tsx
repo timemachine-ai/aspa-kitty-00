@@ -90,6 +90,15 @@ const emptyBlock = (): Block => ({ id: uid(), type: 'text', content: '' });
 
 const STORAGE_KEY = 'tm-notes';
 
+const EMOJI_CATEGORIES: { label: string; emojis: string[] }[] = [
+  { label: 'Smileys', emojis: ['😀', '😂', '🥹', '😍', '🤩', '😎', '🥳', '🤔', '😴', '🫠', '🤗', '😇'] },
+  { label: 'Objects', emojis: ['📝', '📒', '📕', '📗', '📘', '📙', '📓', '📔', '📖', '🗒️', '📋', '📎'] },
+  { label: 'Symbols', emojis: ['⭐', '🔥', '💡', '❤️', '🎯', '🚀', '✨', '💎', '🏆', '🎨', '🎵', '⚡'] },
+  { label: 'Nature', emojis: ['🌸', '🌻', '🍀', '🌈', '🌙', '☀️', '🌊', '🍁', '🌺', '🦋', '🐝', '🌿'] },
+  { label: 'Food', emojis: ['☕', '🍕', '🍩', '🧁', '🍎', '🍓', '🫐', '🍰', '🍪', '🧋', '🥑', '🍫'] },
+  { label: 'Travel', emojis: ['🏠', '🏖️', '⛰️', '🗺️', '✈️', '🚗', '🛸', '🎡', '🏕️', '🌃', '🗼', '🎢'] },
+];
+
 // ─── persistence ────────────────────────────────────────────────────
 
 function loadNotes(): Note[] {
@@ -505,8 +514,22 @@ export function NotesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [focusedBlockIndex, setFocusedBlockIndex] = useState<number | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   const activeNote = useMemo(() => notes.find((n) => n.id === activeNoteId) || null, [notes, activeNoteId]);
+
+  // Close emoji picker on outside click
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    const handle = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [showEmojiPicker]);
 
   // Persist notes
   useEffect(() => { saveNotes(notes); }, [notes]);
@@ -713,7 +736,47 @@ export function NotesPage() {
                 <div className="max-w-3xl mx-auto px-6 md:px-16 py-8 pb-40">
                   {/* Emoji + Title */}
                   <div className="mb-6">
-                    <div className="text-4xl mb-3 cursor-pointer">{activeNote.emoji || '📝'}</div>
+                    <div className="relative inline-block" ref={emojiPickerRef}>
+                      <div
+                        className="text-4xl mb-3 cursor-pointer hover:scale-110 transition-transform inline-block"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      >
+                        {activeNote.emoji || '📝'}
+                      </div>
+                      <AnimatePresence>
+                        {showEmojiPicker && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                            className="absolute left-0 top-full z-50 rounded-2xl overflow-hidden w-[320px] max-h-[340px] overflow-y-auto custom-scrollbar"
+                            style={glassCard}
+                          >
+                            <div className="p-3 space-y-3">
+                              {EMOJI_CATEGORIES.map((cat) => (
+                                <div key={cat.label}>
+                                  <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5">{cat.label}</p>
+                                  <div className="grid grid-cols-6 gap-1">
+                                    {cat.emojis.map((emoji) => (
+                                      <button
+                                        key={emoji}
+                                        onClick={() => {
+                                          updateNote(activeNote.id, (n) => ({ ...n, emoji }));
+                                          setShowEmojiPicker(false);
+                                        }}
+                                        className="text-2xl p-1.5 rounded-xl hover:bg-white/10 transition-colors text-center"
+                                      >
+                                        {emoji}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                     <input
                       value={activeNote.title}
                       onChange={(e) => updateNote(activeNote.id, (n) => ({ ...n, title: e.target.value }))}
