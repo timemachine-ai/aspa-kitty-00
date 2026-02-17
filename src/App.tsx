@@ -27,7 +27,6 @@ import { FeaturesPage } from './components/features/FeaturesPage';
 import { GroupChatModal } from './components/groupchat/GroupChatModal';
 import { GroupSettingsPage } from './components/groupchat/GroupSettingsPage';
 import { HomePage } from './components/home/HomePage';
-import { NotesPage } from './components/notes/NotesPage';
 import {
   getGroupChat,
   getGroupChatInvite,
@@ -869,7 +868,6 @@ function AppContent() {
       <Route path="/album" element={<><SEOHead title="Album" path="/album" noIndex /><AlbumPage /></>} />
       <Route path="/memories" element={<><SEOHead title="Memories" path="/memories" noIndex /><MemoriesPage /></>} />
       <Route path="/help" element={<><SEOHead title="Help" description="Get help with TimeMachine — learn about AI personas, group chats, image generation, and all features." path="/help" /><HelpPage /></>} />
-      <Route path="/notes" element={<><SEOHead title="Notes" description="TimeMachine Notes — a powerful Notion-like editor for capturing ideas, writing docs, and organizing your thoughts." path="/notes" /><NotesPage /></>} />
       <Route path="/chat/:id" element={<><SEOHead title="Chat" noIndex /><ChatByIdPage /></>} />
       <Route path="/groupchat/:id" element={<><SEOHead title="Group Chat" noIndex /><GroupChatWrapper /></>} />
       <Route path="/groupchat/:id/settings" element={<><SEOHead title="Group Settings" noIndex /><GroupSettingsPage /></>} />
