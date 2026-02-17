@@ -6,10 +6,6 @@ import {
   Plus,
   MoreHorizontal,
   Search,
-  Bold,
-  Italic,
-  Underline,
-  Strikethrough,
   List,
   ListOrdered,
   CheckSquare,
@@ -19,16 +15,10 @@ import {
   Quote,
   Code,
   Minus,
-  Image,
-  Link,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
   Type,
   Trash2,
   Copy,
   GripVertical,
-  ChevronDown,
   FileText,
   Clock,
   Star,
@@ -50,17 +40,13 @@ type BlockType =
   | 'quote'
   | 'code'
   | 'divider'
-  | 'callout'
-  | 'image';
+  | 'callout';
 
 interface Block {
   id: string;
   type: BlockType;
   content: string;
   checked?: boolean;
-  language?: string;
-  color?: string;
-  imageUrl?: string;
 }
 
 interface Note {
@@ -71,7 +57,6 @@ interface Note {
   updatedAt: string;
   starred: boolean;
   emoji?: string;
-  coverColor?: string;
 }
 
 // ─── constants ──────────────────────────────────────────────────────
@@ -88,15 +73,6 @@ const BLOCK_MENU_OPTIONS: { type: BlockType; label: string; description: string;
   { type: 'code', label: 'Code', description: 'Code snippet block', icon: <Code className="w-4 h-4" /> },
   { type: 'divider', label: 'Divider', description: 'Horizontal line', icon: <Minus className="w-4 h-4" /> },
   { type: 'callout', label: 'Callout', description: 'Highlighted callout box', icon: <Palette className="w-4 h-4" /> },
-];
-
-const COVER_COLORS = [
-  'linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)',
-  'linear-gradient(135deg, #ec4899 0%, #be185d 100%)',
-  'linear-gradient(135deg, #06b6d4 0%, #0e7490 100%)',
-  'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-  'linear-gradient(135deg, #10b981 0%, #047857 100%)',
-  'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
 ];
 
 const glassCard = {
@@ -128,7 +104,7 @@ function saveNotes(notes: Note[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
 }
 
-// ─── block renderer ─────────────────────────────────────────────────
+// ─── block renderer (textarea-based, no contentEditable) ────────────
 
 interface BlockEditorProps {
   block: Block;
@@ -144,29 +120,29 @@ interface BlockEditorProps {
 }
 
 function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, onToggleCheck, onKeyDown, onDelete, onDuplicate }: BlockEditorProps) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLTextAreaElement>(null);
   const [showMenu, setShowMenu] = useState(false);
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const [slashFilter, setSlashFilter] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Auto-focus when this block becomes focused
   useEffect(() => {
     if (focused && ref.current) {
       ref.current.focus();
       // Move cursor to end
-      const range = document.createRange();
-      const sel = window.getSelection();
-      if (ref.current.childNodes.length > 0) {
-        range.selectNodeContents(ref.current);
-        range.collapse(false);
-      } else {
-        range.setStart(ref.current, 0);
-        range.collapse(true);
-      }
-      sel?.removeAllRanges();
-      sel?.addRange(range);
+      const len = ref.current.value.length;
+      ref.current.setSelectionRange(len, len);
     }
   }, [focused]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.style.height = 'auto';
+      ref.current.style.height = `${ref.current.scrollHeight}px`;
+    }
+  }, [block.content, block.type]);
 
   // Close menus on outside click
   useEffect(() => {
@@ -182,8 +158,8 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
     return () => document.removeEventListener('mousedown', handle);
   }, [showMenu, showTypeMenu]);
 
-  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
-    const text = e.currentTarget.textContent || '';
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
 
     // Slash command detection
     if (text.startsWith('/')) {
@@ -201,11 +177,7 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
     onChangeType(type);
     setShowTypeMenu(false);
     setSlashFilter('');
-    // Clear the slash command text
-    if (ref.current) {
-      ref.current.textContent = '';
-      onChange('');
-    }
+    onChange('');
     setTimeout(() => ref.current?.focus(), 0);
   };
 
@@ -226,19 +198,32 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
     );
   }
 
-  const blockClasses: Record<BlockType, string> = {
+  const textSizeClass: Record<BlockType, string> = {
     text: 'text-base text-white/80',
     'heading1': 'text-3xl font-bold text-white',
     'heading2': 'text-2xl font-semibold text-white',
     'heading3': 'text-xl font-semibold text-white/90',
-    'bullet-list': 'text-base text-white/80 pl-6',
-    'numbered-list': 'text-base text-white/80 pl-6',
+    'bullet-list': 'text-base text-white/80',
+    'numbered-list': 'text-base text-white/80',
     'todo': 'text-base text-white/80',
-    'quote': 'text-base text-white/60 italic border-l-2 border-purple-400/50 pl-4',
-    'code': 'font-mono text-sm text-green-300/90 bg-white/[0.03] rounded-lg p-3',
+    'quote': 'text-base text-white/60 italic',
+    'code': 'font-mono text-sm text-green-300/90',
     'divider': '',
-    'callout': 'text-base text-white/80 bg-purple-500/10 border border-purple-500/20 rounded-xl p-4',
-    'image': '',
+    'callout': 'text-base text-white/80',
+  };
+
+  const wrapperExtra: Record<BlockType, string> = {
+    text: '',
+    heading1: '',
+    heading2: '',
+    heading3: '',
+    'bullet-list': '',
+    'numbered-list': '',
+    todo: '',
+    quote: 'border-l-2 border-purple-400/50 pl-4',
+    code: 'bg-white/[0.03] rounded-lg p-3',
+    divider: '',
+    callout: 'bg-purple-500/10 border border-purple-500/20 rounded-xl p-4',
   };
 
   const placeholders: Record<BlockType, string> = {
@@ -253,7 +238,6 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
     'code': 'Code',
     'divider': '',
     'callout': 'Type something...',
-    'image': '',
   };
 
   return (
@@ -272,9 +256,9 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
       </div>
 
       {/* Block prefix (bullet, number, checkbox) */}
-      <div className="flex items-start gap-2 flex-1 min-w-0">
+      <div className={`flex items-start gap-2 flex-1 min-w-0 ${wrapperExtra[block.type]}`}>
         {block.type === 'bullet-list' && (
-          <span className="text-white/40 mt-1.5 shrink-0">•</span>
+          <span className="text-white/40 mt-1.5 shrink-0 leading-none">•</span>
         )}
         {block.type === 'numbered-list' && (
           <span className="text-white/40 mt-1 text-sm font-medium shrink-0 min-w-[1.2em] text-right">{index + 1}.</span>
@@ -282,7 +266,7 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
         {block.type === 'todo' && (
           <button
             onClick={onToggleCheck}
-            className={`mt-1 w-4.5 h-4.5 rounded border shrink-0 flex items-center justify-center transition-all ${
+            className={`mt-1.5 w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all ${
               block.checked
                 ? 'bg-purple-500 border-purple-400'
                 : 'border-white/20 hover:border-white/40'
@@ -296,21 +280,20 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
           </button>
         )}
 
-        {/* Editable content */}
-        <div
+        {/* Textarea-based editable content */}
+        <textarea
           ref={ref}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={handleInput}
+          value={block.content}
+          onChange={handleChange}
           onFocus={onFocus}
           onKeyDown={onKeyDown}
-          data-placeholder={placeholders[block.type]}
-          className={`flex-1 outline-none min-h-[1.5em] break-words empty:before:content-[attr(data-placeholder)] empty:before:text-white/20 ${blockClasses[block.type]} ${
+          placeholder={placeholders[block.type]}
+          rows={1}
+          className={`flex-1 bg-transparent outline-none resize-none overflow-hidden placeholder-white/20 ${textSizeClass[block.type]} ${
             block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''
           }`}
-        >
-          {block.content}
-        </div>
+          style={{ minHeight: '1.5em' }}
+        />
       </div>
 
       {/* Context menu */}
@@ -385,29 +368,6 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-// ─── toolbar ────────────────────────────────────────────────────────
-
-interface ToolbarProps {
-  onFormat: (cmd: string, value?: string) => void;
-}
-
-function Toolbar({ onFormat }: ToolbarProps) {
-  const btnClass = 'p-2 rounded-lg hover:bg-white/10 text-white/40 hover:text-white/70 transition-colors';
-
-  return (
-    <div className="flex items-center gap-0.5 flex-wrap">
-      <button onClick={() => onFormat('bold')} className={btnClass}><Bold className="w-4 h-4" /></button>
-      <button onClick={() => onFormat('italic')} className={btnClass}><Italic className="w-4 h-4" /></button>
-      <button onClick={() => onFormat('underline')} className={btnClass}><Underline className="w-4 h-4" /></button>
-      <button onClick={() => onFormat('strikeThrough')} className={btnClass}><Strikethrough className="w-4 h-4" /></button>
-      <div className="w-px h-5 bg-white/10 mx-1" />
-      <button onClick={() => onFormat('justifyLeft')} className={btnClass}><AlignLeft className="w-4 h-4" /></button>
-      <button onClick={() => onFormat('justifyCenter')} className={btnClass}><AlignCenter className="w-4 h-4" /></button>
-      <button onClick={() => onFormat('justifyRight')} className={btnClass}><AlignRight className="w-4 h-4" /></button>
     </div>
   );
 }
@@ -567,7 +527,6 @@ export function NotesPage() {
       updatedAt: new Date().toISOString(),
       starred: false,
       emoji: '📝',
-      coverColor: COVER_COLORS[Math.floor(Math.random() * COVER_COLORS.length)],
     };
     setNotes((prev) => [note, ...prev]);
     setActiveNoteId(note.id);
@@ -616,7 +575,7 @@ export function NotesPage() {
 
   const deleteBlock = useCallback((index: number) => {
     if (!activeNoteId || !activeNote) return;
-    if (activeNote.blocks.length <= 1) return; // Keep at least one block
+    if (activeNote.blocks.length <= 1) return;
     updateNote(activeNoteId, (n) => ({
       ...n,
       blocks: n.blocks.filter((_, i) => i !== index),
@@ -643,20 +602,19 @@ export function NotesPage() {
       e.preventDefault();
       deleteBlock(index);
     } else if (e.key === 'ArrowUp' && index > 0) {
-      const sel = window.getSelection();
-      if (sel && sel.anchorOffset === 0) {
+      const textarea = e.target as HTMLTextAreaElement;
+      if (textarea.selectionStart === 0) {
         e.preventDefault();
         setFocusedBlockIndex(index - 1);
       }
     } else if (e.key === 'ArrowDown' && activeNote && index < activeNote.blocks.length - 1) {
-      e.preventDefault();
-      setFocusedBlockIndex(index + 1);
+      const textarea = e.target as HTMLTextAreaElement;
+      if (textarea.selectionStart === textarea.value.length) {
+        e.preventDefault();
+        setFocusedBlockIndex(index + 1);
+      }
     }
   }, [activeNote, insertBlockAfter, deleteBlock]);
-
-  const handleFormat = useCallback((cmd: string) => {
-    document.execCommand(cmd, false);
-  }, []);
 
   const handleQuickInput = useCallback((text: string) => {
     if (!activeNoteId) return;
@@ -676,7 +634,7 @@ export function NotesPage() {
       if (existingNote) {
         updateNote(existingNote.id, (n) => ({
           ...n,
-          blocks: [{ id: uid(), type: 'text', content: draft }, ...n.blocks.filter(b => b.content)],
+          blocks: [{ id: uid(), type: 'text' as BlockType, content: draft }, ...n.blocks.filter(b => b.content)],
         }));
       } else {
         const note: Note = {
@@ -687,7 +645,6 @@ export function NotesPage() {
           updatedAt: new Date().toISOString(),
           starred: false,
           emoji: '📝',
-          coverColor: COVER_COLORS[0],
         };
         setNotes((prev) => [note, ...prev]);
         setActiveNoteId(note.id);
@@ -696,15 +653,11 @@ export function NotesPage() {
   }, []);
 
   return (
-    <div className="fixed inset-0 overflow-hidden select-none">
-      {/* BG */}
-      <div className="absolute inset-0 -z-10">
-        <div
-          className="absolute inset-0"
-          style={{ background: 'linear-gradient(160deg, #7c3aed 0%, #4c1d95 20%, #1e1b4b 45%, #0a0a0a 75%, #000 100%)' }}
-        />
-        <div className="absolute top-[-10%] left-[20%] w-[700px] h-[700px] bg-purple-500/25 rounded-full blur-[200px]" />
-        <div className="absolute bottom-[-5%] right-[10%] w-[500px] h-[500px] bg-violet-600/10 rounded-full blur-[160px]" />
+    <div className="fixed inset-0 overflow-hidden select-none bg-black text-white">
+      {/* BG — matches chat UI: black with subtle purple glow at bottom */}
+      <div className="absolute inset-0 -z-10 bg-black">
+        <div className="absolute bottom-0 left-[30%] w-[600px] h-[400px] bg-purple-500/[0.07] rounded-full blur-[150px]" />
+        <div className="absolute bottom-[-10%] right-[20%] w-[400px] h-[300px] bg-violet-600/[0.05] rounded-full blur-[120px]" />
       </div>
 
       <div className="h-full flex flex-col">
@@ -756,76 +709,58 @@ export function NotesPage() {
           {/* Editor */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {activeNote ? (
-              <>
-                {/* Cover */}
-                {activeNote.coverColor && (
-                  <div
-                    className="h-32 shrink-0 relative"
-                    style={{ background: activeNote.coverColor }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/40" />
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <div className="max-w-3xl mx-auto px-6 md:px-16 py-8 pb-40">
+                  {/* Emoji + Title */}
+                  <div className="mb-6">
+                    <div className="text-4xl mb-3 cursor-pointer">{activeNote.emoji || '📝'}</div>
+                    <input
+                      value={activeNote.title}
+                      onChange={(e) => updateNote(activeNote.id, (n) => ({ ...n, title: e.target.value }))}
+                      placeholder="Untitled"
+                      className="w-full text-4xl font-bold text-white placeholder-white/15 bg-transparent outline-none"
+                    />
+                    <p className="text-white/20 text-sm mt-2">
+                      <Clock className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
+                      {new Date(activeNote.updatedAt).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </p>
                   </div>
-                )}
 
-                {/* Editor area */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                  <div className="max-w-3xl mx-auto px-6 md:px-16 py-8 pb-40">
-                    {/* Emoji + Title */}
-                    <div className="mb-6">
-                      <div className="text-4xl mb-3 cursor-pointer">{activeNote.emoji || '📝'}</div>
-                      <input
-                        value={activeNote.title}
-                        onChange={(e) => updateNote(activeNote.id, (n) => ({ ...n, title: e.target.value }))}
-                        placeholder="Untitled"
-                        className="w-full text-4xl font-bold text-white placeholder-white/15 bg-transparent outline-none"
+                  {/* Blocks */}
+                  <div className="pl-16 space-y-0.5">
+                    {activeNote.blocks.map((block, index) => (
+                      <BlockEditor
+                        key={block.id}
+                        block={block}
+                        index={index}
+                        focused={focusedBlockIndex === index}
+                        onFocus={() => setFocusedBlockIndex(index)}
+                        onChange={(content) => updateBlock(block.id, { content })}
+                        onChangeType={(type) => updateBlock(block.id, { type, content: '' })}
+                        onToggleCheck={() => updateBlock(block.id, { checked: !block.checked })}
+                        onKeyDown={(e) => handleBlockKeyDown(e, index)}
+                        onDelete={() => deleteBlock(index)}
+                        onDuplicate={() => duplicateBlock(index)}
                       />
-                      <p className="text-white/20 text-sm mt-2">
-                        <Clock className="w-3.5 h-3.5 inline mr-1.5 -mt-0.5" />
-                        {new Date(activeNote.updatedAt).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          month: 'long',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </p>
-                    </div>
-
-                    {/* Toolbar */}
-                    <div className="mb-4 pb-3 border-b border-white/5">
-                      <Toolbar onFormat={handleFormat} />
-                    </div>
-
-                    {/* Blocks */}
-                    <div className="pl-16 space-y-0.5">
-                      {activeNote.blocks.map((block, index) => (
-                        <BlockEditor
-                          key={block.id}
-                          block={block}
-                          index={index}
-                          focused={focusedBlockIndex === index}
-                          onFocus={() => setFocusedBlockIndex(index)}
-                          onChange={(content) => updateBlock(block.id, { content })}
-                          onChangeType={(type) => updateBlock(block.id, { type, content: '' })}
-                          onToggleCheck={() => updateBlock(block.id, { checked: !block.checked })}
-                          onKeyDown={(e) => handleBlockKeyDown(e, index)}
-                          onDelete={() => deleteBlock(index)}
-                          onDuplicate={() => duplicateBlock(index)}
-                        />
-                      ))}
-                    </div>
-
-                    {/* Add block button */}
-                    <motion.button
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => insertBlockAfter(activeNote.blocks.length - 1)}
-                      className="mt-4 ml-16 flex items-center gap-2 px-3 py-2 rounded-xl text-white/15 hover:text-white/40 hover:bg-white/[0.03] transition-all text-sm"
-                    >
-                      <Plus className="w-4 h-4" /> Add a block
-                    </motion.button>
+                    ))}
                   </div>
+
+                  {/* Add block button */}
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => insertBlockAfter(activeNote.blocks.length - 1)}
+                    className="mt-4 ml-16 flex items-center gap-2 px-3 py-2 rounded-xl text-white/15 hover:text-white/40 hover:bg-white/[0.03] transition-all text-sm"
+                  >
+                    <Plus className="w-4 h-4" /> Add a block
+                  </motion.button>
                 </div>
-              </>
+              </div>
             ) : (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center">
