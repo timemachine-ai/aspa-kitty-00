@@ -204,11 +204,18 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
     onChange(text);
   };
 
-  const handleTypeSelect = (type: BlockType) => {
+  // Slash command: clear the slash text since user typed "/heading1" etc.
+  const handleSlashTypeSelect = (type: BlockType) => {
     onChangeType(type);
     setShowTypeMenu(false);
     setSlashFilter('');
     onChange('');
+    setTimeout(() => ref.current?.focus(), 0);
+  };
+
+  // Context menu (3-dot): preserve existing content
+  const handleContextTypeSelect = (type: BlockType) => {
+    onChangeType(type);
     setTimeout(() => ref.current?.focus(), 0);
   };
 
@@ -358,7 +365,7 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
               {BLOCK_MENU_OPTIONS.map((opt) => (
                 <button
                   key={opt.type}
-                  onClick={() => { handleTypeSelect(opt.type); setShowMenu(false); }}
+                  onClick={() => { handleContextTypeSelect(opt.type); setShowMenu(false); }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-white/5 transition-colors ${
                     block.type === opt.type ? 'text-purple-400' : 'text-white/70'
                   }`}
@@ -386,7 +393,7 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
               {filteredBlockOptions.map((opt) => (
                 <button
                   key={opt.type}
-                  onClick={() => handleTypeSelect(opt.type)}
+                  onClick={() => handleSlashTypeSelect(opt.type)}
                   className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 transition-colors"
                 >
                   <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/50">
