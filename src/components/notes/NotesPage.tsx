@@ -840,7 +840,7 @@ export function NotesPage() {
       style={{
         minHeight: 'calc(var(--vh, 1vh) * 100)',
         background: activeNote
-          ? `linear-gradient(to top, rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 0.15) 0%, black 50%)`
+          ? `linear-gradient(to top, rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 0.35) 0%, black 55%)`
           : '#000',
         transition: 'background 0.5s ease',
       }}
