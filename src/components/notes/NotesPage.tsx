@@ -242,9 +242,9 @@ function BlockEditor({ block, index, focused, onFocus, onChange, onChangeType, o
   };
 
   return (
-    <div className="group relative flex items-start gap-1 py-0.5">
+    <div className="group relative flex items-start py-0.5">
       {/* Hover controls */}
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 pt-1 shrink-0 -ml-16 w-14 justify-end">
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -left-14 top-0 flex items-center gap-0.5 pt-1">
         <button
           onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
           className="p-1 rounded hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors"
@@ -732,7 +732,7 @@ export function NotesPage() {
                   </div>
 
                   {/* Blocks */}
-                  <div className="pl-16 space-y-0.5">
+                  <div className="space-y-0.5">
                     {activeNote.blocks.map((block, index) => (
                       <BlockEditor
                         key={block.id}
@@ -755,7 +755,7 @@ export function NotesPage() {
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => insertBlockAfter(activeNote.blocks.length - 1)}
-                    className="mt-4 ml-16 flex items-center gap-2 px-3 py-2 rounded-xl text-white/15 hover:text-white/40 hover:bg-white/[0.03] transition-all text-sm"
+                    className="mt-4 flex items-center gap-2 px-3 py-2 rounded-xl text-white/15 hover:text-white/40 hover:bg-white/[0.03] transition-all text-sm"
                   >
                     <Plus className="w-4 h-4" /> Add a block
                   </motion.button>
