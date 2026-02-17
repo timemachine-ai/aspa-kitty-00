@@ -2,27 +2,17 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  MessageCircle,
-  Pen,
   GraduationCap,
   HeartPulse,
-  ShoppingBag,
   Music,
-  Landmark,
-  Newspaper,
-  Gamepad2,
-  Code,
-  Languages,
-  Clapperboard,
-  Camera,
-  Cloud,
-  BookOpen,
-  Utensils,
+  MessageCircle,
   Home,
   Settings,
   User,
   History,
   ExternalLink,
+  BookOpen,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useChat } from '../../hooks/useChat';
@@ -66,34 +56,20 @@ const glassCard = {
   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
 } as const;
 
-// ─── tile data ───────────────────────────────────────────────────────
+// ─── bottom bento card data ──────────────────────────────────────────
 
 interface AppTile {
   id: string;
   label: string;
   description?: string;
   icon: React.ReactNode;
-  route: string | null;
-  ready: boolean;
+  route: string;
 }
 
-const allApps: AppTile[] = [
-  { id: 'chat',          label: 'Chat',          description: 'AI-powered conversations',      icon: <MessageCircle />, route: '/',  ready: true  },
-  { id: 'canvas',        label: 'Canvas',        description: 'Draw and design',               icon: <Pen />,           route: null, ready: false },
-  { id: 'education',     label: 'Education',     description: 'Learn anything',                icon: <GraduationCap />, route: null, ready: false },
-  { id: 'healthcare',    label: 'Healthcare',    description: 'Health companion',              icon: <HeartPulse />,    route: null, ready: false },
-  { id: 'shopping',      label: 'Shopping',      description: 'Smart shopping assistant',      icon: <ShoppingBag />,   route: null, ready: false },
-  { id: 'music',         label: 'Music',         description: 'Stream and discover',           icon: <Music />,         route: null, ready: false },
-  { id: 'finance',       label: 'Finance',       description: 'Track and manage money',        icon: <Landmark />,      route: null, ready: false },
-  { id: 'news',          label: 'News',          description: 'Stay informed',                 icon: <Newspaper />,     route: null, ready: false },
-  { id: 'games',         label: 'Games',         description: 'Play and compete',              icon: <Gamepad2 />,      route: null, ready: false },
-  { id: 'code',          label: 'Code',          description: 'Write and debug code',          icon: <Code />,          route: null, ready: false },
-  { id: 'translate',     label: 'Translate',     description: 'Break language barriers',       icon: <Languages />,     route: null, ready: false },
-  { id: 'entertainment', label: 'Entertainment', description: 'Movies, shows & more',          icon: <Clapperboard />,  route: null, ready: false },
-  { id: 'photos',        label: 'Photos',        description: 'AI-powered gallery',            icon: <Camera />,        route: null, ready: false },
-  { id: 'weather',       label: 'Weather',       description: 'Forecasts and alerts',          icon: <Cloud />,         route: null, ready: false },
-  { id: 'notes',         label: 'Notes',         description: 'Capture your thoughts',         icon: <BookOpen />,      route: null, ready: false },
-  { id: 'recipes',       label: 'Recipes',       description: 'Cooking assistant',             icon: <Utensils />,      route: null, ready: false },
+const bottomCardData: AppTile[] = [
+  { id: 'education',  label: 'Education',  description: 'Learn anything',    icon: <GraduationCap />, route: '/education'  },
+  { id: 'healthcare', label: 'Healthcare', description: 'Health companion',  icon: <HeartPulse />,    route: '/healthcare' },
+  { id: 'music',      label: 'Music',      description: 'Stream and discover', icon: <Music />,       route: '/music'      },
 ];
 
 // sidebar icons
@@ -194,16 +170,15 @@ export function HomePage() {
   const date = useMemo(formatDate, []);
   const name = profile?.nickname || null;
 
-  const handleTap = (app: AppTile) => {
-    if (app.ready && app.route) navigate(app.route);
-  };
+  // ── Notes draft (side panel) ──────────────────────────────────
+  const [notesDraft, setNotesDraft] = useState('');
 
-  // bottom bento cards
-  const bottomCards = [
-    allApps.find((a) => a.id === 'education')!,
-    allApps.find((a) => a.id === 'healthcare')!,
-    allApps.find((a) => a.id === 'music')!,
-  ];
+  const handleOpenInNotesUI = useCallback(() => {
+    if (notesDraft.trim()) {
+      localStorage.setItem('tm-notes-draft', notesDraft.trim());
+    }
+    navigate('/notes');
+  }, [navigate, notesDraft]);
 
   return (
     <div className="fixed inset-0 overflow-hidden select-none">
@@ -332,60 +307,58 @@ export function HomePage() {
                 </div>
               </motion.div>
 
-              {/* SIDE PANEL — All Apps directory */}
+              {/* SIDE PANEL — Notes */}
               <motion.div
                 {...fadeUp(0.08)}
                 className="flex-1 rounded-3xl overflow-hidden relative min-h-[300px] md:min-h-0"
                 style={glassCard}
               >
                 <div className="relative h-full flex flex-col p-5">
-                  <p className="text-white/30 text-[11px] font-semibold uppercase tracking-widest mb-4">All Apps</p>
-                  <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 -mr-2 pr-2">
-                    {allApps.map((app) => (
-                      <motion.button
-                        key={app.id}
-                        whileHover={app.ready ? { x: 4 } : {}}
-                        whileTap={app.ready ? { scale: 0.98 } : {}}
-                        onClick={() => handleTap(app)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 outline-none ${
-                          app.ready
-                            ? 'cursor-pointer hover:bg-white/[0.05]'
-                            : 'cursor-default opacity-50'
-                        }`}
-                      >
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-white/[0.06]">
-                          <span className="text-white/70">
-                            {React.cloneElement(app.icon as React.ReactElement, { className: 'w-4 h-4' })}
-                          </span>
-                        </div>
-                        <div className="flex-1 text-left min-w-0">
-                          <p className="text-white/80 text-sm font-medium leading-tight">{app.label}</p>
-                          <p className="text-white/25 text-[11px] leading-tight truncate">{app.description}</p>
-                        </div>
-                        {!app.ready && (
-                          <span className="text-[9px] font-semibold text-white/20 bg-white/5 px-1.5 py-0.5 rounded-full shrink-0">
-                            Soon
-                          </span>
-                        )}
-                      </motion.button>
-                    ))}
+                  <div className="flex items-center gap-2 mb-4">
+                    <BookOpen className="w-4 h-4 text-white/30" />
+                    <p className="text-white/30 text-[11px] font-semibold uppercase tracking-widest">Notes</p>
                   </div>
+
+                  {/* Writing area */}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar -mr-2 pr-2">
+                    <textarea
+                      value={notesDraft}
+                      onChange={(e) => setNotesDraft(e.target.value)}
+                      placeholder="Start writing here..."
+                      className="w-full h-full min-h-[180px] bg-transparent text-white/80 text-sm placeholder-white/15 outline-none resize-none leading-relaxed"
+                    />
+                  </div>
+
+                  {/* Open in Notes UI pill button */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleOpenInNotesUI}
+                    className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-300"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(168, 85, 247, 0.08))',
+                      border: '1px solid rgba(168, 85, 247, 0.3)',
+                      boxShadow: '0 0 12px rgba(168, 85, 247, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                      color: 'rgba(196, 132, 252, 0.9)',
+                    }}
+                  >
+                    Open in Notes UI
+                    <ArrowRight className="w-4 h-4" />
+                  </motion.button>
                 </div>
               </motion.div>
             </div>
 
             {/* ── BOTTOM ROW: 3 feature cards ────────────────── */}
             <div className="flex-[0.65] flex flex-col sm:flex-row gap-4 min-h-[160px]">
-              {bottomCards.map((app, i) => (
+              {bottomCardData.map((app, i) => (
                 <motion.div
                   key={app.id}
                   {...fadeUp(0.14 + i * 0.06)}
-                  whileHover={app.ready ? { y: -4, scale: 1.01 } : {}}
-                  whileTap={app.ready ? { scale: 0.98 } : {}}
-                  onClick={() => handleTap(app)}
-                  className={`flex-1 rounded-3xl overflow-hidden relative ${
-                    app.ready ? 'cursor-pointer' : 'cursor-default'
-                  }`}
+                  whileHover={{ y: -4, scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate(app.route)}
+                  className="flex-1 rounded-3xl overflow-hidden relative cursor-pointer"
                   style={glassCard}
                 >
                   <div className="relative h-full flex flex-col justify-between p-5 sm:p-6">
@@ -398,11 +371,6 @@ export function HomePage() {
                       <p className="text-white/90 text-base font-semibold">{app.label}</p>
                       <p className="text-white/30 text-xs mt-0.5">{app.description}</p>
                     </div>
-                    {!app.ready && (
-                      <span className="absolute top-4 right-4 text-[9px] font-semibold text-white/20 bg-white/5 px-2 py-0.5 rounded-full">
-                        Coming Soon
-                      </span>
-                    )}
                   </div>
                 </motion.div>
               ))}
