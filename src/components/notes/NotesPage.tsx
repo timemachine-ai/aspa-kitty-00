@@ -31,6 +31,9 @@ import {
   Send,
   PanelLeftOpen,
   PanelLeftClose,
+  Pencil,
+  Eraser,
+  ImagePlus,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { sendNotesAIRequest } from '../../services/ai/notesAiService';
@@ -48,13 +51,17 @@ type BlockType =
   | 'quote'
   | 'code'
   | 'divider'
-  | 'callout';
+  | 'callout'
+  | 'doodle'
+  | 'image';
 
 interface Block {
   id: string;
   type: BlockType;
   content: string;
   checked?: boolean;
+  width?: number;
+  height?: number;
 }
 
 type NoteTheme = 'purple' | 'blue' | 'green' | 'pink' | 'orange' | 'red' | 'cyan' | 'yellow';
@@ -101,6 +108,8 @@ const BLOCK_MENU_OPTIONS: { type: BlockType; label: string; description: string;
   { type: 'code', label: 'Code', description: 'Code snippet block', icon: <Code className="w-4 h-4" /> },
   { type: 'divider', label: 'Divider', description: 'Horizontal line', icon: <Minus className="w-4 h-4" /> },
   { type: 'callout', label: 'Callout', description: 'Highlighted callout box', icon: <Palette className="w-4 h-4" /> },
+  { type: 'doodle', label: 'Doodle', description: 'Draw freely with pen or brush', icon: <Pencil className="w-4 h-4" /> },
+  { type: 'image', label: 'Image', description: 'Insert an image', icon: <ImagePlus className="w-4 h-4" /> },
 ];
 
 const glassCard = {
@@ -239,6 +248,499 @@ function saveNotes(notes: Note[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
 }
 
+// ─── Doodle block ────────────────────────────────────────────────────
+
+const DOODLE_COLORS = [
+  '#ffffff', '#000000', '#ef4444', '#f97316', '#eab308',
+  '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#06b6d4',
+];
+const CANVAS_W = 1200;
+const CANVAS_H = 600;
+
+interface SpecialBlockProps {
+  block: Block;
+  onChange: (content: string) => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+  onResize?: (w: number, h: number) => void;
+  dragControls: ReturnType<typeof useDragControls>;
+}
+
+function DoodleBlock({ block, onChange, onDelete, onDuplicate, onResize, dragControls }: SpecialBlockProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [tool, setTool] = useState<'pen' | 'eraser'>('pen');
+  const [color, setColor] = useState('#ffffff');
+  const [brushSize, setBrushSize] = useState(4);
+  const [showPalette, setShowPalette] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const isDrawing = useRef(false);
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
+  const [displaySize, setDisplaySize] = useState({
+    w: block.width || 560,
+    h: block.height || 280,
+  });
+  const resizeRef = useRef({ startX: 0, startY: 0, startW: 0, startH: 0 });
+  const menuRef = useRef<HTMLDivElement>(null);
+  const paletteRef = useRef<HTMLDivElement>(null);
+
+  // Load saved drawing on mount
+  useEffect(() => {
+    if (block.content && canvasRef.current) {
+      const img = new Image();
+      img.onload = () => {
+        const ctx = canvasRef.current?.getContext('2d');
+        if (ctx) ctx.drawImage(img, 0, 0);
+      };
+      img.src = block.content;
+    }
+  }, []);
+
+  // Close menus on outside click
+  useEffect(() => {
+    const handle = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+      if (paletteRef.current && !paletteRef.current.contains(e.target as Node)) setShowPalette(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  const getPos = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = CANVAS_W / rect.width;
+    const scaleY = CANVAS_H / rect.height;
+    if ('touches' in e) {
+      return {
+        x: (e.touches[0].clientX - rect.left) * scaleX,
+        y: (e.touches[0].clientY - rect.top) * scaleY,
+      };
+    }
+    return {
+      x: ((e as React.MouseEvent).clientX - rect.left) * scaleX,
+      y: ((e as React.MouseEvent).clientY - rect.top) * scaleY,
+    };
+  };
+
+  const startDraw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    isDrawing.current = true;
+    const pos = getPos(e);
+    lastPos.current = pos;
+    const ctx = canvasRef.current!.getContext('2d')!;
+    ctx.beginPath();
+    if (tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.arc(pos.x, pos.y, (brushSize * 3) / 2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,1)';
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.arc(pos.x, pos.y, brushSize / 2, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+    }
+    ctx.fill();
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing.current || !lastPos.current) return;
+    e.preventDefault();
+    const ctx = canvasRef.current!.getContext('2d')!;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(lastPos.current.x, lastPos.current.y);
+    ctx.lineTo(pos.x, pos.y);
+    if (tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+      ctx.lineWidth = brushSize * 6;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = brushSize;
+    }
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    lastPos.current = pos;
+  };
+
+  const endDraw = () => {
+    if (!isDrawing.current) return;
+    isDrawing.current = false;
+    lastPos.current = null;
+    const dataUrl = canvasRef.current!.toDataURL('image/png');
+    onChange(dataUrl);
+  };
+
+  const onResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizeRef.current = { startX: e.clientX, startY: e.clientY, startW: displaySize.w, startH: displaySize.h };
+    const onMove = (ev: MouseEvent) => {
+      const newW = Math.max(200, resizeRef.current.startW + (ev.clientX - resizeRef.current.startX));
+      const newH = Math.max(120, resizeRef.current.startH + (ev.clientY - resizeRef.current.startY));
+      setDisplaySize({ w: newW, h: newH });
+    };
+    const onUp = (ev: MouseEvent) => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      const newW = Math.max(200, resizeRef.current.startW + (ev.clientX - resizeRef.current.startX));
+      const newH = Math.max(120, resizeRef.current.startH + (ev.clientY - resizeRef.current.startY));
+      onResize?.(newW, newH);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  return (
+    <div className="group relative py-2">
+      {/* Drag + context menu controls */}
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -left-14 top-2 flex items-center gap-0.5">
+        <div ref={menuRef} className="relative">
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="p-1 rounded hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors"
+          >
+            <MoreHorizontal className="w-3.5 h-3.5" />
+          </button>
+          {showMenu && (
+            <div className="absolute left-0 top-full mt-1 z-50 rounded-xl overflow-hidden min-w-[160px]" style={glassCard}>
+              <button
+                onClick={() => { onDuplicate(); setShowMenu(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-white/70 hover:bg-white/5 transition-colors"
+              >
+                <Copy className="w-3.5 h-3.5" /> Duplicate
+              </button>
+              <button
+                onClick={() => { onDelete(); setShowMenu(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
+            </div>
+          )}
+        </div>
+        <button
+          className="p-1 rounded hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors cursor-grab active:cursor-grabbing"
+          onPointerDown={(e) => dragControls.start(e)}
+        >
+          <GripVertical className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Canvas card */}
+      <div
+        className="relative rounded-2xl overflow-hidden select-none"
+        style={{
+          width: displaySize.w,
+          height: displaySize.h,
+          maxWidth: '100%',
+          background: 'rgba(255, 255, 255, 0.05)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_W}
+          height={CANVAS_H}
+          style={{ width: '100%', height: '100%', touchAction: 'none', display: 'block' }}
+          onMouseDown={startDraw}
+          onMouseMove={draw}
+          onMouseUp={endDraw}
+          onMouseLeave={endDraw}
+          onTouchStart={startDraw}
+          onTouchMove={draw}
+          onTouchEnd={endDraw}
+        />
+
+        {/* Pen button — opens palette */}
+        <div className="absolute bottom-3 left-3" ref={paletteRef}>
+          <button
+            onClick={() => setShowPalette(!showPalette)}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
+            style={{
+              background: showPalette ? 'rgba(255,255,255,0.2)' : 'rgba(20,20,20,0.7)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+            }}
+          >
+            {tool === 'eraser'
+              ? <Eraser className="w-4 h-4 text-white/80" />
+              : <div className="w-4 h-4 flex items-center justify-center"><Pencil className="w-4 h-4" style={{ color }} /></div>
+            }
+          </button>
+
+          {/* Draw palette */}
+          {showPalette && (
+            <motion.div
+              initial={{ opacity: 0, y: 4, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.97 }}
+              className="absolute bottom-11 left-0 p-3 rounded-2xl z-30"
+              style={{
+                background: 'rgba(15,15,15,0.92)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                minWidth: 160,
+              }}
+            >
+              {/* Pen / Eraser toggle */}
+              <div className="flex gap-1.5 mb-3">
+                <button
+                  onClick={() => setTool('pen')}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    tool === 'pen' ? 'bg-white/20 text-white' : 'text-white/40 hover:bg-white/10'
+                  }`}
+                >
+                  <Pencil className="w-3 h-3" /> Pen
+                </button>
+                <button
+                  onClick={() => setTool('eraser')}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    tool === 'eraser' ? 'bg-white/20 text-white' : 'text-white/40 hover:bg-white/10'
+                  }`}
+                >
+                  <Eraser className="w-3 h-3" /> Eraser
+                </button>
+              </div>
+
+              {/* Color swatches */}
+              <div className="grid grid-cols-5 gap-1.5 mb-3">
+                {DOODLE_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => { setColor(c); setTool('pen'); }}
+                    className="w-6 h-6 rounded-full transition-transform hover:scale-110"
+                    style={{
+                      background: c,
+                      border: `2px solid ${color === c && tool === 'pen' ? 'white' : 'rgba(255,255,255,0.15)'}`,
+                    }}
+                  />
+                ))}
+              </div>
+
+              {/* Brush size */}
+              <div className="flex items-center gap-2">
+                <span className="text-white/30 text-[10px] shrink-0">Size</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={24}
+                  value={brushSize}
+                  onChange={(e) => setBrushSize(Number(e.target.value))}
+                  className="flex-1 accent-white"
+                  style={{ height: 4 }}
+                />
+                <span className="text-white/30 text-[10px] w-4 text-right">{brushSize}</span>
+              </div>
+            </motion.div>
+          )}
+        </div>
+
+        {/* Resize handle */}
+        <div
+          onMouseDown={onResizeStart}
+          className="absolute bottom-1.5 right-1.5 w-5 h-5 flex items-end justify-end cursor-se-resize"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" className="text-white/25">
+            <line x1="4" y1="12" x2="12" y2="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="8" y1="12" x2="12" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Image block ─────────────────────────────────────────────────────
+
+function ImageBlock({ block, onChange, onDelete, onDuplicate, onResize, dragControls }: SpecialBlockProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [displaySize, setDisplaySize] = useState({
+    w: block.width || 560,
+    h: block.height || 0,
+  });
+  const [naturalAspect, setNaturalAspect] = useState(0);
+  const resizeRef = useRef({ startX: 0, startY: 0, startW: 0, startH: 0, aspect: 0 });
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handle = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  // When block.content changes (new image loaded), get natural dimensions
+  useEffect(() => {
+    if (block.content) {
+      const img = new Image();
+      img.onload = () => {
+        const aspect = img.naturalWidth / img.naturalHeight;
+        setNaturalAspect(aspect);
+        if (!block.width) {
+          const w = Math.min(560, img.naturalWidth);
+          setDisplaySize({ w, h: w / aspect });
+        }
+      };
+      img.src = block.content;
+    }
+  }, [block.content]);
+
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target!.result as string;
+      onChange(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const onResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizeRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: displaySize.w,
+      startH: displaySize.h,
+      aspect: naturalAspect,
+    };
+    const onMove = (ev: MouseEvent) => {
+      const newW = Math.max(100, resizeRef.current.startW + (ev.clientX - resizeRef.current.startX));
+      const newH = resizeRef.current.aspect > 0
+        ? newW / resizeRef.current.aspect
+        : Math.max(60, resizeRef.current.startH + (ev.clientY - resizeRef.current.startY));
+      setDisplaySize({ w: newW, h: newH });
+    };
+    const onUp = (ev: MouseEvent) => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      const newW = Math.max(100, resizeRef.current.startW + (ev.clientX - resizeRef.current.startX));
+      const newH = resizeRef.current.aspect > 0
+        ? newW / resizeRef.current.aspect
+        : Math.max(60, resizeRef.current.startH + (ev.clientY - resizeRef.current.startY));
+      onResize?.(newW, newH);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  return (
+    <div className="group relative py-2">
+      {/* Drag + context menu controls */}
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -left-14 top-2 flex items-center gap-0.5">
+        <div ref={menuRef} className="relative">
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="p-1 rounded hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors"
+          >
+            <MoreHorizontal className="w-3.5 h-3.5" />
+          </button>
+          {showMenu && (
+            <div className="absolute left-0 top-full mt-1 z-50 rounded-xl overflow-hidden min-w-[160px]" style={glassCard}>
+              <button
+                onClick={() => { onDuplicate(); setShowMenu(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-white/70 hover:bg-white/5 transition-colors"
+              >
+                <Copy className="w-3.5 h-3.5" /> Duplicate
+              </button>
+              <button
+                onClick={() => { onDelete(); setShowMenu(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
+            </div>
+          )}
+        </div>
+        <button
+          className="p-1 rounded hover:bg-white/10 text-white/30 hover:text-white/60 transition-colors cursor-grab active:cursor-grabbing"
+          onPointerDown={(e) => dragControls.start(e)}
+        >
+          <GripVertical className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }}
+      />
+
+      {block.content ? (
+        /* Image with resize handle */
+        <div
+          className="relative inline-block rounded-2xl overflow-hidden"
+          style={{ width: displaySize.w, maxWidth: '100%' }}
+        >
+          <img
+            src={block.content}
+            alt=""
+            style={{ width: displaySize.w, height: displaySize.h || 'auto', display: 'block', maxWidth: '100%', objectFit: 'cover' }}
+            className="rounded-2xl"
+            draggable={false}
+          />
+          {/* Replace image button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="absolute top-2 right-2 px-2 py-1 rounded-lg text-xs text-white/70 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+            style={{
+              background: 'rgba(0,0,0,0.6)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.1)',
+            }}
+          >
+            Replace
+          </button>
+          {/* Resize handle */}
+          <div
+            onMouseDown={onResizeStart}
+            className="absolute bottom-1.5 right-1.5 w-5 h-5 flex items-end justify-end cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" style={{ color: 'rgba(255,255,255,0.6)' }}>
+              <line x1="4" y1="12" x2="12" y2="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="8" y1="12" x2="12" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </div>
+        </div>
+      ) : (
+        /* Upload prompt */
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+          }}
+          className="w-full flex flex-col items-center justify-center gap-2 py-10 rounded-2xl text-white/30 hover:text-white/50 transition-all"
+          style={{
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1.5px dashed rgba(255, 255, 255, 0.1)',
+          }}
+        >
+          <ImagePlus className="w-8 h-8" />
+          <span className="text-sm">Click or drop an image</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── block renderer (textarea-based, no contentEditable) ────────────
 
 interface BlockEditorProps {
@@ -254,13 +756,14 @@ interface BlockEditorProps {
   onKeyDown: (e: React.KeyboardEvent) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onResize?: (w: number, h: number) => void;
   aiPending?: PendingAIEdit | null;
   aiNewBlock?: boolean;
   onAcceptAI?: () => void;
   onRejectAI?: () => void;
 }
 
-function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, onChange, onChangeType, onToggleCheck, onKeyDown, onDelete, onDuplicate, aiPending, aiNewBlock, onAcceptAI, onRejectAI }: BlockEditorProps) {
+function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, onChange, onChangeType, onToggleCheck, onKeyDown, onDelete, onDuplicate, onResize, aiPending, aiNewBlock, onAcceptAI, onRejectAI }: BlockEditorProps) {
   const themeColors = getNoteTheme(noteTheme);
   const ref = useRef<HTMLTextAreaElement>(null);
   const [showMenu, setShowMenu] = useState(false);
@@ -334,6 +837,32 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
     (opt) => opt.label.toLowerCase().includes(slashFilter) || opt.type.includes(slashFilter)
   );
 
+  if (block.type === 'doodle') {
+    return (
+      <DoodleBlock
+        block={block}
+        onChange={onChange}
+        onDelete={onDelete}
+        onDuplicate={onDuplicate}
+        onResize={onResize}
+        dragControls={dragControls}
+      />
+    );
+  }
+
+  if (block.type === 'image') {
+    return (
+      <ImageBlock
+        block={block}
+        onChange={onChange}
+        onDelete={onDelete}
+        onDuplicate={onDuplicate}
+        onResize={onResize}
+        dragControls={dragControls}
+      />
+    );
+  }
+
   if (block.type === 'divider') {
     return (
       <div className="group relative flex items-center py-2" onClick={onFocus}>
@@ -359,6 +888,8 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
     'code': 'font-mono text-sm text-green-300/90',
     'divider': '',
     'callout': 'text-base text-white/80',
+    'doodle': '',
+    'image': '',
   };
 
   const wrapperExtra: Record<BlockType, string> = {
@@ -373,6 +904,8 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
     code: 'bg-white/[0.03] rounded-lg p-3',
     divider: '',
     callout: `${themeColors.calloutBg} border ${themeColors.calloutBorder} rounded-xl p-4`,
+    doodle: '',
+    image: '',
   };
 
   const placeholders: Record<BlockType, string> = {
@@ -387,6 +920,8 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
     'code': 'Code',
     'divider': '',
     'callout': 'Type something...',
+    'doodle': '',
+    'image': '',
   };
 
   const hasAIPending = !!aiPending || !!aiNewBlock;
@@ -599,6 +1134,7 @@ interface DraggableBlockProps {
   onKeyDown: (e: React.KeyboardEvent) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onResize?: (w: number, h: number) => void;
   aiPending?: PendingAIEdit | null;
   aiNewBlock?: boolean;
   onAcceptAI?: () => void;
@@ -632,7 +1168,7 @@ function DraggableBlock(props: DraggableBlockProps) {
 function NoteSidebar({ notes, activeId, onSelect, onNew, onDelete, onToggleStar, searchQuery, onSearchChange }: NoteSidebarProps) {
   const filtered = notes.filter((n) =>
     n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    n.blocks.some((b) => b.content.toLowerCase().includes(searchQuery.toLowerCase()))
+    n.blocks.some((b) => b.type !== 'doodle' && b.type !== 'image' && b.content.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const starred = filtered.filter((n) => n.starred);
@@ -905,14 +1441,16 @@ export function NotesPage() {
     setAiLoading(true);
     setAiMessage(null);
 
-    // Build block context for the API
-    const blockContexts = activeNote.blocks.map((b, i) => ({
-      index: i,
-      id: b.id,
-      type: b.type,
-      content: b.content,
-      checked: b.checked,
-    }));
+    // Build block context for the API (skip doodle/image — they hold data URLs)
+    const blockContexts = activeNote.blocks
+      .filter((b) => b.type !== 'doodle' && b.type !== 'image')
+      .map((b, i) => ({
+        index: i,
+        id: b.id,
+        type: b.type,
+        content: b.content,
+        checked: b.checked,
+      }));
 
     try {
       const response = await sendNotesAIRequest(
@@ -1333,6 +1871,7 @@ export function NotesPage() {
                           onKeyDown={(e) => handleBlockKeyDown(e, index)}
                           onDelete={() => deleteBlock(index)}
                           onDuplicate={() => duplicateBlock(index)}
+                          onResize={(w, h) => updateBlock(block.id, { width: w, height: h })}
                           aiPending={pendingEdit}
                           aiNewBlock={isNewBlock}
                           onAcceptAI={() => handleAcceptEdit(block.id)}
@@ -1405,11 +1944,12 @@ export function NotesPage() {
             {/* AI status message — centered in editor area, above textbox */}
             <AnimatePresence>
               {aiMessage && (
+                <div className="absolute bottom-[5.25rem] left-0 right-0 z-20 flex justify-center px-4 pointer-events-none">
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 6 }}
-                  className="absolute bottom-[5.25rem] left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-2xl pointer-events-none"
+                  style={{ width: '100%', maxWidth: '42rem' }}
                 >
                   <div
                     className="px-4 py-3 rounded-2xl pointer-events-auto"
@@ -1425,11 +1965,13 @@ export function NotesPage() {
                     <p className="text-sm text-white/70">{aiMessage}</p>
                   </div>
                 </motion.div>
+                </div>
               )}
             </AnimatePresence>
 
             {/* Floating AI Co-pilot Textbox — centered in editor area */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 w-[calc(100%-2rem)] max-w-2xl">
+            <div className="absolute bottom-6 left-0 right-0 z-20 flex justify-center px-4">
+              <div style={{ width: '100%', maxWidth: '42rem' }}>
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -1495,6 +2037,7 @@ export function NotesPage() {
                   </div>
                 </div>
               </form>
+              </div>
             </div>
           </div>
         </div>
