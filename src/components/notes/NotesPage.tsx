@@ -28,6 +28,7 @@ import {
   X,
   Sparkles,
   Loader2,
+  Send,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { sendNotesAIRequest } from '../../services/ai/notesAiService';
@@ -888,12 +889,13 @@ export function NotesPage() {
   const [pendingEdits, setPendingEdits] = useState<PendingAIEdit[]>([]);
   const [pendingNewBlocks, setPendingNewBlocks] = useState<PendingNewBlock[]>([]);
 
-  // Clear AI message after a delay
+  // Clear AI message when all pending edits are resolved
   useEffect(() => {
-    if (!aiMessage) return;
-    const timer = setTimeout(() => setAiMessage(null), 5000);
-    return () => clearTimeout(timer);
-  }, [aiMessage]);
+    if (aiMessage && pendingEdits.length === 0 && pendingNewBlocks.length === 0) {
+      const timer = setTimeout(() => setAiMessage(null), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [aiMessage, pendingEdits.length, pendingNewBlocks.length]);
 
   const handleAISend = useCallback(async (instruction: string) => {
     if (!activeNoteId || !activeNote || aiLoading) return;
@@ -1344,17 +1346,17 @@ export function NotesPage() {
           </div>
         </div>
 
-        {/* AI status message */}
+        {/* AI status message — anchored above textbox, centered */}
         <AnimatePresence>
           {aiMessage && (
             <motion.div
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 max-w-md"
+              exit={{ opacity: 0, y: 6 }}
+              className="fixed bottom-[5.5rem] left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-2xl"
             >
               <div
-                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm text-white/70"
+                className="px-4 py-3 rounded-2xl"
                 style={{
                   background: 'rgba(255, 255, 255, 0.08)',
                   backdropFilter: 'blur(20px)',
@@ -1363,8 +1365,8 @@ export function NotesPage() {
                   boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
                 }}
               >
-                <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
-                {aiMessage}
+                <p className="text-xs font-medium text-purple-400 opacity-60 mb-1">TimeMachine Air</p>
+                <p className="text-sm text-white/70">{aiMessage}</p>
               </div>
             </motion.div>
           )}
@@ -1393,7 +1395,7 @@ export function NotesPage() {
               <input
                 name="ai-input"
                 type="text"
-                placeholder={aiLoading ? 'Thinking...' : 'Ask AI to edit, enhance, or add to your note...'}
+                placeholder={aiLoading ? 'Thinking...' : 'Ask to edit, enhance or add to notes'}
                 disabled={aiLoading || !activeNoteId}
                 className="w-full pl-11 pr-16 rounded-[28px] text-white placeholder-gray-400 outline-none disabled:opacity-50 transition-all duration-300 text-base"
                 style={{
@@ -1431,7 +1433,7 @@ export function NotesPage() {
                   {aiLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
-                    <Sparkles className="w-5 h-5 relative z-10" />
+                    <Send className="w-5 h-5 relative z-10" />
                   )}
                 </motion.button>
               </div>
