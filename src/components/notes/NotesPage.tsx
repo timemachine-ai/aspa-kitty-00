@@ -24,9 +24,13 @@ import {
   Star,
   StarOff,
   Palette,
+  Check,
+  X,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
-import { UniversalTextbox } from '../shared/UniversalTextbox';
 import { useTheme } from '../../context/ThemeContext';
+import { sendNotesAIRequest } from '../../services/ai/notesAiService';
 
 // ─── types ──────────────────────────────────────────────────────────
 
@@ -61,6 +65,23 @@ interface Note {
   starred: boolean;
   emoji?: string;
   noteTheme?: NoteTheme;
+}
+
+// ─── AI co-pilot types ──────────────────────────────────────────────
+
+interface PendingAIEdit {
+  blockId: string;
+  originalContent: string;
+  originalType: BlockType;
+  newContent: string;
+  newType?: BlockType;
+}
+
+interface PendingNewBlock {
+  tempId: string;
+  afterBlockId: string;
+  type: BlockType;
+  content: string;
 }
 
 // ─── constants ──────────────────────────────────────────────────────
@@ -230,9 +251,13 @@ interface BlockEditorProps {
   onKeyDown: (e: React.KeyboardEvent) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  aiPending?: PendingAIEdit | null;
+  aiNewBlock?: boolean;
+  onAcceptAI?: () => void;
+  onRejectAI?: () => void;
 }
 
-function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, onChange, onChangeType, onToggleCheck, onKeyDown, onDelete, onDuplicate }: BlockEditorProps) {
+function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, onChange, onChangeType, onToggleCheck, onKeyDown, onDelete, onDuplicate, aiPending, aiNewBlock, onAcceptAI, onRejectAI }: BlockEditorProps) {
   const themeColors = getNoteTheme(noteTheme);
   const ref = useRef<HTMLTextAreaElement>(null);
   const [showMenu, setShowMenu] = useState(false);
@@ -361,8 +386,55 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
     'callout': 'Type something...',
   };
 
+  const hasAIPending = !!aiPending || !!aiNewBlock;
+
   return (
-    <div className="group relative flex items-start py-0.5">
+    <div className={`group relative flex items-start py-0.5 transition-all duration-300 ${hasAIPending ? 'rounded-lg -mx-2 px-2' : ''}`}
+      style={hasAIPending ? {
+        background: `rgba(${themeColors.rgb}, 0.08)`,
+        border: `1px solid rgba(${themeColors.rgb}, 0.25)`,
+        boxShadow: `0 0 20px rgba(${themeColors.rgb}, 0.1)`,
+      } : undefined}
+    >
+      {/* AI Accept/Reject buttons */}
+      {hasAIPending && onAcceptAI && onRejectAI && (
+        <div className="absolute -right-2 top-1/2 -translate-y-1/2 translate-x-full flex items-center gap-1 z-10 ml-2">
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={onAcceptAI}
+            className="p-1.5 rounded-lg transition-colors"
+            style={{
+              background: `rgba(${themeColors.rgb}, 0.2)`,
+              border: `1px solid rgba(${themeColors.rgb}, 0.3)`,
+            }}
+            title="Accept"
+          >
+            <Check className="w-3.5 h-3.5" style={{ color: `rgba(${themeColors.rgb}, 1)` }} />
+          </motion.button>
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={onRejectAI}
+            className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-red-500/20 hover:border-red-500/30 transition-colors"
+            title="Reject"
+          >
+            <X className="w-3.5 h-3.5 text-white/50 hover:text-red-400" />
+          </motion.button>
+        </div>
+      )}
+
+      {/* AI sparkle indicator */}
+      {hasAIPending && (
+        <div className="absolute -left-6 top-1/2 -translate-y-1/2">
+          <Sparkles className="w-3.5 h-3.5" style={{ color: `rgba(${themeColors.rgb}, 0.7)` }} />
+        </div>
+      )}
+
       {/* Hover controls */}
       <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -left-14 top-0 flex items-center gap-0.5 pt-1">
         <button
@@ -417,6 +489,7 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
             block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''
           }`}
           style={{ minHeight: '1.5em' }}
+          readOnly={hasAIPending}
         />
       </div>
 
@@ -523,6 +596,10 @@ interface DraggableBlockProps {
   onKeyDown: (e: React.KeyboardEvent) => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  aiPending?: PendingAIEdit | null;
+  aiNewBlock?: boolean;
+  onAcceptAI?: () => void;
+  onRejectAI?: () => void;
 }
 
 function DraggableBlock(props: DraggableBlockProps) {
@@ -535,7 +612,14 @@ function DraggableBlock(props: DraggableBlockProps) {
       className="list-none"
       whileDrag={{ scale: 1.02, opacity: 0.8 }}
     >
-      <BlockEditor {...props} dragControls={controls} />
+      <BlockEditor
+        {...props}
+        dragControls={controls}
+        aiPending={props.aiPending}
+        aiNewBlock={props.aiNewBlock}
+        onAcceptAI={props.onAcceptAI}
+        onRejectAI={props.onRejectAI}
+      />
     </Reorder.Item>
   );
 }
@@ -798,14 +882,172 @@ export function NotesPage() {
     }
   }, [activeNote, insertBlockAfter, deleteBlock]);
 
-  const handleQuickInput = useCallback((text: string) => {
-    if (!activeNoteId) return;
-    const newBlock: Block = { id: uid(), type: 'text', content: text };
-    updateNote(activeNoteId, (n) => ({
-      ...n,
-      blocks: [...n.blocks, newBlock],
+  // ─── AI Co-pilot State ────────────────────────────────────────────
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [pendingEdits, setPendingEdits] = useState<PendingAIEdit[]>([]);
+  const [pendingNewBlocks, setPendingNewBlocks] = useState<PendingNewBlock[]>([]);
+
+  // Clear AI message after a delay
+  useEffect(() => {
+    if (!aiMessage) return;
+    const timer = setTimeout(() => setAiMessage(null), 5000);
+    return () => clearTimeout(timer);
+  }, [aiMessage]);
+
+  const handleAISend = useCallback(async (instruction: string) => {
+    if (!activeNoteId || !activeNote || aiLoading) return;
+
+    setAiLoading(true);
+    setAiMessage(null);
+
+    // Build block context for the API
+    const blockContexts = activeNote.blocks.map((b, i) => ({
+      index: i,
+      id: b.id,
+      type: b.type,
+      content: b.content,
+      checked: b.checked,
     }));
-  }, [activeNoteId, updateNote]);
+
+    try {
+      const response = await sendNotesAIRequest(
+        activeNote.title,
+        blockContexts,
+        instruction
+      );
+
+      if (response.error) {
+        setAiMessage(response.error);
+        setAiLoading(false);
+        return;
+      }
+
+      // Apply edits as pending (show preview with highlight)
+      const newPendingEdits: PendingAIEdit[] = [];
+
+      for (const edit of response.edits) {
+        const existingBlock = activeNote.blocks.find((b) => b.id === edit.blockId);
+        if (!existingBlock) continue;
+
+        newPendingEdits.push({
+          blockId: edit.blockId,
+          originalContent: existingBlock.content,
+          originalType: existingBlock.type,
+          newContent: edit.newContent,
+          newType: edit.newType as BlockType | undefined,
+        });
+
+        // Apply the AI content immediately (will be reverted on reject)
+        updateBlock(edit.blockId, {
+          content: edit.newContent,
+          ...(edit.newType ? { type: edit.newType as BlockType } : {}),
+        });
+      }
+
+      // Handle new blocks
+      const newPending: PendingNewBlock[] = [];
+      if (response.newBlocks && response.newBlocks.length > 0) {
+        for (const nb of response.newBlocks) {
+          const tempId = uid();
+          const newBlock: Block = {
+            id: tempId,
+            type: nb.type as BlockType,
+            content: nb.content,
+          };
+
+          newPending.push({
+            tempId,
+            afterBlockId: nb.afterBlockId,
+            type: nb.type as BlockType,
+            content: nb.content,
+          });
+
+          // Insert the block into the note
+          updateNote(activeNoteId, (n) => {
+            const blocks = [...n.blocks];
+            if (nb.afterBlockId === 'START') {
+              blocks.unshift(newBlock);
+            } else {
+              const afterIdx = blocks.findIndex((b) => b.id === nb.afterBlockId);
+              if (afterIdx >= 0) {
+                blocks.splice(afterIdx + 1, 0, newBlock);
+              } else {
+                blocks.push(newBlock);
+              }
+            }
+            return { ...n, blocks };
+          });
+        }
+      }
+
+      setPendingEdits(newPendingEdits);
+      setPendingNewBlocks(newPending);
+      setAiMessage(response.message);
+    } catch (err: any) {
+      setAiMessage(err.message || 'AI request failed.');
+    } finally {
+      setAiLoading(false);
+    }
+  }, [activeNoteId, activeNote, aiLoading, updateBlock, updateNote]);
+
+  const handleAcceptEdit = useCallback((blockId: string) => {
+    // Simply remove from pending — content is already applied
+    setPendingEdits((prev) => prev.filter((e) => e.blockId !== blockId));
+    setPendingNewBlocks((prev) => prev.filter((e) => e.tempId !== blockId));
+  }, []);
+
+  const handleRejectEdit = useCallback((blockId: string) => {
+    // Revert edited blocks to original content
+    const edit = pendingEdits.find((e) => e.blockId === blockId);
+    if (edit) {
+      updateBlock(edit.blockId, {
+        content: edit.originalContent,
+        type: edit.originalType,
+      });
+      setPendingEdits((prev) => prev.filter((e) => e.blockId !== blockId));
+      return;
+    }
+
+    // Remove new blocks
+    const newBlock = pendingNewBlocks.find((e) => e.tempId === blockId);
+    if (newBlock && activeNoteId) {
+      updateNote(activeNoteId, (n) => ({
+        ...n,
+        blocks: n.blocks.filter((b) => b.id !== blockId),
+      }));
+      setPendingNewBlocks((prev) => prev.filter((e) => e.tempId !== blockId));
+    }
+  }, [pendingEdits, pendingNewBlocks, updateBlock, updateNote, activeNoteId]);
+
+  const handleAcceptAll = useCallback(() => {
+    setPendingEdits([]);
+    setPendingNewBlocks([]);
+  }, []);
+
+  const handleRejectAll = useCallback(() => {
+    // Revert all edits
+    for (const edit of pendingEdits) {
+      updateBlock(edit.blockId, {
+        content: edit.originalContent,
+        type: edit.originalType,
+      });
+    }
+    // Remove all new blocks
+    if (activeNoteId) {
+      const newBlockIds = new Set(pendingNewBlocks.map((nb) => nb.tempId));
+      if (newBlockIds.size > 0) {
+        updateNote(activeNoteId, (n) => ({
+          ...n,
+          blocks: n.blocks.filter((b) => !newBlockIds.has(b.id)),
+        }));
+      }
+    }
+    setPendingEdits([]);
+    setPendingNewBlocks([]);
+  }, [pendingEdits, pendingNewBlocks, updateBlock, updateNote, activeNoteId]);
+
+  const hasPendingAI = pendingEdits.length > 0 || pendingNewBlocks.length > 0;
 
   // Load initial note from localStorage if coming from home page
   useEffect(() => {
@@ -1014,23 +1256,71 @@ export function NotesPage() {
 
                   {/* Blocks */}
                   <Reorder.Group axis="y" values={activeNote.blocks} onReorder={reorderBlocks} className="space-y-0.5 list-none p-0 m-0">
-                    {activeNote.blocks.map((block, index) => (
-                      <DraggableBlock
-                        key={block.id}
-                        block={block}
-                        index={index}
-                        focused={focusedBlockIndex === index}
-                        noteTheme={activeNote.noteTheme || 'purple'}
-                        onFocus={() => setFocusedBlockIndex(index)}
-                        onChange={(content) => updateBlock(block.id, { content })}
-                        onChangeType={(type) => updateBlock(block.id, { type })}
-                        onToggleCheck={() => updateBlock(block.id, { checked: !block.checked })}
-                        onKeyDown={(e) => handleBlockKeyDown(e, index)}
-                        onDelete={() => deleteBlock(index)}
-                        onDuplicate={() => duplicateBlock(index)}
-                      />
-                    ))}
+                    {activeNote.blocks.map((block, index) => {
+                      const pendingEdit = pendingEdits.find((e) => e.blockId === block.id) || null;
+                      const isNewBlock = pendingNewBlocks.some((nb) => nb.tempId === block.id);
+                      return (
+                        <DraggableBlock
+                          key={block.id}
+                          block={block}
+                          index={index}
+                          focused={focusedBlockIndex === index}
+                          noteTheme={activeNote.noteTheme || 'purple'}
+                          onFocus={() => setFocusedBlockIndex(index)}
+                          onChange={(content) => updateBlock(block.id, { content })}
+                          onChangeType={(type) => updateBlock(block.id, { type })}
+                          onToggleCheck={() => updateBlock(block.id, { checked: !block.checked })}
+                          onKeyDown={(e) => handleBlockKeyDown(e, index)}
+                          onDelete={() => deleteBlock(index)}
+                          onDuplicate={() => duplicateBlock(index)}
+                          aiPending={pendingEdit}
+                          aiNewBlock={isNewBlock}
+                          onAcceptAI={() => handleAcceptEdit(block.id)}
+                          onRejectAI={() => handleRejectEdit(block.id)}
+                        />
+                      );
+                    })}
                   </Reorder.Group>
+
+                  {/* Accept / Reject All bar */}
+                  <AnimatePresence>
+                    {hasPendingAI && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        className="mt-4 flex items-center justify-between rounded-xl px-4 py-3"
+                        style={{
+                          background: `rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 0.08)`,
+                          border: `1px solid rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 0.2)`,
+                        }}
+                      >
+                        <div className="flex items-center gap-2 text-sm text-white/50">
+                          <Sparkles className="w-4 h-4" style={{ color: `rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 0.8)` }} />
+                          <span>{pendingEdits.length + pendingNewBlocks.length} AI change{pendingEdits.length + pendingNewBlocks.length !== 1 ? 's' : ''} pending</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleAcceptAll}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                            style={{
+                              background: `rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 0.2)`,
+                              color: `rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 1)`,
+                              border: `1px solid rgba(${getNoteTheme(activeNote.noteTheme).rgb}, 0.3)`,
+                            }}
+                          >
+                            <Check className="w-3.5 h-3.5" /> Accept All
+                          </button>
+                          <button
+                            onClick={handleRejectAll}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/50 bg-white/5 border border-white/10 hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/30 transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" /> Reject All
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Add block button */}
                   <motion.button
@@ -1054,12 +1344,100 @@ export function NotesPage() {
           </div>
         </div>
 
-        {/* Floating Universal Textbox */}
-        <UniversalTextbox
-          onSend={handleQuickInput}
-          placeholder="Quick note..."
-          floating
-        />
+        {/* AI status message */}
+        <AnimatePresence>
+          {aiMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 max-w-md"
+            >
+              <div
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm text-white/70"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                }}
+              >
+                <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+                {aiMessage}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Floating AI Co-pilot Textbox */}
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-2xl z-40`}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const input = (e.target as HTMLFormElement).elements.namedItem('ai-input') as HTMLInputElement;
+              if (input.value.trim()) {
+                handleAISend(input.value.trim());
+                input.value = '';
+              }
+            }}
+          >
+            <div className="relative flex items-center">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                {aiLoading ? (
+                  <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4 text-purple-400/60" />
+                )}
+              </div>
+              <input
+                name="ai-input"
+                type="text"
+                placeholder={aiLoading ? 'Thinking...' : 'Ask AI to edit, enhance, or add to your note...'}
+                disabled={aiLoading || !activeNoteId}
+                className="w-full pl-11 pr-16 rounded-[28px] text-white placeholder-gray-400 outline-none disabled:opacity-50 transition-all duration-300 text-base"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                  height: '56px',
+                  fontSize: '1rem',
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    const form = e.currentTarget.form;
+                    if (form) form.requestSubmit();
+                  }
+                }}
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <motion.button
+                  type="submit"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  disabled={aiLoading || !activeNoteId}
+                  className="p-3 rounded-full text-white disabled:opacity-50 relative group transition-all duration-300"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(255, 255, 255, 0.05))',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(168, 85, 247, 0.4)',
+                    boxShadow: '0 0 15px rgba(168, 85, 247, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+                  }}
+                >
+                  {aiLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-5 h-5 relative z-10" />
+                  )}
+                </motion.button>
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
