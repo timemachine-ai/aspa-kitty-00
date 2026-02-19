@@ -34,6 +34,12 @@ import {
   Pencil,
   Eraser,
   ImagePlus,
+  TrendingUp,
+  Table2,
+  Bold,
+  Italic,
+  Underline,
+  Highlighter,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { sendNotesAIRequest } from '../../services/ai/notesAiService';
@@ -53,7 +59,9 @@ type BlockType =
   | 'divider'
   | 'callout'
   | 'doodle'
-  | 'image';
+  | 'image'
+  | 'graph'
+  | 'table';
 
 interface Block {
   id: string;
@@ -110,6 +118,8 @@ const BLOCK_MENU_OPTIONS: { type: BlockType; label: string; description: string;
   { type: 'callout', label: 'Callout', description: 'Highlighted callout box', icon: <Palette className="w-4 h-4" /> },
   { type: 'doodle', label: 'Doodle', description: 'Draw freely with pen or brush', icon: <Pencil className="w-4 h-4" /> },
   { type: 'image', label: 'Image', description: 'Insert an image', icon: <ImagePlus className="w-4 h-4" /> },
+  { type: 'graph', label: 'Graph', description: 'Plot 1–2 equations on XY axes', icon: <TrendingUp className="w-4 h-4" /> },
+  { type: 'table', label: 'Table', description: 'Editable data table', icon: <Table2 className="w-4 h-4" /> },
 ];
 
 const glassCard = {
@@ -741,6 +751,357 @@ function ImageBlock({ block, onChange, onDelete, onDuplicate, onResize, dragCont
   );
 }
 
+// ─── inline markdown renderer ────────────────────────────────────────
+
+function renderInline(text: string): string {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>')
+    .replace(/\*([^*\n]+?)\*/gs, '<em>$1</em>')
+    .replace(/__(.+?)__/gs, '<u>$1</u>')
+    .replace(/\[color:([^\]]+)\](.*?)\[\/color\]/gs, '<span style="color:$1">$2</span>')
+    .replace(/\[bg:([^\]]+)\](.*?)\[\/bg\]/gs, '<span style="background-color:$1;border-radius:3px;padding:0 2px">$2</span>')
+    .replace(/\n/g, '<br>');
+}
+
+// ─── graph block ─────────────────────────────────────────────────────
+
+interface GraphBlockProps {
+  block: Block;
+  onChange: (content: string) => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+  dragControls: ReturnType<typeof useDragControls>;
+}
+
+function GraphBlock({ block, onChange, onDelete, onDuplicate, dragControls }: GraphBlockProps) {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [displayW, setDisplayW] = useState(block.width || 520);
+  const resizeRef = useRef({ startX: 0, startW: 0 });
+
+  const parsed = useMemo(() => {
+    try { return JSON.parse(block.content || '{}'); } catch { return {}; }
+  }, [block.content]);
+
+  const [eq1, setEq1] = useState<string>(parsed.eq1 ?? 'Math.sin(x)');
+  const [eq2, setEq2] = useState<string>(parsed.eq2 ?? '');
+
+  const W = 480, H = 280, PAD = 40;
+
+  const evalEq = (eq: string, x: number): number | null => {
+    if (!eq.trim()) return null;
+    try {
+      // eslint-disable-next-line no-new-func
+      const val = new Function('x', `"use strict"; const {sin,cos,tan,sqrt,abs,log,exp,PI,pow,min,max} = Math; return (${eq})`)(x);
+      return typeof val === 'number' && isFinite(val) ? val : null;
+    } catch { return null; }
+  };
+
+  const { yMin, yMax } = useMemo(() => {
+    const vals: number[] = [];
+    for (let i = 0; i <= 200; i++) {
+      const x = -10 + 20 * i / 200;
+      const v1 = evalEq(eq1, x);
+      const v2 = evalEq(eq2, x);
+      if (v1 !== null) vals.push(v1);
+      if (v2 !== null) vals.push(v2);
+    }
+    if (vals.length === 0) return { yMin: -5, yMax: 5 };
+    const lo = Math.min(...vals), hi = Math.max(...vals);
+    const range = hi - lo || 2;
+    return { yMin: lo - range * 0.15, yMax: hi + range * 0.15 };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eq1, eq2]);
+
+  const xMin = -10, xMax = 10;
+  const toSvgX = (x: number) => PAD + (x - xMin) / (xMax - xMin) * (W - 2 * PAD);
+  const toSvgY = (y: number) => PAD + (1 - (y - yMin) / (yMax - yMin)) * (H - 2 * PAD);
+
+  const genPath = (eq: string): string => {
+    const steps = 400;
+    const parts: string[] = [];
+    let wasNull = true;
+    for (let i = 0; i <= steps; i++) {
+      const x = xMin + (xMax - xMin) * i / steps;
+      const y = evalEq(eq, x);
+      if (y === null || toSvgY(y) < -20 || toSvgY(y) > H + 20) { wasNull = true; continue; }
+      const sx = toSvgX(x), sy = toSvgY(y);
+      parts.push(wasNull ? `M ${sx} ${sy}` : `L ${sx} ${sy}`);
+      wasNull = false;
+    }
+    return parts.join(' ');
+  };
+
+  const axisY = Math.max(PAD, Math.min(H - PAD, toSvgY(0)));
+  const axisX = Math.max(PAD, Math.min(W - PAD, toSvgX(0)));
+
+  const xTicks = useMemo(() => {
+    const t: number[] = [];
+    for (let x = -10; x <= 10; x += 2) t.push(x);
+    return t;
+  }, []);
+  const yTicks = useMemo(() => {
+    const t: number[] = [];
+    const step = Math.max(1, Math.ceil((yMax - yMin) / 8));
+    for (let y = Math.ceil(yMin); y <= yMax; y += step) t.push(y);
+    return t;
+  }, [yMin, yMax]);
+
+  const commit = (e1: string, e2: string) => onChange(JSON.stringify({ eq1: e1, eq2: e2 }));
+
+  const onResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    resizeRef.current = { startX: e.clientX, startW: displayW };
+    const onMove = (ev: MouseEvent) => setDisplayW(Math.max(300, resizeRef.current.startW + ev.clientX - resizeRef.current.startX));
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  useEffect(() => {
+    const handle = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  const path1 = genPath(eq1);
+  const path2 = eq2.trim() ? genPath(eq2) : '';
+
+  return (
+    <div className="group relative py-2">
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -left-14 top-2 flex items-center gap-0.5">
+        <div ref={menuRef} className="relative">
+          <button onClick={() => setShowMenu(!showMenu)} className="p-1 rounded hover:bg-white/10 text-white/30">
+            <MoreHorizontal className="w-3.5 h-3.5" />
+          </button>
+          {showMenu && (
+            <div className="absolute left-0 top-full mt-1 z-50 rounded-xl overflow-hidden min-w-[160px]" style={glassCard}>
+              <button onClick={() => { onDuplicate(); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-white/70 hover:bg-white/5 transition-colors">
+                <Copy className="w-3.5 h-3.5" /> Duplicate
+              </button>
+              <button onClick={() => { onDelete(); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
+            </div>
+          )}
+        </div>
+        <button className="p-1 rounded hover:bg-white/10 text-white/30 cursor-grab active:cursor-grabbing" onPointerDown={(e) => dragControls.start(e)}>
+          <GripVertical className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <div className="rounded-2xl overflow-hidden" style={{ ...glassCard, width: displayW, maxWidth: '100%' }}>
+        {/* Equation inputs */}
+        <div className="flex flex-col gap-1.5 px-4 py-3 border-b border-white/5">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-purple-400 shrink-0" />
+            <span className="text-xs text-white/30 font-mono shrink-0">y =</span>
+            <input
+              type="text"
+              value={eq1}
+              onChange={(e) => { setEq1(e.target.value); commit(e.target.value, eq2); }}
+              placeholder="sin(x)"
+              className="flex-1 bg-transparent outline-none text-sm text-white/80 placeholder-white/20 font-mono"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0" />
+            <span className="text-xs text-white/30 font-mono shrink-0">y =</span>
+            <input
+              type="text"
+              value={eq2}
+              onChange={(e) => { setEq2(e.target.value); commit(eq1, e.target.value); }}
+              placeholder="optional 2nd equation"
+              className="flex-1 bg-transparent outline-none text-sm text-white/30 placeholder-white/20 font-mono"
+            />
+          </div>
+          <p className="text-[10px] text-white/20 font-mono mt-0.5">Use: x, sin, cos, tan, sqrt, abs, log, exp, PI, pow &nbsp;·&nbsp; Range: x ∈ [−10, 10]</p>
+        </div>
+
+        {/* SVG graph */}
+        <div className="relative" style={{ background: 'rgba(0,0,0,0.15)' }}>
+          <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="block">
+            {/* Grid lines */}
+            {xTicks.map((xt) => (
+              <line key={`xg${xt}`} x1={toSvgX(xt)} y1={PAD} x2={toSvgX(xt)} y2={H - PAD} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+            ))}
+            {yTicks.map((yt) => (
+              <line key={`yg${yt}`} x1={PAD} y1={toSvgY(yt)} x2={W - PAD} y2={toSvgY(yt)} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+            ))}
+            {/* Axes */}
+            <line x1={PAD} y1={axisY} x2={W - PAD} y2={axisY} stroke="rgba(255,255,255,0.22)" strokeWidth="1.5" />
+            <line x1={axisX} y1={PAD} x2={axisX} y2={H - PAD} stroke="rgba(255,255,255,0.22)" strokeWidth="1.5" />
+            {/* Tick labels */}
+            {xTicks.filter((x) => x !== 0).map((xt) => (
+              <text key={`xl${xt}`} x={toSvgX(xt)} y={Math.min(H - PAD + 13, axisY + 13)} textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.25)">{xt}</text>
+            ))}
+            {yTicks.filter((y) => y !== 0).map((yt) => (
+              <text key={`yl${yt}`} x={Math.max(PAD + 2, axisX - 5)} y={toSvgY(yt) + 3} textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.25)">{Math.round(yt * 10) / 10}</text>
+            ))}
+            {/* Axis labels */}
+            <text x={W - PAD + 6} y={axisY + 4} fontSize="11" fill="rgba(255,255,255,0.35)" fontStyle="italic">x</text>
+            <text x={axisX + 5} y={PAD - 5} fontSize="11" fill="rgba(255,255,255,0.35)" fontStyle="italic">y</text>
+            {/* Curves */}
+            {path1 && <path d={path1} fill="none" stroke="rgba(168,85,247,0.9)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />}
+            {path2 && <path d={path2} fill="none" stroke="rgba(34,211,238,0.9)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />}
+          </svg>
+          {/* Resize handle */}
+          <div onMouseDown={onResizeStart} className="absolute bottom-1.5 right-1.5 w-5 h-5 flex items-end justify-end cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity">
+            <svg width="12" height="12" viewBox="0 0 12 12" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              <line x1="4" y1="12" x2="12" y2="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="8" y1="12" x2="12" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── table block ─────────────────────────────────────────────────────
+
+interface TableBlockProps {
+  block: Block;
+  onChange: (content: string) => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+  dragControls: ReturnType<typeof useDragControls>;
+}
+
+function TableBlock({ block, onChange, onDelete, onDuplicate, dragControls }: TableBlockProps) {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const parseRows = (): string[][] => {
+    try {
+      const d = JSON.parse(block.content || '{}');
+      if (Array.isArray(d.rows) && d.rows.length > 0) return d.rows;
+    } catch { /* empty */ }
+    return [['Header 1', 'Header 2', 'Header 3'], ['', '', ''], ['', '', '']];
+  };
+
+  const [rows, setRows] = useState<string[][]>(parseRows);
+
+  const save = (newRows: string[][]) => {
+    setRows(newRows);
+    onChange(JSON.stringify({ rows: newRows }));
+  };
+
+  const updateCell = (r: number, c: number, val: string) =>
+    save(rows.map((row, ri) => ri === r ? row.map((cell, ci) => ci === c ? val : cell) : [...row]));
+
+  const addRow = () => save([...rows, Array(rows[0]?.length || 3).fill('')]);
+  const removeRow = (r: number) => { if (rows.length > 1) save(rows.filter((_, i) => i !== r)); };
+  const addCol = () => save(rows.map((row) => [...row, '']));
+  const removeCol = (c: number) => { if ((rows[0]?.length || 0) > 1) save(rows.map((row) => row.filter((_, i) => i !== c))); };
+
+  useEffect(() => {
+    const handle = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  const colCount = rows[0]?.length || 0;
+
+  return (
+    <div className="group relative py-2">
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -left-14 top-2 flex items-center gap-0.5">
+        <div ref={menuRef} className="relative">
+          <button onClick={() => setShowMenu(!showMenu)} className="p-1 rounded hover:bg-white/10 text-white/30">
+            <MoreHorizontal className="w-3.5 h-3.5" />
+          </button>
+          {showMenu && (
+            <div className="absolute left-0 top-full mt-1 z-50 rounded-xl overflow-hidden min-w-[160px]" style={glassCard}>
+              <button onClick={() => { onDuplicate(); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-white/70 hover:bg-white/5 transition-colors">
+                <Copy className="w-3.5 h-3.5" /> Duplicate
+              </button>
+              <button onClick={() => { onDelete(); setShowMenu(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </button>
+            </div>
+          )}
+        </div>
+        <button className="p-1 rounded hover:bg-white/10 text-white/30 cursor-grab active:cursor-grabbing" onPointerDown={(e) => dragControls.start(e)}>
+          <GripVertical className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      <div className="rounded-2xl overflow-hidden" style={glassCard}>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr>
+                {rows[0]?.map((cell, c) => (
+                  <th key={c} className="group/col relative border-b border-r border-white/10 last:border-r-0 text-left p-0">
+                    <input
+                      value={cell}
+                      onChange={(e) => updateCell(0, c, e.target.value)}
+                      placeholder={`Col ${c + 1}`}
+                      className="w-full bg-transparent outline-none px-3 py-2.5 text-sm font-semibold text-white/90 placeholder-white/20 min-w-[90px]"
+                    />
+                    {colCount > 1 && (
+                      <button
+                        onClick={() => removeCol(c)}
+                        className="absolute top-0.5 right-0.5 opacity-0 group-hover/col:opacity-100 w-4 h-4 rounded flex items-center justify-center bg-red-500/20 text-red-400 text-[10px] hover:bg-red-500/40 transition-all z-10 leading-none"
+                      >×</button>
+                    )}
+                  </th>
+                ))}
+                <th className="border-b border-white/10 w-8 p-0">
+                  <button onClick={addCol} className="w-full h-full flex items-center justify-center py-2.5 hover:bg-white/5 text-white/20 hover:text-white/50 transition-colors">
+                    <Plus className="w-3 h-3" />
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(1).map((row, rIdx) => {
+                const r = rIdx + 1;
+                return (
+                  <tr key={r} className="group/row border-b border-white/5 last:border-b-0">
+                    {row.map((cell, c) => (
+                      <td key={c} className="border-r border-white/5 last:border-r-0 p-0">
+                        <input
+                          value={cell}
+                          onChange={(e) => updateCell(r, c, e.target.value)}
+                          placeholder="—"
+                          className="w-full bg-transparent outline-none px-3 py-2 text-sm text-white/70 placeholder-white/10 min-w-[90px] hover:bg-white/[0.02] focus:bg-white/[0.03] transition-colors"
+                        />
+                      </td>
+                    ))}
+                    <td className="w-8 p-0">
+                      {rows.length > 2 && (
+                        <button
+                          onClick={() => removeRow(r)}
+                          className="opacity-0 group-hover/row:opacity-100 w-full flex items-center justify-center py-2 hover:bg-red-500/10 text-red-400/30 hover:text-red-400 transition-all"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              <tr>
+                <td colSpan={colCount + 1} className="px-3 py-1.5">
+                  <button onClick={addRow} className="flex items-center gap-1.5 text-xs text-white/20 hover:text-white/50 transition-colors">
+                    <Plus className="w-3 h-3" /> Add row
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── block renderer (textarea-based, no contentEditable) ────────────
 
 interface BlockEditorProps {
@@ -770,6 +1131,18 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const [slashFilter, setSlashFilter] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Selection toolbar state
+  type SelToolbar = { x: number; y: number; selStart: number; selEnd: number; showColors: false | 'text' | 'bg' };
+  const [selToolbar, setSelToolbar] = useState<SelToolbar | null>(null);
+
+  // Hide selection toolbar on outside click
+  useEffect(() => {
+    if (!selToolbar) return;
+    const handle = () => setSelToolbar(null);
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [selToolbar]);
 
   // Auto-focus when this block becomes focused
   useEffect(() => {
@@ -837,6 +1210,34 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
     (opt) => opt.label.toLowerCase().includes(slashFilter) || opt.type.includes(slashFilter)
   );
 
+  // Selection toolbar: show on mouseup when text is selected
+  const handleTextareaMouseUp = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    const ta = e.currentTarget;
+    if (ta.selectionStart !== ta.selectionEnd) {
+      setSelToolbar({ x: e.clientX, y: e.clientY, selStart: ta.selectionStart, selEnd: ta.selectionEnd, showColors: false });
+    } else {
+      setSelToolbar(null);
+    }
+  };
+
+  // Apply inline formatting by wrapping selected text with markers
+  const applyFormat = (type: string, value?: string) => {
+    if (!selToolbar || !ref.current) return;
+    const { selStart, selEnd } = selToolbar;
+    const text = block.content;
+    const selected = text.slice(selStart, selEnd);
+    let wrapped = selected;
+    if (type === 'bold') wrapped = `**${selected}**`;
+    else if (type === 'italic') wrapped = `*${selected}*`;
+    else if (type === 'underline') wrapped = `__${selected}__`;
+    else if (type === 'color') wrapped = `[color:${value}]${selected}[/color]`;
+    else if (type === 'bg') wrapped = `[bg:${value}]${selected}[/bg]`;
+    onChange(text.slice(0, selStart) + wrapped + text.slice(selEnd));
+    setSelToolbar(null);
+    // Restore focus
+    setTimeout(() => ref.current?.focus(), 0);
+  };
+
   if (block.type === 'doodle') {
     return (
       <DoodleBlock
@@ -858,6 +1259,30 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
         onDelete={onDelete}
         onDuplicate={onDuplicate}
         onResize={onResize}
+        dragControls={dragControls}
+      />
+    );
+  }
+
+  if (block.type === 'graph') {
+    return (
+      <GraphBlock
+        block={block}
+        onChange={onChange}
+        onDelete={onDelete}
+        onDuplicate={onDuplicate}
+        dragControls={dragControls}
+      />
+    );
+  }
+
+  if (block.type === 'table') {
+    return (
+      <TableBlock
+        block={block}
+        onChange={onChange}
+        onDelete={onDelete}
+        onDuplicate={onDuplicate}
         dragControls={dragControls}
       />
     );
@@ -890,6 +1315,8 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
     'callout': 'text-base text-white/80',
     'doodle': '',
     'image': '',
+    'graph': '',
+    'table': '',
   };
 
   const wrapperExtra: Record<BlockType, string> = {
@@ -906,6 +1333,8 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
     callout: `${themeColors.calloutBg} border ${themeColors.calloutBorder} rounded-xl p-4`,
     doodle: '',
     image: '',
+    graph: '',
+    table: '',
   };
 
   const placeholders: Record<BlockType, string> = {
@@ -922,6 +1351,8 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
     'callout': 'Type something...',
     'doodle': '',
     'image': '',
+    'graph': '',
+    'table': '',
   };
 
   const hasAIPending = !!aiPending || !!aiNewBlock;
@@ -1014,22 +1445,96 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
           </button>
         )}
 
-        {/* Textarea-based editable content */}
-        <textarea
-          ref={ref}
-          value={block.content}
-          onChange={handleChange}
-          onFocus={onFocus}
-          onKeyDown={onKeyDown}
-          placeholder={placeholders[block.type]}
-          rows={1}
-          className={`flex-1 bg-transparent outline-none resize-none overflow-hidden placeholder-white/20 ${textSizeClass[block.type]} ${
-            block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''
-          }`}
-          style={{ minHeight: '1.5em' }}
-          readOnly={hasAIPending}
-        />
+        {/* Editable content — textarea when focused, rendered markdown when not */}
+        {focused || hasAIPending ? (
+          <textarea
+            ref={ref}
+            value={block.content}
+            onChange={handleChange}
+            onFocus={onFocus}
+            onKeyDown={onKeyDown}
+            onMouseUp={handleTextareaMouseUp}
+            placeholder={placeholders[block.type]}
+            rows={1}
+            className={`flex-1 bg-transparent outline-none resize-none overflow-hidden placeholder-white/20 ${textSizeClass[block.type]} ${
+              block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''
+            }`}
+            style={{ minHeight: '1.5em' }}
+            readOnly={hasAIPending}
+          />
+        ) : (
+          <div
+            className={`flex-1 min-w-0 cursor-text ${textSizeClass[block.type]} ${
+              block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''
+            }`}
+            style={{ minHeight: '1.5em', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+            onClick={onFocus}
+            dangerouslySetInnerHTML={{
+              __html: block.content
+                ? renderInline(block.content)
+                : `<span style="color:rgba(255,255,255,0.2)">${placeholders[block.type]}</span>`,
+            }}
+          />
+        )}
       </div>
+
+      {/* Selection toolbar */}
+      {selToolbar && (
+        <div
+          className="fixed z-[200] flex flex-col gap-0"
+          style={{ left: selToolbar.x - 120, top: selToolbar.y - 52 }}
+          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        >
+          <div className="flex items-center rounded-xl overflow-hidden shadow-2xl" style={glassCard}>
+            {/* Format buttons */}
+            <button
+              onClick={() => applyFormat('bold')}
+              title="Bold (**text**)"
+              className="flex items-center justify-center w-9 h-9 hover:bg-white/10 text-white/70 hover:text-white transition-colors border-r border-white/10"
+            ><Bold className="w-3.5 h-3.5" /></button>
+            <button
+              onClick={() => applyFormat('italic')}
+              title="Italic (*text*)"
+              className="flex items-center justify-center w-9 h-9 hover:bg-white/10 text-white/70 hover:text-white transition-colors border-r border-white/10"
+            ><Italic className="w-3.5 h-3.5" /></button>
+            <button
+              onClick={() => applyFormat('underline')}
+              title="Underline (__text__)"
+              className="flex items-center justify-center w-9 h-9 hover:bg-white/10 text-white/70 hover:text-white transition-colors border-r border-white/10"
+            ><Underline className="w-3.5 h-3.5" /></button>
+            {/* Text colour picker */}
+            <div className="relative">
+              <button
+                onClick={() => setSelToolbar((s) => s ? { ...s, showColors: s.showColors === 'text' ? false : 'text' } : s)}
+                title="Text colour"
+                className="flex items-center justify-center w-9 h-9 hover:bg-white/10 text-white/70 hover:text-white transition-colors border-r border-white/10"
+              ><span className="text-[11px] font-bold" style={{ textDecoration: 'underline 2px #a855f7' }}>A</span></button>
+              {selToolbar.showColors === 'text' && (
+                <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 flex gap-1 p-1.5 rounded-xl" style={glassCard}>
+                  {['#ffffff','#f87171','#fb923c','#fbbf24','#4ade80','#38bdf8','#a78bfa','#f472b6'].map((c) => (
+                    <button key={c} onClick={() => applyFormat('color', c)} className="w-5 h-5 rounded-full border border-white/20 hover:scale-110 transition-transform" style={{ background: c }} />
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Background colour picker */}
+            <div className="relative">
+              <button
+                onClick={() => setSelToolbar((s) => s ? { ...s, showColors: s.showColors === 'bg' ? false : 'bg' } : s)}
+                title="Highlight colour"
+                className="flex items-center justify-center w-9 h-9 hover:bg-white/10 text-white/70 hover:text-white transition-colors"
+              ><Highlighter className="w-3.5 h-3.5" /></button>
+              {selToolbar.showColors === 'bg' && (
+                <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 flex gap-1 p-1.5 rounded-xl" style={glassCard}>
+                  {['rgba(168,85,247,0.35)','rgba(248,113,113,0.35)','rgba(251,191,36,0.35)','rgba(74,222,128,0.35)','rgba(56,189,248,0.35)','rgba(255,255,255,0.15)'].map((c, i) => (
+                    <button key={i} onClick={() => applyFormat('bg', c)} className="w-5 h-5 rounded border border-white/20 hover:scale-110 transition-transform" style={{ background: c }} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Context menu */}
       <AnimatePresence>
@@ -1168,7 +1673,7 @@ function DraggableBlock(props: DraggableBlockProps) {
 function NoteSidebar({ notes, activeId, onSelect, onNew, onDelete, onToggleStar, searchQuery, onSearchChange }: NoteSidebarProps) {
   const filtered = notes.filter((n) =>
     n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    n.blocks.some((b) => b.type !== 'doodle' && b.type !== 'image' && b.content.toLowerCase().includes(searchQuery.toLowerCase()))
+    n.blocks.some((b) => !['doodle', 'image', 'graph', 'table'].includes(b.type) && b.content.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const starred = filtered.filter((n) => n.starred);
