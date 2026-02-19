@@ -1983,19 +1983,12 @@ export function NotesPage() {
                 }}
               >
                 <div className="relative flex items-center">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                    {aiLoading ? (
-                      <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
-                    ) : (
-                      <Sparkles className="w-4 h-4 text-purple-400/60" />
-                    )}
-                  </div>
                   <input
                     name="ai-input"
                     type="text"
                     placeholder={aiLoading ? 'Thinking...' : 'Ask to edit, enhance or add to notes'}
                     disabled={aiLoading || !activeNoteId}
-                    className="w-full pl-11 pr-16 rounded-[28px] text-white placeholder-gray-400 outline-none disabled:opacity-50 transition-all duration-300 text-base"
+                    className="w-full pl-5 pr-16 rounded-[28px] text-white placeholder-gray-400 outline-none disabled:opacity-50 transition-all duration-300 text-base"
                     style={{
                       background: 'rgba(255, 255, 255, 0.05)',
                       backdropFilter: 'blur(20px)',
