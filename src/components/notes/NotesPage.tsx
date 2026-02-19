@@ -766,6 +766,65 @@ function renderInline(text: string): string {
 
 // ─── graph block ─────────────────────────────────────────────────────
 
+// Convert natural math notation to JS-evaluable expression
+function parseMathExpr(input: string): string {
+  if (!input.trim()) return '';
+  let s = input.trim();
+
+  // Strip "y =", "f(x) =", "g(x) =" prefixes
+  s = s.replace(/^\s*[yfg]\s*\(\s*x\s*\)\s*=\s*/i, '');
+  s = s.replace(/^\s*y\s*=\s*/i, '');
+
+  // Handle |expr| → abs(expr), iteratively for nested
+  let prev = '';
+  while (prev !== s) { prev = s; s = s.replace(/\|([^|]+)\|/, 'abs($1)'); }
+
+  // Replace ^ with ** (before function names to avoid conflict)
+  s = s.replace(/\^/g, '**');
+
+  // Replace functions — longer/specific names first to avoid partial replacement
+  const fns: [RegExp, string][] = [
+    [/\bsqrt\b/g, 'Math.sqrt'], [/\bcbrt\b/g, 'Math.cbrt'],
+    [/\bsinh\b/g, 'Math.sinh'], [/\bcosh\b/g, 'Math.cosh'], [/\btanh\b/g, 'Math.tanh'],
+    [/\basin\b/g, 'Math.asin'], [/\bacos\b/g, 'Math.acos'], [/\batan2\b/g, 'Math.atan2'], [/\batan\b/g, 'Math.atan'],
+    [/\bsin\b/g,  'Math.sin'],  [/\bcos\b/g,  'Math.cos'],  [/\btan\b/g,  'Math.tan'],
+    [/\babs\b/g,  'Math.abs'],  [/\bsign\b/g, 'Math.sign'], [/\bhypot\b/g, 'Math.hypot'],
+    [/\bln\b/g,   'Math.log'],  [/\blog10\b/g,'Math.log10'],[/\blog2\b/g, 'Math.log2'],
+    [/\blog\b/g,  'Math.log10'],[/\bexp\b/g,  'Math.exp'],
+    [/\bceil\b/g, 'Math.ceil'], [/\bfloor\b/g,'Math.floor'],[/\bround\b/g,'Math.round'],
+    [/\btrunc\b/g,'Math.trunc'],[/\bpow\b/g,  'Math.pow'],  [/\bmax\b/g,  'Math.max'],
+    [/\bmin\b/g,  'Math.min'],  [/\bmod\b/g,  '%'],
+  ];
+  for (const [re, rep] of fns) s = s.replace(re, rep);
+
+  // Replace constants
+  s = s.replace(/\bpi\b/gi, 'Math.PI');
+  s = s.replace(/π/g, 'Math.PI');
+  s = s.replace(/\be\b/g, 'Math.E');
+  s = s.replace(/∞/g, 'Infinity');
+
+  // Implicit multiplication (after function/constant replacement)
+  s = s.replace(/(\d)(x)(?!\w)/g, '$1*$2');            // 3x → 3*x
+  s = s.replace(/(\d)\s*\(/g, '$1*(');                  // 3( → 3*(
+  s = s.replace(/\)\s*\(/g, ')*(');                     // )( → )*(
+  s = s.replace(/\)\s*x(?!\w)/g, ')*x');               // )x → )*x
+  s = s.replace(/\)\s*(\d)/g, ')*$1');                  // )3 → )*3
+  s = s.replace(/x\s*\(/g, 'x*(');                      // x( → x*(
+  s = s.replace(/(\d)\s*(Math\.)/g, '$1*$2');           // 3Math. → 3*Math.
+  s = s.replace(/\)\s*(Math\.)/g, ')*$2');              // )Math. → )*Math.
+  s = s.replace(/x\s*(Math\.)/g, 'x*$2');              // xMath. → x*Math.
+
+  return s;
+}
+
+function formatTick(val: number): string {
+  if (Math.abs(val) < 1e-10) return '0';
+  if (Math.abs(val) >= 10000 || (Math.abs(val) < 0.001 && val !== 0))
+    return val.toExponential(1);
+  const s = parseFloat(val.toPrecision(5)).toString();
+  return s.length > 7 ? val.toPrecision(3) : s;
+}
+
 interface GraphBlockProps {
   block: Block;
   onChange: (content: string) => void;
@@ -777,83 +836,146 @@ interface GraphBlockProps {
 function GraphBlock({ block, onChange, onDelete, onDuplicate, dragControls }: GraphBlockProps) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [displayW, setDisplayW] = useState(block.width || 520);
+  const [displayW, setDisplayW] = useState(block.width || 540);
   const resizeRef = useRef({ startX: 0, startW: 0 });
 
   const parsed = useMemo(() => {
     try { return JSON.parse(block.content || '{}'); } catch { return {}; }
   }, [block.content]);
 
-  const [eq1, setEq1] = useState<string>(parsed.eq1 ?? 'Math.sin(x)');
+  const [eq1, setEq1] = useState<string>(parsed.eq1 ?? 'sin(x)');
   const [eq2, setEq2] = useState<string>(parsed.eq2 ?? '');
+  const [err1, setErr1] = useState(false);
+  const [err2, setErr2] = useState(false);
 
-  const W = 480, H = 280, PAD = 40;
+  // View: cx/cy = math coords at SVG center, scale = pixels per math unit
+  const [view, setView] = useState({ cx: 0, cy: 0, scale: 50 });
+  const panRef = useRef<{ mx: number; my: number; cx: number; cy: number } | null>(null);
 
-  const evalEq = (eq: string, x: number): number | null => {
-    if (!eq.trim()) return null;
+  const W = 500, H = 320;
+
+  const toSvgX = useCallback((x: number) => W / 2 + (x - view.cx) * view.scale, [view]);
+  const toSvgY = useCallback((y: number) => H / 2 - (y - view.cy) * view.scale, [view]);
+  const toMathX = useCallback((sx: number) => (sx - W / 2) / view.scale + view.cx, [view]);
+  const toMathY = useCallback((sy: number) => -(sy - H / 2) / view.scale + view.cy, [view]);
+
+  // Build evaluator from equation string
+  const buildEval = useCallback((eq: string): ((x: number) => number | null) | null => {
+    const js = parseMathExpr(eq);
+    if (!js) return null;
     try {
       // eslint-disable-next-line no-new-func
-      const val = new Function('x', `"use strict"; const {sin,cos,tan,sqrt,abs,log,exp,PI,pow,min,max} = Math; return (${eq})`)(x);
-      return typeof val === 'number' && isFinite(val) ? val : null;
+      const fn = new Function('x', `"use strict"; try { const _v=(${js}); return (typeof _v==='number'&&isFinite(_v))?_v:null; } catch(e){return null;}`);
+      return fn as (x: number) => number | null;
     } catch { return null; }
-  };
+  }, []);
 
-  const { yMin, yMax } = useMemo(() => {
-    const vals: number[] = [];
-    for (let i = 0; i <= 200; i++) {
-      const x = -10 + 20 * i / 200;
-      const v1 = evalEq(eq1, x);
-      const v2 = evalEq(eq2, x);
-      if (v1 !== null) vals.push(v1);
-      if (v2 !== null) vals.push(v2);
-    }
-    if (vals.length === 0) return { yMin: -5, yMax: 5 };
-    const lo = Math.min(...vals), hi = Math.max(...vals);
-    const range = hi - lo || 2;
-    return { yMin: lo - range * 0.15, yMax: hi + range * 0.15 };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eq1, eq2]);
-
-  const xMin = -10, xMax = 10;
-  const toSvgX = (x: number) => PAD + (x - xMin) / (xMax - xMin) * (W - 2 * PAD);
-  const toSvgY = (y: number) => PAD + (1 - (y - yMin) / (yMax - yMin)) * (H - 2 * PAD);
-
-  const genPath = (eq: string): string => {
-    const steps = 400;
+  // Generate SVG path — adaptive sampling with discontinuity detection
+  const genPath = useCallback((evalFn: (x: number) => number | null): string => {
+    const steps = 600;
+    const xStart = toMathX(0), xEnd = toMathX(W);
     const parts: string[] = [];
     let wasNull = true;
+    let prevSy: number | null = null;
+
     for (let i = 0; i <= steps; i++) {
-      const x = xMin + (xMax - xMin) * i / steps;
-      const y = evalEq(eq, x);
-      if (y === null || toSvgY(y) < -20 || toSvgY(y) > H + 20) { wasNull = true; continue; }
-      const sx = toSvgX(x), sy = toSvgY(y);
-      parts.push(wasNull ? `M ${sx} ${sy}` : `L ${sx} ${sy}`);
+      const x = xStart + (xEnd - xStart) * i / steps;
+      const y = evalFn(x);
+      if (y === null) { wasNull = true; prevSy = null; continue; }
+      const sx = W / 2 + (x - view.cx) * view.scale;
+      const sy = H / 2 - (y - view.cy) * view.scale;
+      // Detect near-vertical discontinuity (e.g. tan asymptotes)
+      if (prevSy !== null && Math.abs(sy - prevSy) > H * 1.5) { wasNull = true; }
+      parts.push(wasNull ? `M${sx.toFixed(1)},${sy.toFixed(1)}` : `L${sx.toFixed(1)},${sy.toFixed(1)}`);
       wasNull = false;
+      prevSy = sy;
     }
-    return parts.join(' ');
+    return parts.join('');
+  }, [view, toMathX]);
+
+  // Compute grid lines with nice step sizes (Desmos-style)
+  const { gridLines, xTicks, yTicks } = useMemo(() => {
+    const rawStep = 80 / view.scale;
+    const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const niceFactors = [1, 2, 5, 10];
+    const step = (niceFactors.find((n) => n * mag >= rawStep) ?? 10) * mag;
+
+    const xMin = toMathX(0), xMax = toMathX(W);
+    const yMin = toMathY(H), yMax = toMathY(0);
+
+    const gLines: { x1: number; y1: number; x2: number; y2: number; axis: boolean }[] = [];
+    const xT: { v: number; sx: number }[] = [];
+    const yT: { v: number; sy: number }[] = [];
+
+    const snap = (v: number) => Math.round(v / (step * 1e-9)) * (step * 1e-9);
+
+    for (let gx = Math.ceil(xMin / step) * step; gx <= xMax + step * 0.5; gx += step) {
+      const v = snap(gx);
+      const sx = toSvgX(v);
+      const isAxis = Math.abs(v) < step * 0.01;
+      gLines.push({ x1: sx, y1: 0, x2: sx, y2: H, axis: isAxis });
+      if (!isAxis) xT.push({ v, sx });
+    }
+    for (let gy = Math.ceil(yMin / step) * step; gy <= yMax + step * 0.5; gy += step) {
+      const v = snap(gy);
+      const sy = toSvgY(v);
+      const isAxis = Math.abs(v) < step * 0.01;
+      gLines.push({ x1: 0, y1: sy, x2: W, y2: sy, axis: isAxis });
+      if (!isAxis) yT.push({ v, sy });
+    }
+    return { gridLines: gLines, xTicks: xT, yTicks: yT };
+  }, [view, toMathX, toMathY, toSvgX, toSvgY]);
+
+  // Paths recomputed when equations or view change
+  const { path1, path2 } = useMemo(() => {
+    const fn1 = buildEval(eq1);
+    setErr1(eq1.trim() !== '' && fn1 === null);
+    const fn2 = eq2.trim() ? buildEval(eq2) : null;
+    setErr2(eq2.trim() !== '' && fn2 === null);
+    return {
+      path1: fn1 ? genPath(fn1) : '',
+      path2: fn2 ? genPath(fn2) : '',
+    };
+  }, [eq1, eq2, view, buildEval, genPath]);
+
+  // Pan
+  const onSvgMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (e.button !== 0) return;
+    panRef.current = { mx: e.clientX, my: e.clientY, cx: view.cx, cy: view.cy };
+  };
+  const onSvgMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!panRef.current) return;
+    const dx = (e.clientX - panRef.current.mx) / view.scale;
+    const dy = (e.clientY - panRef.current.my) / view.scale;
+    setView((v) => ({ ...v, cx: panRef.current!.cx - dx, cy: panRef.current!.cy + dy }));
+  };
+  const onSvgMouseUp = () => { panRef.current = null; };
+
+  // Zoom toward cursor
+  const onSvgWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const svgX = (e.clientX - rect.left) / rect.width * W;
+    const svgY = (e.clientY - rect.top) / rect.height * H;
+    const mxPivot = toMathX(svgX), myPivot = toMathY(svgY);
+    setView((v) => {
+      const newScale = Math.max(3, Math.min(5000, v.scale * factor));
+      return {
+        scale: newScale,
+        cx: mxPivot - (svgX - W / 2) / newScale,
+        cy: myPivot + (svgY - H / 2) / newScale,
+      };
+    });
   };
 
-  const axisY = Math.max(PAD, Math.min(H - PAD, toSvgY(0)));
-  const axisX = Math.max(PAD, Math.min(W - PAD, toSvgX(0)));
-
-  const xTicks = useMemo(() => {
-    const t: number[] = [];
-    for (let x = -10; x <= 10; x += 2) t.push(x);
-    return t;
-  }, []);
-  const yTicks = useMemo(() => {
-    const t: number[] = [];
-    const step = Math.max(1, Math.ceil((yMax - yMin) / 8));
-    for (let y = Math.ceil(yMin); y <= yMax; y += step) t.push(y);
-    return t;
-  }, [yMin, yMax]);
-
   const commit = (e1: string, e2: string) => onChange(JSON.stringify({ eq1: e1, eq2: e2 }));
+  const resetView = () => setView({ cx: 0, cy: 0, scale: 50 });
 
   const onResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
     resizeRef.current = { startX: e.clientX, startW: displayW };
-    const onMove = (ev: MouseEvent) => setDisplayW(Math.max(300, resizeRef.current.startW + ev.clientX - resizeRef.current.startX));
+    const onMove = (ev: MouseEvent) => setDisplayW(Math.max(320, resizeRef.current.startW + ev.clientX - resizeRef.current.startX));
     const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
@@ -867,11 +989,13 @@ function GraphBlock({ block, onChange, onDelete, onDuplicate, dragControls }: Gr
     return () => document.removeEventListener('mousedown', handle);
   }, []);
 
-  const path1 = genPath(eq1);
-  const path2 = eq2.trim() ? genPath(eq2) : '';
+  const axisX = Math.max(0, Math.min(W, toSvgX(0)));
+  const axisY = Math.max(0, Math.min(H, toSvgY(0)));
+  const clipId = `gc-${block.id}`;
 
   return (
     <div className="group relative py-2">
+      {/* Drag / context controls */}
       <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -left-14 top-2 flex items-center gap-0.5">
         <div ref={menuRef} className="relative">
           <button onClick={() => setShowMenu(!showMenu)} className="p-1 rounded hover:bg-white/10 text-white/30">
@@ -895,8 +1019,9 @@ function GraphBlock({ block, onChange, onDelete, onDuplicate, dragControls }: Gr
 
       <div className="rounded-2xl overflow-hidden" style={{ ...glassCard, width: displayW, maxWidth: '100%' }}>
         {/* Equation inputs */}
-        <div className="flex flex-col gap-1.5 px-4 py-3 border-b border-white/5">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-1 px-4 py-3 border-b border-white/5">
+          {/* Eq 1 */}
+          <div className={`flex items-center gap-2 rounded-lg px-2 py-1 transition-colors ${err1 ? 'bg-red-500/10' : ''}`}>
             <div className="w-2.5 h-2.5 rounded-full bg-purple-400 shrink-0" />
             <span className="text-xs text-white/30 font-mono shrink-0">y =</span>
             <input
@@ -904,10 +1029,13 @@ function GraphBlock({ block, onChange, onDelete, onDuplicate, dragControls }: Gr
               value={eq1}
               onChange={(e) => { setEq1(e.target.value); commit(e.target.value, eq2); }}
               placeholder="sin(x)"
-              className="flex-1 bg-transparent outline-none text-sm text-white/80 placeholder-white/20 font-mono"
+              spellCheck={false}
+              className={`flex-1 bg-transparent outline-none text-sm font-mono ${err1 ? 'text-red-300' : 'text-white/85'} placeholder-white/20`}
             />
+            {err1 && <span className="text-[10px] text-red-400 shrink-0">invalid</span>}
           </div>
-          <div className="flex items-center gap-2">
+          {/* Eq 2 */}
+          <div className={`flex items-center gap-2 rounded-lg px-2 py-1 transition-colors ${err2 ? 'bg-red-500/10' : ''}`}>
             <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0" />
             <span className="text-xs text-white/30 font-mono shrink-0">y =</span>
             <input
@@ -915,39 +1043,101 @@ function GraphBlock({ block, onChange, onDelete, onDuplicate, dragControls }: Gr
               value={eq2}
               onChange={(e) => { setEq2(e.target.value); commit(eq1, e.target.value); }}
               placeholder="optional 2nd equation"
-              className="flex-1 bg-transparent outline-none text-sm text-white/30 placeholder-white/20 font-mono"
+              spellCheck={false}
+              className={`flex-1 bg-transparent outline-none text-sm font-mono ${err2 ? 'text-red-300' : 'text-white/40'} placeholder-white/20`}
             />
+            {err2 && <span className="text-[10px] text-red-400 shrink-0">invalid</span>}
           </div>
-          <p className="text-[10px] text-white/20 font-mono mt-0.5">Use: x, sin, cos, tan, sqrt, abs, log, exp, PI, pow &nbsp;·&nbsp; Range: x ∈ [−10, 10]</p>
+          <p className="text-[10px] text-white/20 font-mono mt-0.5 leading-relaxed">
+            Supports: <span className="text-white/35">x^2 · 2x · sin(x) · cos(x) · tan(x) · sqrt(x) · abs(x) · ln(x) · log(x) · e^x · pi · |x| · (a+b)(a-b)</span>
+            &nbsp;·&nbsp; Scroll to zoom · Drag to pan
+          </p>
         </div>
 
-        {/* SVG graph */}
-        <div className="relative" style={{ background: 'rgba(0,0,0,0.15)' }}>
-          <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="block">
-            {/* Grid lines */}
-            {xTicks.map((xt) => (
-              <line key={`xg${xt}`} x1={toSvgX(xt)} y1={PAD} x2={toSvgX(xt)} y2={H - PAD} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+        {/* SVG Graph */}
+        <div className="relative select-none" style={{ background: 'rgba(0,0,0,0.18)' }}>
+          <svg
+            width="100%"
+            viewBox={`0 0 ${W} ${H}`}
+            className="block cursor-grab active:cursor-grabbing"
+            onMouseDown={onSvgMouseDown}
+            onMouseMove={onSvgMouseMove}
+            onMouseUp={onSvgMouseUp}
+            onMouseLeave={onSvgMouseUp}
+            onWheel={onSvgWheel}
+            style={{ display: 'block' }}
+          >
+            <defs>
+              <clipPath id={clipId}>
+                <rect x="0" y="0" width={W} height={H} />
+              </clipPath>
+            </defs>
+
+            {/* Minor grid */}
+            {gridLines.filter((l) => !l.axis).map((l, i) => (
+              <line key={`g${i}`} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="rgba(255,255,255,0.045)" strokeWidth="1" />
             ))}
-            {yTicks.map((yt) => (
-              <line key={`yg${yt}`} x1={PAD} y1={toSvgY(yt)} x2={W - PAD} y2={toSvgY(yt)} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-            ))}
+
             {/* Axes */}
-            <line x1={PAD} y1={axisY} x2={W - PAD} y2={axisY} stroke="rgba(255,255,255,0.22)" strokeWidth="1.5" />
-            <line x1={axisX} y1={PAD} x2={axisX} y2={H - PAD} stroke="rgba(255,255,255,0.22)" strokeWidth="1.5" />
-            {/* Tick labels */}
-            {xTicks.filter((x) => x !== 0).map((xt) => (
-              <text key={`xl${xt}`} x={toSvgX(xt)} y={Math.min(H - PAD + 13, axisY + 13)} textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.25)">{xt}</text>
+            <line x1={0} y1={axisY} x2={W} y2={axisY} stroke="rgba(255,255,255,0.28)" strokeWidth="1.5" />
+            <line x1={axisX} y1={0} x2={axisX} y2={H} stroke="rgba(255,255,255,0.28)" strokeWidth="1.5" />
+
+            {/* Tick marks + labels — x axis */}
+            {xTicks.map((t, i) => (
+              <g key={`xt${i}`}>
+                <line x1={t.sx} y1={axisY - 3} x2={t.sx} y2={axisY + 3} stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
+                <text
+                  x={t.sx}
+                  y={Math.min(H - 4, Math.max(14, axisY + 14))}
+                  textAnchor="middle"
+                  fontSize="9"
+                  fill="rgba(255,255,255,0.4)"
+                  fontFamily="monospace"
+                >{formatTick(t.v)}</text>
+              </g>
             ))}
-            {yTicks.filter((y) => y !== 0).map((yt) => (
-              <text key={`yl${yt}`} x={Math.max(PAD + 2, axisX - 5)} y={toSvgY(yt) + 3} textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.25)">{Math.round(yt * 10) / 10}</text>
+
+            {/* Tick marks + labels — y axis */}
+            {yTicks.map((t, i) => (
+              <g key={`yt${i}`}>
+                <line x1={axisX - 3} y1={t.sy} x2={axisX + 3} y2={t.sy} stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
+                <text
+                  x={Math.max(28, Math.min(W - 8, axisX - 6))}
+                  y={t.sy + 3.5}
+                  textAnchor="end"
+                  fontSize="9"
+                  fill="rgba(255,255,255,0.4)"
+                  fontFamily="monospace"
+                >{formatTick(t.v)}</text>
+              </g>
             ))}
+
             {/* Axis labels */}
-            <text x={W - PAD + 6} y={axisY + 4} fontSize="11" fill="rgba(255,255,255,0.35)" fontStyle="italic">x</text>
-            <text x={axisX + 5} y={PAD - 5} fontSize="11" fill="rgba(255,255,255,0.35)" fontStyle="italic">y</text>
-            {/* Curves */}
-            {path1 && <path d={path1} fill="none" stroke="rgba(168,85,247,0.9)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />}
-            {path2 && <path d={path2} fill="none" stroke="rgba(34,211,238,0.9)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />}
+            <text x={W - 8} y={Math.min(H - 5, Math.max(14, axisY - 7))} fontSize="12" fill="rgba(255,255,255,0.45)" fontStyle="italic" fontFamily="serif">x</text>
+            <text x={Math.max(8, Math.min(W - 14, axisX + 7))} y={12} fontSize="12" fill="rgba(255,255,255,0.45)" fontStyle="italic" fontFamily="serif">y</text>
+
+            {/* Origin label */}
+            {axisX > 10 && axisX < W - 10 && axisY > 10 && axisY < H - 10 && (
+              <text x={axisX - 6} y={axisY + 13} textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.25)" fontFamily="monospace">0</text>
+            )}
+
+            {/* Equation curves */}
+            {path1 && (
+              <path d={path1} fill="none" stroke="rgba(168,85,247,1)" strokeWidth="2.2"
+                strokeLinecap="round" strokeLinejoin="round" clipPath={`url(#${clipId})`} />
+            )}
+            {path2 && (
+              <path d={path2} fill="none" stroke="rgba(34,211,238,1)" strokeWidth="2.2"
+                strokeLinecap="round" strokeLinejoin="round" clipPath={`url(#${clipId})`} />
+            )}
           </svg>
+
+          {/* Reset view button */}
+          <button
+            onClick={resetView}
+            className="absolute top-2 right-2 px-2 py-1 rounded-lg text-[10px] text-white/30 hover:text-white/60 hover:bg-white/10 transition-all font-mono opacity-0 group-hover:opacity-100"
+          >reset</button>
+
           {/* Resize handle */}
           <div onMouseDown={onResizeStart} className="absolute bottom-1.5 right-1.5 w-5 h-5 flex items-end justify-end cursor-se-resize opacity-0 group-hover:opacity-100 transition-opacity">
             <svg width="12" height="12" viewBox="0 0 12 12" style={{ color: 'rgba(255,255,255,0.5)' }}>
