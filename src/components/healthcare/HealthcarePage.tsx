@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -17,10 +17,12 @@ import {
   Building2,
   Search,
   Stethoscope,
+  Repeat2,
+  Loader2,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { DrugSearchBar } from './DrugSearchBar';
-import { DrugSearchResult, SearchCategory, searchDrugs } from '../../services/healthcare/healthcareService';
+import { DrugSearchResult, SearchCategory, searchDrugs, getAlternativeBrands } from '../../services/healthcare/healthcareService';
 
 // ─── Detail field helper ──────────────────────────────────────────────────────
 function DetailSection({
@@ -124,13 +126,197 @@ function DrugCard({
   );
 }
 
+// ─── Alternative Brands Section ──────────────────────────────────────────────
+function AlternativeBrandsSection({
+  drug,
+  onSelectAlternative,
+}: {
+  drug: DrugSearchResult;
+  onSelectAlternative: (alt: DrugSearchResult) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [alternatives, setAlternatives] = useState<DrugSearchResult[]>([]);
+  const [filtered, setFiltered] = useState<DrugSearchResult[]>([]);
+  const [filter, setFilter] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const filterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const loadAlternatives = useCallback(async () => {
+    if (hasLoaded) return;
+    setIsLoading(true);
+    try {
+      const data = await getAlternativeBrands(drug.generic_id, drug.brand_id);
+      setAlternatives(data);
+      setFiltered(data);
+      setHasLoaded(true);
+    } catch {
+      setAlternatives([]);
+      setFiltered([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [drug.generic_id, drug.brand_id, hasLoaded]);
+
+  const handleToggle = () => {
+    const next = !isOpen;
+    setIsOpen(next);
+    if (next && !hasLoaded) loadAlternatives();
+  };
+
+  const handleFilter = (val: string) => {
+    setFilter(val);
+    if (filterTimer.current) clearTimeout(filterTimer.current);
+    if (!val.trim()) {
+      setFiltered(alternatives);
+      return;
+    }
+    filterTimer.current = setTimeout(async () => {
+      // If local list is large enough, filter client-side; otherwise fetch from server
+      const q = val.toLowerCase();
+      const local = alternatives.filter((a) => a.brand_name.toLowerCase().includes(q));
+      if (local.length > 0) {
+        // Re-sort: exact > prefix > substring
+        local.sort((a, b) => {
+          const score = (r: DrugSearchResult) => {
+            const n = r.brand_name.toLowerCase();
+            if (n === q) return 3;
+            if (n.startsWith(q)) return 2;
+            return 1;
+          };
+          return score(b) - score(a);
+        });
+        setFiltered(local);
+      } else {
+        // Fetch from server for broader search
+        const data = await getAlternativeBrands(drug.generic_id, drug.brand_id, val);
+        setFiltered(data);
+      }
+    }, 200);
+  };
+
+  useEffect(() => {
+    return () => { if (filterTimer.current) clearTimeout(filterTimer.current); };
+  }, []);
+
+  return (
+    <div className="space-y-3">
+      <motion.button
+        type="button"
+        whileTap={{ scale: 0.98 }}
+        onClick={handleToggle}
+        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-sm font-medium hover:bg-emerald-500/25 transition-colors"
+      >
+        <Repeat2 className="w-4 h-4" />
+        {isOpen ? 'Hide alternative brands' : 'See alternative brands'}
+      </motion.button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-3 pt-1">
+              {/* Search/filter bar */}
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/6 border border-white/10">
+                <Search className="w-4 h-4 text-white/30 flex-shrink-0" />
+                <input
+                  type="text"
+                  value={filter}
+                  onChange={(e) => handleFilter(e.target.value)}
+                  placeholder="Filter alternative brands..."
+                  className="flex-1 bg-transparent text-white text-sm placeholder-white/25 outline-none"
+                  autoComplete="off"
+                />
+                {filter && (
+                  <button onClick={() => { setFilter(''); setFiltered(alternatives); }} className="text-white/30 hover:text-white/60">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Loading */}
+              {isLoading && (
+                <div className="flex items-center justify-center gap-2 py-6">
+                  <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+                  <span className="text-white/40 text-xs">Loading alternatives…</span>
+                </div>
+              )}
+
+              {/* Results list */}
+              {!isLoading && filtered.length > 0 && (
+                <div className="space-y-1.5 max-h-72 overflow-y-auto">
+                  <p className="text-white/25 text-xs px-1">
+                    {filtered.length} alternative brand{filtered.length !== 1 ? 's' : ''} with {drug.generic_name}
+                  </p>
+                  {filtered.map((alt, i) => (
+                    <motion.button
+                      key={`${alt.brand_id}-${i}`}
+                      type="button"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0, transition: { delay: i * 0.02 } }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => onSelectAlternative(alt)}
+                      className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-white/4 border border-white/8 hover:border-emerald-500/25 hover:bg-white/6 transition-all text-left group"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-white font-medium text-sm">{alt.brand_name}</span>
+                          {alt.strength && (
+                            <span className="text-emerald-400/70 text-xs">{alt.strength}</span>
+                          )}
+                          {alt.form && (
+                            <span className="text-white/35 text-xs">{alt.form}</span>
+                          )}
+                        </div>
+                        {alt.manufacturer && (
+                          <p className="text-white/30 text-xs mt-0.5 flex items-center gap-1">
+                            <Building2 className="w-3 h-3" />
+                            {alt.manufacturer}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {alt.price && (
+                          <span className="text-emerald-400/60 font-mono text-xs">৳{alt.price}</span>
+                        )}
+                        <ChevronRight className="w-3.5 h-3.5 text-white/15 group-hover:text-emerald-400/50 transition-colors" />
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!isLoading && hasLoaded && filtered.length === 0 && (
+                <div className="text-center py-6">
+                  <Pill className="w-6 h-6 text-white/15 mx-auto mb-2" />
+                  <p className="text-white/30 text-xs">
+                    {filter ? 'No matching brands found.' : 'No alternative brands available.'}
+                  </p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Detail Panel ─────────────────────────────────────────────────────────────
 function DrugDetailPanel({
   drug,
   onClose,
+  onSelectAlternative,
 }: {
   drug: DrugSearchResult;
   onClose: () => void;
+  onSelectAlternative: (alt: DrugSearchResult) => void;
 }) {
   return (
     <motion.div
@@ -232,6 +418,9 @@ function DrugDetailPanel({
           accent="text-rose-400/70"
         />
 
+        {/* Alternative Brands */}
+        <AlternativeBrandsSection drug={drug} onSelectAlternative={onSelectAlternative} />
+
         {/* Disclaimer */}
         <div className="p-4 rounded-xl bg-amber-500/8 border border-amber-500/20 flex gap-3">
           <Info className="w-4 h-4 text-amber-400/70 flex-shrink-0 mt-0.5" />
@@ -304,7 +493,7 @@ export function HealthcarePage() {
             className="text-center mb-8"
           >
             <h1 className="text-4xl sm:text-5xl font-bold text-white mb-3 tracking-tight">
-              TM Healthcare
+              TimeMachine Healthcare
             </h1>
             <p className="text-white/40 text-base sm:text-lg max-w-lg mx-auto leading-relaxed">
               Search by brand, generic name, symptom, or condition — get dosage &amp; drug info instantly.
@@ -435,7 +624,7 @@ export function HealthcarePage() {
 
         {/* Footer disclaimer */}
         <p className="text-center text-white/15 text-xs pb-8 px-4">
-          TM Healthcare is for informational purposes only. Always consult a licensed physician or pharmacist before starting any medication.
+          TimeMachine Healthcare is for informational purposes only. Always consult a licensed physician or pharmacist before starting any medication.
         </p>
       </div>
 
@@ -453,6 +642,7 @@ export function HealthcarePage() {
             <DrugDetailPanel
               drug={selectedDrug}
               onClose={() => setSelectedDrug(null)}
+              onSelectAlternative={(alt) => setSelectedDrug(alt)}
             />
           </>
         )}
