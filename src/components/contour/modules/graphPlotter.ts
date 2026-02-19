@@ -20,7 +20,13 @@ export interface GraphResult {
 }
 
 function hasMathOps(s: string): boolean {
-  return /[+\-*\/^()|]|sin|cos|tan|sqrt|abs|ln|log|exp|pi|π/.test(s);
+  // Explicit operators
+  if (/[+\-*\/^()|]/.test(s)) return true;
+  // Known function names — word-bounded to avoid false hits (e.g. "explain" containing "exp")
+  if (/\b(?:sin|cos|tan|sqrt|abs|ln|log|exp|pi)\b|π/.test(s)) return true;
+  // Implicit multiplication: digit directly followed by x (e.g. 2x, 3x)
+  if (/\dx/.test(s)) return true;
+  return false;
 }
 
 /**
@@ -31,8 +37,11 @@ export function detectGraph(input: string): GraphResult | null {
   const s = input.trim();
   if (!s) return null;
 
-  // Must contain 'x' as a word-bounded variable token
-  if (!/\bx\b/.test(s)) return null;
+  // Must contain 'x' as a math variable token.
+  // Use a non-letter preceding-char check so '3x' passes (digit before x has no word boundary,
+  // so the old \bx\b check failed for expressions like y=3x+5).
+  // [^a-wA-WyYzZ] matches any char that is NOT a letter other than x/X.
+  if (!/(?:^|[^a-wA-WyYzZ])x/.test(s)) return null;
 
   // Explicit "y = …", "f(x) = …", "g(x) = …" forms — always trigger
   if (/^[yfg]\s*(\(\s*x\s*\))?\s*=/i.test(s)) {
