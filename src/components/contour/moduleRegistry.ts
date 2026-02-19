@@ -10,7 +10,7 @@ import React from 'react';
 import {
   Calculator, ArrowLeftRight, DollarSign, Globe, Palette,
   Timer, Calendar, Shuffle, Type, Braces, Lock, Link, Hash,
-  FileSearch, FileText, BookOpen, HelpCircle,
+  FileSearch, FileText, BookOpen, HelpCircle, TrendingUp,
 } from 'lucide-react';
 
 // ─── Result types (re-exported from individual modules) ────────
@@ -32,6 +32,7 @@ export type { Base64Result } from './modules/base64Codec';
 export type { UrlEncodeResult } from './modules/urlEncoder';
 export type { HashResult } from './modules/hashGenerator';
 export type { RegexResult } from './modules/regexTester';
+export type { GraphResult } from './modules/graphPlotter';
 
 // ─── Detect functions (re-exported) ───────────────────────────
 
@@ -52,6 +53,7 @@ export { detectBase64, processBase64 } from './modules/base64Codec';
 export { detectUrlEncoded, processUrl } from './modules/urlEncoder';
 export { createHashResult, resolveHash } from './modules/hashGenerator';
 export { testRegex } from './modules/regexTester';
+export { detectGraph } from './modules/graphPlotter';
 
 // ─── Core types ───────────────────────────────────────────────
 
@@ -72,6 +74,7 @@ import type { Base64Result } from './modules/base64Codec';
 import type { UrlEncodeResult } from './modules/urlEncoder';
 import type { HashResult } from './modules/hashGenerator';
 import type { RegexResult } from './modules/regexTester';
+import type { GraphResult } from './modules/graphPlotter';
 
 import { ContourCommand, searchCommands, groupByCategory } from './modules/commands';
 export { searchCommands, groupByCategory };
@@ -82,6 +85,7 @@ export type ModuleId =
   | 'date' | 'timer' | 'random' | 'wordcount'
   | 'translator' | 'dictionary'
   | 'lorem' | 'json-format' | 'base64' | 'url-encode' | 'hash' | 'regex'
+  | 'graph'
   | 'help';
 
 export type ContourMode = 'hidden' | 'commands' | 'module';
@@ -106,6 +110,7 @@ export interface ModuleData {
   urlEncode?: UrlEncodeResult;
   hash?: HashResult;
   regex?: RegexResult;
+  graph?: GraphResult;
 }
 
 export interface ContourState {
@@ -136,6 +141,7 @@ export const HANDLER_TO_MODULE: Record<string, ModuleId> = {
   'url-encode': 'url-encode',
   'hash': 'hash',
   'regex': 'regex',
+  'graph-plotter': 'graph',
   'help': 'help',
 };
 
@@ -163,5 +169,6 @@ export const MODULE_META: Record<ModuleId, {
   'url-encode':  { icon: Link,            label: 'URL Encoder',      placeholder: 'Type text to encode, or paste encoded URL to decode' },
   hash:          { icon: Hash,            label: 'Hash Generator',   placeholder: 'Type text to generate MD5, SHA-1, SHA-256 hashes' },
   regex:         { icon: FileSearch,      label: 'Regex Tester',     placeholder: 'Type a regex pattern to test...' },
+  graph:         { icon: TrendingUp,      label: 'Graph Plotter',    placeholder: 'Type an equation, e.g. sin(x) · x^2+3x+7 · y=2x+1' },
   help:          { icon: HelpCircle,      label: 'Help',             placeholder: '' },
 };

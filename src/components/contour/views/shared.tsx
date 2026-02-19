@@ -10,7 +10,7 @@ import {
   HelpCircle, Code, Music, HeartPulse, Fingerprint, Clock,
   Search, Wrench, Monitor, Zap, Command,
   Dices, Coins, RefreshCw,
-  BookOpen, Mic, AlignLeft, List, MessageSquare,
+  BookOpen, Mic, AlignLeft, List, MessageSquare, TrendingUp,
 } from 'lucide-react';
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -32,7 +32,7 @@ export const ICON_MAP: Record<string, React.ComponentType<{ className?: string }
   HelpCircle, Code, Music, HeartPulse, Fingerprint, Clock,
   Search, Wrench, Monitor, Zap, Command,
   Dices, Coins, RefreshCw,
-  BookOpen, Mic, AlignLeft, List, MessageSquare,
+  BookOpen, Mic, AlignLeft, List, MessageSquare, TrendingUp,
   // Aliases for icons not in lucide-react 0.344.0
   Languages: Globe,
   LetterText: Type,

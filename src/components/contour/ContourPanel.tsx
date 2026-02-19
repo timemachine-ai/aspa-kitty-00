@@ -17,6 +17,7 @@ import {
   ColorView, DateView, TimerView, RandomView, WordCountView,
   TranslatorView, DictionaryView, LoremView, JsonFormatView,
   Base64View, UrlEncodeView, HashView, RegexView, HelpView,
+  GraphView,
   getIcon,
 } from './views';
 
@@ -81,6 +82,8 @@ function ModuleContent({
   onSetTimerDuration?: (seconds: number) => void;
 }) {
   switch (module.id) {
+    case 'graph':
+      return <GraphView module={module} accent={accent} />;
     case 'calculator':
       return <CalculatorView module={module} accent={accent} />;
     case 'units':

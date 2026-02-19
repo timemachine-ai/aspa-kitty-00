@@ -20,6 +20,7 @@ import {
   HANDLER_TO_MODULE,
   // Detect & process functions
   evaluateMath, isMathExpression,
+  detectGraph,
   detectUnits,
   detectCurrency, resolveCurrency,
   detectTimezone,
@@ -120,7 +121,11 @@ export function useContour() {
     const urlEncode = detectUrlEncoded(trimmed);
     if (urlEncode) return { id: 'url-encode', focused: false, urlEncode };
 
-    // 14. Math (broadest match, lowest priority)
+    // 14. Graph plotter (before math — more specific)
+    const graph = detectGraph(trimmed);
+    if (graph) return { id: 'graph', focused: false, graph };
+
+    // 15. Math (broadest match, lowest priority)
     if (isMathExpression(trimmed)) {
       const calc = evaluateMath(trimmed);
       if (calc) return { id: 'calculator', focused: false, calculator: calc };
@@ -217,6 +222,11 @@ export function useContour() {
         if (!trimmed) return { id: 'regex', focused: true };
         const regex = testRegex(trimmed, '');
         return { id: 'regex', focused: true, regex };
+      }
+      case 'graph': {
+        if (!trimmed) return { id: 'graph', focused: true };
+        const graph = detectGraph(trimmed);
+        return { id: 'graph', focused: true, graph: graph || undefined };
       }
       case 'help': {
         return { id: 'help', focused: true };

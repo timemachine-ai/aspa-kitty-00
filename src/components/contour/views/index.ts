@@ -20,6 +20,7 @@ export { UrlEncodeView } from './UrlEncodeView';
 export { HashView } from './HashView';
 export { RegexView } from './RegexView';
 export { HelpView } from './HelpView';
+export { GraphView } from './GraphView';
 
 // Re-export shared primitives that ContourPanel needs
 export type { AccentTheme } from './shared';

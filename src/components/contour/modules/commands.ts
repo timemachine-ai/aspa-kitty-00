@@ -43,6 +43,15 @@ export const CONTOUR_COMMANDS: ContourCommand[] = [
     keywords: ['math', 'calc', 'compute', 'add', 'subtract', 'multiply', 'divide'],
     action: { type: 'inline', handler: 'calculator' },
   },
+  {
+    id: 'graph-plotter',
+    name: 'Graph Plotter',
+    description: 'Plot equations like y=sin(x), x²+3x+7, e^x',
+    icon: 'TrendingUp',
+    category: 'calculator',
+    keywords: ['graph', 'plot', 'equation', 'function', 'curve', 'desmos', 'sin', 'cos', 'math', 'chart'],
+    action: { type: 'inline', handler: 'graph-plotter' },
+  },
 
   // Unit Converters
   {
