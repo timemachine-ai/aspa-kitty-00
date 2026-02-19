@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { DrugSearchBar } from './DrugSearchBar';
-import { DrugSearchResult, searchDrugs } from '../../services/healthcare/healthcareService';
+import { DrugSearchResult, SearchCategory, searchDrugs } from '../../services/healthcare/healthcareService';
 
 // ─── Detail field helper ──────────────────────────────────────────────────────
 function DetailSection({
@@ -256,14 +256,14 @@ export function HealthcarePage() {
   const [lastQuery, setLastQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = async (query: string, category?: SearchCategory) => {
     if (!query || isSearching) return;
     setIsSearching(true);
     setHasSearched(true);
     setLastQuery(query);
     setSelectedDrug(null);
     try {
-      const data = await searchDrugs(query);
+      const data = await searchDrugs(query, category);
       setResults(data);
     } catch {
       setResults([]);
@@ -273,7 +273,7 @@ export function HealthcarePage() {
   };
 
   return (
-    <div className={`min-h-screen ${theme.background} ${theme.text} relative`}>
+    <div className={`h-screen overflow-y-auto bg-gradient-to-t from-green-950 to-black to-50% ${theme.text} relative`}>
       {/* Ambient blobs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-15%] left-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-500/6 blur-3xl" />

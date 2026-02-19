@@ -19,14 +19,22 @@ export interface DrugSearchResult {
   relevance: number;
 }
 
+export type SearchCategory = 'brand' | 'generic' | 'indication';
+
 /**
  * Search drugs using the pg_trgm-powered Postgres RPC function.
  * Falls back to a multi-query ILIKE search if the RPC is unavailable.
+ * When a category is provided, only searches that specific field.
  */
-export async function searchDrugs(query: string): Promise<DrugSearchResult[]> {
+export async function searchDrugs(query: string, category?: SearchCategory): Promise<DrugSearchResult[]> {
   if (!query || query.trim().length < 2) return [];
 
   const trimmed = query.trim();
+
+  // If a specific category is given, use category-specific search
+  if (category) {
+    return categorySearch(trimmed, category);
+  }
 
   const { data, error } = await supabase.rpc('search_drugs', {
     search_query: trimmed,
@@ -70,6 +78,57 @@ const BRAND_SELECT = `
     precaution, adult_dose, child_dose, pregnancy_category_id
   )
 `;
+
+/**
+ * Category-specific search — only searches within the chosen field.
+ */
+async function categorySearch(query: string, category: SearchCategory): Promise<DrugSearchResult[]> {
+  const ilike = `%${query}%`;
+
+  if (category === 'brand') {
+    const { data } = await supabase
+      .from('brands')
+      .select(BRAND_SELECT)
+      .ilike('name', ilike)
+      .limit(20);
+    return (data ?? []).map((b: any) => shapeBrand(b, 1));
+  }
+
+  if (category === 'generic') {
+    const { data: generics } = await supabase
+      .from('generics')
+      .select('id')
+      .ilike('name', ilike)
+      .limit(30);
+
+    const ids = (generics ?? []).map((g: any) => g.id);
+    if (ids.length === 0) return [];
+
+    const { data } = await supabase
+      .from('brands')
+      .select(BRAND_SELECT)
+      .in('generic_id', ids)
+      .limit(20);
+    return (data ?? []).map((b: any) => shapeBrand(b, 0.8));
+  }
+
+  // category === 'indication'
+  const { data: generics } = await supabase
+    .from('generics')
+    .select('id')
+    .ilike('indication', ilike)
+    .limit(30);
+
+  const ids = (generics ?? []).map((g: any) => g.id);
+  if (ids.length === 0) return [];
+
+  const { data } = await supabase
+    .from('brands')
+    .select(BRAND_SELECT)
+    .in('generic_id', ids)
+    .limit(20);
+  return (data ?? []).map((b: any) => shapeBrand(b, 0.5));
+}
 
 /**
  * Fallback ILIKE search using three separate queries so that
@@ -148,8 +207,9 @@ async function fallbackSearch(query: string): Promise<DrugSearchResult[]> {
  * Top-5 autocomplete suggestions.
  */
 export async function getAutocompleteSuggestions(
-  query: string
+  query: string,
+  category?: SearchCategory
 ): Promise<DrugSearchResult[]> {
-  const results = await searchDrugs(query);
+  const results = await searchDrugs(query, category);
   return results.slice(0, 5);
 }
