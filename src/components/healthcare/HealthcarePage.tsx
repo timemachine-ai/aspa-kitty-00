@@ -10,15 +10,13 @@ import {
   Info,
   ChevronRight,
   X,
-  Baby,
   User,
   Users,
   Beaker,
   Package,
   Building2,
-  DollarSign,
-  Heart,
   Search,
+  Stethoscope,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { DrugSearchBar } from './DrugSearchBar';
@@ -61,13 +59,12 @@ function DrugCard({
       layout
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
+      whileHover={{ scale: 1.005 }}
+      whileTap={{ scale: 0.995 }}
       onClick={onSelect}
       className="w-full text-left p-5 rounded-2xl bg-white/5 border border-white/10 hover:border-emerald-500/30 hover:bg-white/8 transition-all duration-200 group"
     >
       <div className="flex items-start justify-between gap-4">
-        {/* Left */}
         <div className="flex-1 min-w-0">
           {/* Brand + form + strength */}
           <div className="flex items-center flex-wrap gap-2 mb-1">
@@ -84,7 +81,7 @@ function DrugCard({
             )}
           </div>
 
-          {/* Generic name */}
+          {/* Generic */}
           <p className="text-white/50 text-sm mb-2">
             Generic: <span className="text-white/70">{drug.generic_name}</span>
           </p>
@@ -113,12 +110,11 @@ function DrugCard({
           )}
         </div>
 
-        {/* Right: price + arrow */}
+        {/* Price + arrow */}
         <div className="flex-shrink-0 flex flex-col items-end gap-2">
           {drug.price && (
-            <span className="flex items-center gap-1 text-emerald-400 font-mono text-sm">
-              <DollarSign className="w-3.5 h-3.5" />
-              {drug.price}
+            <span className="text-emerald-400 font-mono text-sm">
+              ৳{drug.price}
             </span>
           )}
           <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-emerald-400/60 transition-colors" />
@@ -174,13 +170,13 @@ function DrugDetailPanel({
             </span>
           )}
           {drug.pregnancy_cat && (
-            <span className="px-2.5 py-1 rounded-full bg-purple-500/15 border border-purple-500/25 text-purple-300 text-xs">
+            <span className="px-2.5 py-1 rounded-full bg-emerald-900/40 border border-emerald-600/30 text-emerald-300 text-xs">
               Pregnancy: Cat {drug.pregnancy_cat}
             </span>
           )}
           {drug.price && (
             <span className="px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/25 text-amber-300 text-xs font-mono">
-              {drug.price}
+              ৳{drug.price}
             </span>
           )}
         </div>
@@ -188,7 +184,6 @@ function DrugDetailPanel({
 
       {/* Body */}
       <div className="px-6 py-6 space-y-6">
-        {/* Manufacturer / Pack info */}
         {(drug.manufacturer || drug.pack_size) && (
           <div className="p-4 rounded-xl bg-white/4 border border-white/8 flex gap-6">
             {drug.manufacturer && (
@@ -212,28 +207,24 @@ function DrugDetailPanel({
           value={drug.indication}
           accent="text-emerald-400/70"
         />
-
         <DetailSection
           icon={<User className="w-3.5 h-3.5" />}
           label="Adult Dose"
           value={drug.adult_dose}
           accent="text-blue-400/70"
         />
-
         <DetailSection
           icon={<Users className="w-3.5 h-3.5" />}
           label="Child Dose"
           value={drug.child_dose}
           accent="text-cyan-400/70"
         />
-
         <DetailSection
           icon={<ShieldCheck className="w-3.5 h-3.5" />}
           label="Precautions"
           value={drug.precaution}
           accent="text-amber-400/70"
         />
-
         <DetailSection
           icon={<AlertTriangle className="w-3.5 h-3.5" />}
           label="Side Effects"
@@ -245,8 +236,8 @@ function DrugDetailPanel({
         <div className="p-4 rounded-xl bg-amber-500/8 border border-amber-500/20 flex gap-3">
           <Info className="w-4 h-4 text-amber-400/70 flex-shrink-0 mt-0.5" />
           <p className="text-amber-200/60 text-xs leading-relaxed">
-            This information is for reference only. Always consult a qualified healthcare
-            professional before taking any medication. Do not self-medicate.
+            For reference only. Always consult a qualified healthcare professional
+            before taking any medication. Do not self-medicate.
           </p>
         </div>
       </div>
@@ -281,70 +272,69 @@ export function HealthcarePage() {
     }
   };
 
-  const handleSelect = (drug: DrugSearchResult) => {
-    setSelectedDrug(drug);
-  };
-
   return (
     <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-x-hidden`}>
-      {/* Ambient background blobs */}
+      {/* Ambient blobs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-[-10%] left-[-5%] w-96 h-96 rounded-full bg-emerald-500/5 blur-3xl" />
-        <div className="absolute bottom-[20%] right-[-10%] w-80 h-80 rounded-full bg-teal-500/5 blur-3xl" />
+        <div className="absolute top-[-15%] left-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-500/6 blur-3xl" />
+        <div className="absolute bottom-[10%] right-[-15%] w-[500px] h-[500px] rounded-full bg-green-500/5 blur-3xl" />
+        <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] rounded-full bg-teal-500/4 blur-3xl" />
       </div>
 
-      <div className="relative z-10 max-w-3xl mx-auto px-4 py-8">
-        {/* Back button */}
-        <motion.button
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={() => navigate('/home')}
-          className="flex items-center gap-2 text-white/40 hover:text-white/80 transition-colors mb-8 group"
-        >
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-          <span className="text-sm">Home</span>
-        </motion.button>
+      <div className="relative z-10 w-full min-h-screen flex flex-col">
+        {/* Top bar */}
+        <div className="px-6 sm:px-10 pt-8 pb-0">
+          <motion.button
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            onClick={() => navigate('/home')}
+            className="flex items-center gap-2 text-white/40 hover:text-white/80 transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            <span className="text-sm">Home</span>
+          </motion.button>
+        </div>
 
-        {/* Hero */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="text-center mb-10"
-        >
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 mb-5">
-            <Heart className="w-7 h-7 text-emerald-400" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">TM Healthcare</h1>
-          <p className="text-white/40 text-base max-w-md mx-auto leading-relaxed">
-            Search by brand name, generic name, condition, or symptom — and get accurate
-            dosage &amp; medicine information instantly.
-          </p>
-        </motion.div>
+        {/* Hero — full width, centered */}
+        <div className="flex flex-col items-center justify-center px-4 pt-16 pb-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="text-center mb-8"
+          >
+            <h1 className="text-4xl sm:text-5xl font-bold text-white mb-3 tracking-tight">
+              TM Healthcare
+            </h1>
+            <p className="text-white/40 text-base sm:text-lg max-w-lg mx-auto leading-relaxed">
+              Search by brand, generic name, symptom, or condition — get dosage &amp; drug info instantly.
+            </p>
+          </motion.div>
 
-        {/* Search bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-10"
-        >
-          <DrugSearchBar
-            onSearch={handleSearch}
-            onSelect={(drug) => {
-              setResults([drug]);
-              setSelectedDrug(drug);
-              setHasSearched(true);
-              setLastQuery(drug.brand_name);
-            }}
-          />
-          <p className="text-center text-white/20 text-xs mt-3">
-            Try "Napa", "Paracetamol", "fever", "antibiotic", "500mg"…
-          </p>
-        </motion.div>
+          {/* Search bar — wide */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="w-full max-w-2xl"
+          >
+            <DrugSearchBar
+              onSearch={handleSearch}
+              onSelect={(drug) => {
+                setResults([drug]);
+                setSelectedDrug(drug);
+                setHasSearched(true);
+                setLastQuery(drug.brand_name);
+              }}
+            />
+            <p className="text-center text-white/20 text-xs mt-3">
+              Try "Napa", "Paracetamol", "fever", "antibiotic", "infection"…
+            </p>
+          </motion.div>
+        </div>
 
-        {/* Results area */}
-        <div className="space-y-3">
+        {/* Results area — full width with horizontal padding */}
+        <div className="flex-1 px-6 sm:px-10 lg:px-16 pb-16">
           {/* Loading */}
           <AnimatePresence>
             {isSearching && (
@@ -352,10 +342,10 @@ export function HealthcarePage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex items-center justify-center py-16 gap-3"
+                className="flex items-center justify-center py-20 gap-3"
               >
                 <div className="w-5 h-5 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
-                <span className="text-white/40 text-sm">Searching drugs database…</span>
+                <span className="text-white/40 text-sm">Searching drug database…</span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -366,7 +356,7 @@ export function HealthcarePage() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex items-center justify-between mb-2"
+                className="flex items-center justify-between mb-4"
               >
                 <p className="text-white/30 text-sm">
                   {results.length > 0
@@ -374,7 +364,7 @@ export function HealthcarePage() {
                     : `No results for "${lastQuery}"`}
                 </p>
                 {results.length > 0 && (
-                  <span className="text-white/20 text-xs">Select a drug for full details</span>
+                  <span className="text-white/20 text-xs hidden sm:block">Select a result for full details</span>
                 )}
               </motion.div>
 
@@ -383,46 +373,56 @@ export function HealthcarePage() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-center py-16"
+                  className="text-center py-20"
                 >
                   <Search className="w-10 h-10 text-white/15 mx-auto mb-4" />
-                  <p className="text-white/30 text-sm mb-1">No drugs found matching your query.</p>
-                  <p className="text-white/20 text-xs">
-                    Try a different spelling, brand name, or generic name.
-                  </p>
+                  <p className="text-white/30 text-sm mb-1">No drugs found.</p>
+                  <p className="text-white/20 text-xs">Try a different spelling, brand name, or symptom.</p>
                 </motion.div>
               )}
 
-              {/* Drug cards */}
-              <div className="space-y-3">
+              {/* Cards grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {results.map((drug, i) => (
                   <DrugCard
                     key={`${drug.brand_id}-${i}`}
                     drug={drug}
-                    onSelect={() => handleSelect(drug)}
+                    onSelect={() => setSelectedDrug(drug)}
                   />
                 ))}
               </div>
             </>
           )}
 
-          {/* Initial empty state */}
+          {/* Initial empty state hint cards */}
           {!hasSearched && !isSearching && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1, transition: { delay: 0.2 } }}
-              className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4"
+              className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto"
             >
               {[
-                { icon: <Pill className="w-5 h-5 text-emerald-400" />, title: 'Brand Search', desc: 'Search by brand name like "Napa" or "Fimoxyl"' },
-                { icon: <Beaker className="w-5 h-5 text-blue-400" />, title: 'Generic Search', desc: 'Find by active ingredient like "Paracetamol" or "Amoxicillin"' },
-                { icon: <Activity className="w-5 h-5 text-purple-400" />, title: 'Symptom Search', desc: 'Describe a condition like "fever", "infection", or "pain"' },
+                {
+                  icon: <Pill className="w-5 h-5 text-emerald-400" />,
+                  title: 'Brand Search',
+                  desc: 'Search by brand name like "Napa" or "Fimoxyl"',
+                },
+                {
+                  icon: <Beaker className="w-5 h-5 text-teal-400" />,
+                  title: 'Generic Search',
+                  desc: 'Find by active ingredient like "Paracetamol" or "Amoxicillin"',
+                },
+                {
+                  icon: <Stethoscope className="w-5 h-5 text-green-400" />,
+                  title: 'Symptom Search',
+                  desc: 'Describe a condition like "fever", "infection", or "pain"',
+                },
               ].map((card, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0, transition: { delay: 0.25 + i * 0.06 } }}
-                  className="p-4 rounded-2xl bg-white/4 border border-white/8 text-center"
+                  className="p-5 rounded-2xl bg-white/4 border border-white/8 text-center"
                 >
                   <div className="flex justify-center mb-3">{card.icon}</div>
                   <p className="text-white/70 text-sm font-medium mb-1">{card.title}</p>
@@ -433,22 +433,16 @@ export function HealthcarePage() {
           )}
         </div>
 
-        {/* Global disclaimer */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { delay: 0.3 } }}
-          className="text-center text-white/15 text-xs mt-12 leading-relaxed max-w-md mx-auto"
-        >
-          TM Healthcare is for informational purposes only. Always consult a licensed
-          physician or pharmacist before starting any medication.
-        </motion.p>
+        {/* Footer disclaimer */}
+        <p className="text-center text-white/15 text-xs pb-8 px-4">
+          TM Healthcare is for informational purposes only. Always consult a licensed physician or pharmacist before starting any medication.
+        </p>
       </div>
 
-      {/* Detail Panel overlay */}
+      {/* Detail Panel */}
       <AnimatePresence>
         {selectedDrug && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

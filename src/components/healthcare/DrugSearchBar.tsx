@@ -228,7 +228,7 @@ export function DrugSearchBar({ onSelect, onSearch, placeholder }: DrugSearchBar
                 {/* Price badge */}
                 {drug.price && (
                   <div className="flex-shrink-0 text-xs text-emerald-400/60 font-mono mt-0.5">
-                    {drug.price}
+                    ৳{drug.price}
                   </div>
                 )}
               </motion.button>

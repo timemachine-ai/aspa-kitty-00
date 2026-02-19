@@ -59,26 +59,27 @@ AS $$
     g.child_dose,
     pc.id                          AS pregnancy_cat,
     -- Compute a composite similarity score:
-    -- brand name gets highest weight (3x),
-    -- generic name gets high weight (2x),
-    -- indication gets 1x weight (symptom search)
+    --   similarity()      → whole-string match (best for brand/generic names)
+    --   word_similarity() → short-query-in-long-text match (best for symptoms in indication)
+    -- Brand name: highest weight (3x)
+    -- Generic name: high weight (2x)
+    -- Indication: word_similarity so "fever" finds "Used for fever and headache" (1x)
     GREATEST(
       similarity(b.name, search_query) * 3,
       similarity(g.name, search_query) * 2,
-      similarity(COALESCE(g.indication, ''), search_query) * 1
+      word_similarity(search_query, COALESCE(g.indication, '')) * 1
     ) AS relevance
   FROM brands b
   JOIN generics g  ON b.generic_id      = g.id
   JOIN manufacturers m ON b.manufacturer_id = m.id
   LEFT JOIN pregnancy_categories pc ON g.pregnancy_category_id = pc.id
   WHERE
-    -- Only return results that have at least a minimal similarity score
-    -- This filters out completely irrelevant rows
     (
       similarity(b.name, search_query) > 0.1
       OR similarity(g.name, search_query) > 0.1
-      OR similarity(COALESCE(g.indication, ''), search_query) > 0.05
-      -- Also support ILIKE prefix matching for short queries (< 4 chars)
+      -- word_similarity checks if the query word appears within the indication text
+      OR word_similarity(search_query, COALESCE(g.indication, '')) > 0.3
+      -- ILIKE fallback for short queries or exact substrings
       OR b.name ILIKE '%' || search_query || '%'
       OR g.name ILIKE '%' || search_query || '%'
       OR g.indication ILIKE '%' || search_query || '%'
