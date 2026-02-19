@@ -273,7 +273,7 @@ export function HealthcarePage() {
   };
 
   return (
-    <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-x-hidden`}>
+    <div className={`min-h-screen ${theme.background} ${theme.text} relative`}>
       {/* Ambient blobs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-15%] left-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-500/6 blur-3xl" />

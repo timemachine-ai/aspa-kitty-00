@@ -93,25 +93,29 @@ async function fallbackSearch(query: string): Promise<DrugSearchResult[]> {
     .ilike('name', ilike)
     .limit(20);
 
-  // B+C — generics matching by name OR indication
-  const { data: matchingGenerics } = await supabase
-    .from('generics')
-    .select('id, name, indication')
-    .or(`name.ilike.${ilike},indication.ilike.${ilike}`)
-    .limit(40);
+  // B — generics matching by generic name (e.g. "Paracetamol")
+  // C — generics matching by indication text (e.g. "fever", "pain", "infection")
+  // Run as TWO separate .ilike() queries — the combined .or() with % wildcards
+  // does not encode reliably through the Supabase JS client in all versions.
+  const [{ data: byGenericName }, { data: byIndication }] = await Promise.all([
+    supabase.from('generics').select('id, name').ilike('name', ilike).limit(30),
+    supabase.from('generics').select('id, name').ilike('indication', ilike).limit(30),
+  ]);
+
+  const nameMatchIds = new Set((byGenericName ?? []).map((g) => g.id));
+  const allGenericIds = [
+    ...new Set([
+      ...(byGenericName ?? []).map((g) => g.id),
+      ...(byIndication ?? []).map((g) => g.id),
+    ]),
+  ];
 
   let byGeneric: any[] = [];
-  if (matchingGenerics && matchingGenerics.length > 0) {
-    const genericIds = matchingGenerics.map((g) => g.id);
-    // rank: generics matched by name score higher than by indication
-    const nameMatchIds = new Set(
-      matchingGenerics.filter((g) => g.name?.toLowerCase().includes(query.toLowerCase())).map((g) => g.id)
-    );
-
+  if (allGenericIds.length > 0) {
     const { data } = await supabase
       .from('brands')
       .select(BRAND_SELECT)
-      .in('generic_id', genericIds)
+      .in('generic_id', allGenericIds)
       .limit(30);
 
     byGeneric = (data ?? []).map((b: any) =>
