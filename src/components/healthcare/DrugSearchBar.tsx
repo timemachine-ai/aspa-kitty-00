@@ -1,20 +1,25 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, X, Loader2, Pill, Stethoscope } from 'lucide-react';
-import { useTheme } from '../../context/ThemeContext';
-import { getAutocompleteSuggestions, DrugSearchResult } from '../../services/healthcare/healthcareService';
+import { Search, X, Loader2, Pill, Stethoscope, ChevronDown } from 'lucide-react';
+import { getAutocompleteSuggestions, DrugSearchResult, SearchCategory } from '../../services/healthcare/healthcareService';
+
+const CATEGORY_OPTIONS: { value: SearchCategory; label: string }[] = [
+  { value: 'brand', label: 'Drug Name' },
+  { value: 'generic', label: 'Generic' },
+  { value: 'indication', label: 'Symptom' },
+];
 
 interface DrugSearchBarProps {
   onSelect: (drug: DrugSearchResult) => void;
-  onSearch: (query: string) => void;
+  onSearch: (query: string, category: SearchCategory) => void;
   placeholder?: string;
 }
 
 const DEBOUNCE_MS = 300;
 
 export function DrugSearchBar({ onSelect, onSearch, placeholder }: DrugSearchBarProps) {
-  const { theme } = useTheme();
   const [query, setQuery] = useState('');
+  const [category, setCategory] = useState<SearchCategory>('brand');
   const [suggestions, setSuggestions] = useState<DrugSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -25,7 +30,7 @@ export function DrugSearchBar({ onSelect, onSearch, placeholder }: DrugSearchBar
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced autocomplete fetch
-  const fetchSuggestions = useCallback(async (q: string) => {
+  const fetchSuggestions = useCallback(async (q: string, cat: SearchCategory) => {
     if (q.trim().length < 2) {
       setSuggestions([]);
       setIsOpen(false);
@@ -33,7 +38,7 @@ export function DrugSearchBar({ onSelect, onSearch, placeholder }: DrugSearchBar
     }
     setIsLoading(true);
     try {
-      const results = await getAutocompleteSuggestions(q);
+      const results = await getAutocompleteSuggestions(q, cat);
       setSuggestions(results);
       setIsOpen(results.length > 0);
       setFocusedIndex(-1);
@@ -50,7 +55,7 @@ export function DrugSearchBar({ onSelect, onSearch, placeholder }: DrugSearchBar
 
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
-      fetchSuggestions(val);
+      fetchSuggestions(val, category);
     }, DEBOUNCE_MS);
   };
 
@@ -58,7 +63,7 @@ export function DrugSearchBar({ onSelect, onSearch, placeholder }: DrugSearchBar
     e.preventDefault();
     if (query.trim().length < 2) return;
     setIsOpen(false);
-    onSearch(query.trim());
+    onSearch(query.trim(), category);
   };
 
   const handleSelect = (drug: DrugSearchResult) => {
@@ -122,6 +127,32 @@ export function DrugSearchBar({ onSelect, onSearch, placeholder }: DrugSearchBar
             ${isOpen ? 'border-emerald-400/50 shadow-[0_0_20px_rgba(52,211,153,0.15)]' : 'hover:border-white/25'}
           `}
         >
+          {/* Category selector */}
+          <div className="flex-shrink-0 relative">
+            <select
+              value={category}
+              onChange={(e) => {
+                const newCat = e.target.value as SearchCategory;
+                setCategory(newCat);
+                if (query.trim().length >= 2) {
+                  if (debounceTimer.current) clearTimeout(debounceTimer.current);
+                  fetchSuggestions(query, newCat);
+                }
+              }}
+              className="appearance-none bg-white/10 border border-white/15 rounded-xl pl-3 pr-7 py-1.5 text-white text-xs font-medium cursor-pointer outline-none hover:bg-white/15 focus:border-emerald-400/50 transition-colors"
+            >
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value} className="bg-gray-900 text-white">
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40 pointer-events-none" />
+          </div>
+
+          {/* Divider */}
+          <div className="w-px h-6 bg-white/10 flex-shrink-0" />
+
           {/* Icon */}
           <div className="flex-shrink-0">
             {isLoading ? (
@@ -139,7 +170,11 @@ export function DrugSearchBar({ onSelect, onSearch, placeholder }: DrugSearchBar
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onFocus={() => query.trim().length >= 2 && suggestions.length > 0 && setIsOpen(true)}
-            placeholder={placeholder ?? 'Search drug, brand, symptom, or condition...'}
+            placeholder={placeholder ?? (
+              category === 'brand' ? 'Search by drug / brand name...' :
+              category === 'generic' ? 'Search by generic / active ingredient...' :
+              'Search by symptom or condition...'
+            )}
             className="flex-1 bg-transparent text-white placeholder-white/30 text-base outline-none"
             autoComplete="off"
             spellCheck={false}
