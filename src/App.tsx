@@ -28,6 +28,7 @@ import { GroupChatModal } from './components/groupchat/GroupChatModal';
 import { GroupSettingsPage } from './components/groupchat/GroupSettingsPage';
 import { HomePage } from './components/home/HomePage';
 import { NotesPage } from './components/notes/NotesPage';
+import { HealthcarePage } from './components/healthcare/HealthcarePage';
 import {
   getGroupChat,
   getGroupChatInvite,
@@ -870,6 +871,7 @@ function AppContent() {
       <Route path="/memories" element={<><SEOHead title="Memories" path="/memories" noIndex /><MemoriesPage /></>} />
       <Route path="/help" element={<><SEOHead title="Help" description="Get help with TimeMachine — learn about AI personas, group chats, image generation, and all features." path="/help" /><HelpPage /></>} />
       <Route path="/notes" element={<><SEOHead title="Notes" description="Capture your thoughts with TimeMachine Notes — a powerful Notion-like editor built right into TimeMachine." path="/notes" /><NotesPage /></>} />
+      <Route path="/healthcare" element={<><SEOHead title="Healthcare" description="Search medicines, brands, generics, and drug information — including dosage, side effects, and indications. Powered by TM Healthcare." path="/healthcare" /><HealthcarePage /></>} />
       <Route path="/chat/:id" element={<><SEOHead title="Chat" noIndex /><ChatByIdPage /></>} />
       <Route path="/groupchat/:id" element={<><SEOHead title="Group Chat" noIndex /><GroupChatWrapper /></>} />
       <Route path="/groupchat/:id/settings" element={<><SEOHead title="Group Settings" noIndex /><GroupSettingsPage /></>} />
