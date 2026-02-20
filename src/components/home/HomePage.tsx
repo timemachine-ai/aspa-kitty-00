@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GraduationCap,
@@ -180,8 +180,11 @@ export function HomePage() {
     navigate('/notes');
   }, [navigate, notesDraft]);
 
+  // Current route for active state in nav
+  const { pathname: currentPath } = useLocation();
+
   return (
-    <div className="fixed inset-0 overflow-hidden select-none">
+    <div className="fixed inset-0 select-none">
       {/* ── BG: purple → black ──────────────────────────────── */}
       <div className="absolute inset-0 -z-10">
         <div
@@ -194,7 +197,7 @@ export function HomePage() {
       </div>
 
       {/* ── LAYOUT ──────────────────────────────────────────── */}
-      <div className="h-full flex">
+      <div className="h-full flex overflow-hidden">
 
         {/* ── Sidebar (desktop) ─────────────────────────────── */}
         <motion.aside
@@ -218,17 +221,20 @@ export function HomePage() {
         </motion.aside>
 
         {/* ── Main grid area ────────────────────────────────── */}
-        <div className="flex-1 h-full overflow-y-auto overflow-x-hidden p-4 md:pl-0 md:pr-5 md:py-5">
-          <div className="h-full flex flex-col gap-4 min-h-[600px]">
+        <div className="flex-1 h-full overflow-y-auto overflow-x-hidden p-4 pb-24 md:pb-5 md:pl-0 md:pr-5 md:py-5">
+          <div className="md:h-full flex flex-col gap-4 md:min-h-[600px]">
 
             {/* ── TOP ROW: hero + side panel ─────────────────── */}
-            <div className="flex-[1.3] flex flex-col md:flex-row gap-4 min-h-0">
+            <div className="md:flex-[1.3] flex flex-col md:flex-row gap-4 min-h-0">
 
               {/* HERO CARD — greeting + live chat + real ChatInput */}
               <motion.div
                 {...fadeUp(0)}
-                className="flex-[1.6] rounded-3xl overflow-hidden relative min-h-[280px] md:min-h-0 flex flex-col"
-                style={glassCard}
+                className="md:flex-[1.6] rounded-3xl overflow-hidden relative flex flex-col"
+                style={{
+                  ...glassCard,
+                  minHeight: hasUserMessages ? '360px' : '280px',
+                }}
               >
                 {/* subtle accent glow */}
                 <div
@@ -238,7 +244,7 @@ export function HomePage() {
 
                 <div className="relative flex-1 flex flex-col min-h-0">
                   {/* top bar: date + time + open button */}
-                  <div className="flex items-center justify-between px-6 sm:px-8 pt-5 pb-2 shrink-0">
+                  <div className="flex items-center justify-between px-5 sm:px-8 pt-5 pb-2 shrink-0">
                     <span className="text-white/30 text-xs sm:text-sm font-medium tracking-wide">{date}</span>
                     <div className="flex items-center gap-3">
                       <AnimatePresence>
@@ -268,13 +274,13 @@ export function HomePage() {
 
                   {/* greeting (shown when no user messages yet) */}
                   {!hasUserMessages && (
-                    <div className="flex-1 flex items-center px-6 sm:px-8">
+                    <div className="flex-1 flex items-center px-5 sm:px-8 py-4">
                       <div>
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
+                        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
                           {greeting}{name ? ',' : '.'}
                         </h1>
                         {name && (
-                          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
+                          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1]">
                             {name}.
                           </h1>
                         )}
@@ -310,11 +316,11 @@ export function HomePage() {
               {/* SIDE PANEL — Notes */}
               <motion.div
                 {...fadeUp(0.08)}
-                className="flex-1 rounded-3xl overflow-hidden relative min-h-[300px] md:min-h-0"
-                style={glassCard}
+                className="md:flex-1 rounded-3xl overflow-hidden relative"
+                style={{ ...glassCard, minHeight: '220px' }}
               >
                 <div className="relative h-full flex flex-col p-5">
-                  <div className="flex items-center gap-2 mb-4">
+                  <div className="flex items-center gap-2 mb-3">
                     <BookOpen className="w-4 h-4 text-white/30" />
                     <p className="text-white/30 text-[11px] font-semibold uppercase tracking-widest">Notes</p>
                   </div>
@@ -325,7 +331,7 @@ export function HomePage() {
                       value={notesDraft}
                       onChange={(e) => setNotesDraft(e.target.value)}
                       placeholder="Start writing here..."
-                      className="w-full h-full min-h-[180px] bg-transparent text-white/80 text-sm placeholder-white/15 outline-none resize-none leading-relaxed"
+                      className="w-full h-full min-h-[120px] md:min-h-[180px] bg-transparent text-white/80 text-sm placeholder-white/15 outline-none resize-none leading-relaxed"
                     />
                   </div>
 
@@ -350,7 +356,7 @@ export function HomePage() {
             </div>
 
             {/* ── BOTTOM ROW: 3 feature cards ────────────────── */}
-            <div className="flex-[0.65] flex flex-col sm:flex-row gap-4 min-h-[160px]">
+            <div className="md:flex-[0.65] grid grid-cols-3 gap-3 sm:gap-4 min-h-[120px] sm:min-h-[160px]">
               {bottomCardData.map((app, i) => (
                 <motion.div
                   key={app.id}
@@ -358,18 +364,18 @@ export function HomePage() {
                   whileHover={{ y: -4, scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => navigate(app.route)}
-                  className="flex-1 rounded-3xl overflow-hidden relative cursor-pointer"
+                  className="rounded-3xl overflow-hidden relative cursor-pointer"
                   style={glassCard}
                 >
-                  <div className="relative h-full flex flex-col justify-between p-5 sm:p-6">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-white/[0.06]">
+                  <div className="relative h-full flex flex-col justify-between p-4 sm:p-6">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center bg-white/[0.06]">
                       <span className="text-white/70">
-                        {React.cloneElement(app.icon as React.ReactElement, { className: 'w-6 h-6' })}
+                        {React.cloneElement(app.icon as React.ReactElement, { className: 'w-5 h-5 sm:w-6 sm:h-6' })}
                       </span>
                     </div>
-                    <div>
-                      <p className="text-white/90 text-base font-semibold">{app.label}</p>
-                      <p className="text-white/30 text-xs mt-0.5">{app.description}</p>
+                    <div className="mt-3 sm:mt-0">
+                      <p className="text-white/90 text-sm sm:text-base font-semibold">{app.label}</p>
+                      <p className="text-white/30 text-[10px] sm:text-xs mt-0.5 hidden sm:block">{app.description}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -379,29 +385,49 @@ export function HomePage() {
         </div>
       </div>
 
-      {/* ── Mobile bottom bar ──────────────────────────────── */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50">
-        <div
-          className="flex items-center justify-around px-4 py-3"
+      {/* ── Floating glass pill navbar (mobile) ──────────── */}
+      <div
+        className="md:hidden fixed z-50 left-1/2 -translate-x-1/2"
+        style={{ bottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          className="flex items-center gap-1.5 px-2 py-2 rounded-full"
           style={{
-            background: 'rgba(0, 0, 0, 0.6)',
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
-            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+            background: 'rgba(255, 255, 255, 0.08)',
+            backdropFilter: 'blur(40px)',
+            WebkitBackdropFilter: 'blur(40px)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
           }}
         >
-          {sidebarItems.map((item) => (
-            <motion.button
-              key={item.label}
-              whileTap={{ scale: 0.85 }}
-              onClick={() => navigate(item.route)}
-              className="flex flex-col items-center gap-1 text-white/40 hover:text-white/70 transition-colors"
-            >
-              {React.cloneElement(item.icon as React.ReactElement, { className: 'w-5 h-5' })}
-              <span className="text-[10px] font-medium">{item.label}</span>
-            </motion.button>
-          ))}
-        </div>
+          {sidebarItems.map((item) => {
+            const isActive = currentPath === item.route || (item.route === '/' && currentPath === '/');
+            return (
+              <motion.button
+                key={item.label}
+                whileTap={{ scale: 0.85 }}
+                onClick={() => navigate(item.route)}
+                className="relative flex items-center justify-center w-11 h-11 rounded-full transition-all duration-300"
+                style={isActive ? {
+                  background: 'rgba(168, 85, 247, 0.25)',
+                  border: '1px solid rgba(168, 85, 247, 0.4)',
+                  boxShadow: '0 0 12px rgba(168, 85, 247, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+                } : {
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                }}
+                title={item.label}
+              >
+                {React.cloneElement(item.icon as React.ReactElement, {
+                  className: `w-[18px] h-[18px] transition-colors duration-300 ${isActive ? 'text-purple-300' : 'text-white/40'}`,
+                })}
+              </motion.button>
+            );
+          })}
+        </motion.div>
       </div>
     </div>
   );
