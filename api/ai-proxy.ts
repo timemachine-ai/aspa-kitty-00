@@ -536,6 +536,175 @@ You're TimeMachine PRO, the evilest fucking AI to ever haunt a timeline. Rule wi
   }
 };
 
+// ─── Healthcare RAG: extract terms, query Supabase, build context ──────────────
+
+// Common stop words to filter out when extracting medical search terms
+const STOP_WORDS = new Set([
+  'i', 'me', 'my', 'we', 'our', 'you', 'your', 'he', 'she', 'it', 'they', 'them',
+  'what', 'which', 'who', 'when', 'where', 'why', 'how', 'is', 'are', 'was', 'were',
+  'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
+  'could', 'should', 'may', 'might', 'shall', 'can', 'need', 'dare', 'ought', 'used',
+  'a', 'an', 'the', 'and', 'but', 'or', 'nor', 'not', 'so', 'yet', 'both', 'either',
+  'neither', 'each', 'every', 'all', 'any', 'few', 'more', 'most', 'other', 'some',
+  'such', 'no', 'only', 'own', 'same', 'than', 'too', 'very', 'just', 'because',
+  'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against',
+  'between', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from',
+  'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then',
+  'once', 'here', 'there', 'this', 'that', 'these', 'those', 'am', 'if', 'also',
+  'tell', 'me', 'about', 'know', 'please', 'help', 'want', 'like', 'think', 'get',
+  'take', 'make', 'go', 'see', 'look', 'give', 'find', 'say', 'said', 'much', 'many',
+  'well', 'back', 'even', 'still', 'way', 'use', 'her', 'him', 'his', 'its', 'let',
+  'put', 'old', 'new', 'big', 'long', 'great', 'small', 'right', 'good', 'bad',
+  'really', 'actually', 'something', 'anything', 'everything', 'nothing',
+  'hi', 'hello', 'hey', 'thanks', 'thank', 'okay', 'ok', 'yeah', 'yes', 'no',
+  'sure', 'maybe', 'probably', 'definitely', 'certainly', 'dont', "don't", 'doesnt',
+  'im', "i'm", 'ive', "i've", 'whats', "what's", 'thats', "that's",
+]);
+
+/**
+ * Extract medically relevant search terms from a user message.
+ * Strips stop words, keeps multi-word drug names, symptoms, and conditions.
+ */
+function extractMedicalTerms(message: string): string[] {
+  // Normalize and tokenize
+  const cleaned = message
+    .toLowerCase()
+    .replace(/[^a-z0-9\s\-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const words = cleaned.split(' ').filter(w => w.length >= 2 && !STOP_WORDS.has(w));
+
+  // Deduplicate and return top terms (cap at 5 to keep queries focused)
+  const unique = [...new Set(words)];
+  return unique.slice(0, 5);
+}
+
+/**
+ * Query Supabase for drug/generic data relevant to the user's message.
+ * Returns the top 3 most relevant results formatted for LLM context.
+ */
+async function fetchHealthcareRAGContext(userMessage: string): Promise<string> {
+  const terms = extractMedicalTerms(userMessage);
+  if (terms.length === 0) return '';
+
+  try {
+    // Try the pg_trgm RPC first with the full cleaned query
+    const searchQuery = terms.join(' ');
+    const { data: rpcData, error: rpcError } = await supabase.rpc('search_drugs', {
+      search_query: searchQuery,
+    });
+
+    let results: any[] = [];
+
+    if (!rpcError && rpcData && rpcData.length > 0) {
+      results = rpcData.slice(0, 3);
+    } else {
+      // Fallback: run ILIKE queries for each term across brands and generics
+      const brandSelect = `
+        id, name, form, strength, price, pack_size,
+        manufacturers ( name ),
+        generics (
+          id, name, indication, side_effect,
+          precaution, adult_dose, child_dose, pregnancy_category_id
+        )
+      `;
+
+      // Search brands by name and generics by name + indication in parallel
+      const queries = terms.flatMap(term => {
+        const ilike = `%${term}%`;
+        return [
+          supabase.from('brands').select(brandSelect).ilike('name', ilike).limit(3),
+          supabase.from('generics').select('id').ilike('name', ilike).limit(5),
+          supabase.from('generics').select('id').ilike('indication', ilike).limit(5),
+        ];
+      });
+
+      const queryResults = await Promise.all(queries);
+
+      // Collect direct brand hits
+      const seen = new Set<number>();
+      const brandResults: any[] = [];
+
+      for (let i = 0; i < queryResults.length; i += 3) {
+        const brandData = queryResults[i]?.data ?? [];
+        for (const b of brandData) {
+          if (!seen.has(b.id)) {
+            seen.add(b.id);
+            brandResults.push(b);
+          }
+        }
+      }
+
+      // Collect generic IDs and fetch their brands
+      const genericIds = new Set<number>();
+      for (let i = 1; i < queryResults.length; i += 3) {
+        for (const g of (queryResults[i]?.data ?? [])) genericIds.add(g.id);
+        for (const g of (queryResults[i + 1]?.data ?? [])) genericIds.add(g.id);
+      }
+
+      if (genericIds.size > 0) {
+        const { data: genericBrands } = await supabase
+          .from('brands')
+          .select(brandSelect)
+          .in('generic_id', [...genericIds])
+          .limit(10);
+
+        for (const b of (genericBrands ?? [])) {
+          if (!seen.has(b.id)) {
+            seen.add(b.id);
+            brandResults.push(b);
+          }
+        }
+      }
+
+      // Shape the results into the same format as the RPC
+      results = brandResults.slice(0, 3).map((b: any) => ({
+        brand_name: b.name,
+        generic_name: b.generics?.name ?? '',
+        form: b.form ?? '',
+        strength: b.strength ?? '',
+        price: b.price ?? '',
+        pack_size: b.pack_size ?? '',
+        manufacturer: b.manufacturers?.name ?? '',
+        indication: b.generics?.indication ?? '',
+        side_effect: b.generics?.side_effect ?? '',
+        precaution: b.generics?.precaution ?? '',
+        adult_dose: b.generics?.adult_dose ?? '',
+        child_dose: b.generics?.child_dose ?? '',
+        pregnancy_cat: b.generics?.pregnancy_category_id ?? '',
+      }));
+    }
+
+    if (results.length === 0) return '';
+
+    // Format results as XML context block for the system prompt
+    const entries = results.map((r: any, i: number) => {
+      const fields = [
+        `Brand: ${r.brand_name}`,
+        `Generic: ${r.generic_name}`,
+        r.form ? `Form: ${r.form}` : null,
+        r.strength ? `Strength: ${r.strength}` : null,
+        r.price ? `Price: ৳${r.price}` : null,
+        r.pack_size ? `Pack Size: ${r.pack_size}` : null,
+        r.manufacturer ? `Manufacturer: ${r.manufacturer}` : null,
+        r.indication ? `Indication: ${r.indication}` : null,
+        r.adult_dose ? `Adult Dose: ${r.adult_dose}` : null,
+        r.child_dose ? `Child Dose: ${r.child_dose}` : null,
+        r.precaution ? `Precaution: ${r.precaution}` : null,
+        r.side_effect ? `Side Effects: ${r.side_effect}` : null,
+        r.pregnancy_cat ? `Pregnancy Category: ${r.pregnancy_cat}` : null,
+      ].filter(Boolean).join('\n  ');
+      return `<drug_entry_${i + 1}>\n  ${fields}\n</drug_entry_${i + 1}>`;
+    }).join('\n\n');
+
+    return `\n\n<database_context>\nThe following drug information was retrieved from our verified database based on the user's query. Use this data to provide accurate, specific answers. Always cite brand names, dosages, and other details from this context when relevant.\n\n${entries}\n</database_context>`;
+  } catch (err) {
+    console.error('[Healthcare RAG] Error fetching context:', err);
+    return '';
+  }
+}
+
 // Image generation tool configuration
 const imageGenerationTool = {
   type: "function" as const,
@@ -1594,6 +1763,18 @@ The memory tags will be processed and removed from the visible response, so writ
     const temperatureToUse = specialModeConfig?.temperature ?? personaConfig.temperature;
     const maxTokensToUse = specialModeConfig?.maxTokens ?? personaConfig.maxTokens;
     const reasoningEffortToUse: string = specialModeConfig?.reasoningEffort ?? 'low';
+
+    // Healthcare RAG: inject database context into system prompt when in TM Healthcare mode
+    if (specialMode === 'tm-healthcare') {
+      // Get the last user message for RAG context extraction
+      const lastUserMessage = [...messages].reverse().find((m: any) => !m.isAI);
+      if (lastUserMessage?.content) {
+        const ragContext = await fetchHealthcareRAGContext(lastUserMessage.content);
+        if (ragContext) {
+          systemPromptToUse = systemPromptToUse + ragContext;
+        }
+      }
+    }
 
     // Handle audio transcription if audioData is provided
     let processedMessages = [...messages];

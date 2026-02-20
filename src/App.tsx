@@ -121,6 +121,14 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
   // This prevents the init effect from overwriting loaded messages
   const sessionToLoad = location.state?.sessionToLoad as ChatSession | undefined;
 
+  // Check if navigating from healthcare page to auto-enable TM Healthcare mode
+  const healthcareModeFromNav = location.state?.healthcareMode as boolean | undefined;
+
+  // Track the active special mode from ChatInput (for theme overrides)
+  const [activeChatMode, setActiveChatMode] = useState<string | null>(
+    healthcareModeFromNav ? 'tm-healthcare' : null
+  );
+
   // Group chat mode detection
   const isGroupMode = !!groupChatId;
 
@@ -189,9 +197,9 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     } : null
   );
 
-  // Clear navigation state after loading session to prevent reload on refresh
+  // Clear navigation state after loading session/healthcare mode to prevent reload on refresh
   useEffect(() => {
-    if (sessionToLoad) {
+    if (sessionToLoad || healthcareModeFromNav) {
       window.history.replaceState({}, '', '/');
     }
   }, []); // Only run once on mount
@@ -441,9 +449,15 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
     );
   }
 
+  // Override background for healthcare mode (green gradient instead of season theme)
+  const isHealthcareActive = activeChatMode === 'tm-healthcare';
+  const backgroundClass = isHealthcareActive
+    ? 'bg-gradient-to-t from-green-950 to-black to-50%'
+    : theme.background;
+
   return (
     <div
-      className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}
+      className={`min-h-screen ${backgroundClass} ${theme.text} relative overflow-hidden transition-all duration-700`}
       style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}
     >
       <main className="relative h-screen flex flex-col" style={{ height: 'calc(var(--vh, 1vh) * 100)' }}>
@@ -799,6 +813,8 @@ function MainChatPage({ groupChatId }: MainChatPageProps = {}) {
               participants={participants}
               replyTo={replyTo}
               onClearReply={handleClearReply}
+              initialMode={healthcareModeFromNav ? 'tm-healthcare' : undefined}
+              onModeChange={setActiveChatMode}
             />
           </div>
         </div>

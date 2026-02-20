@@ -19,6 +19,7 @@ import {
   Stethoscope,
   Repeat2,
   Loader2,
+  MessageCircle,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { DrugSearchBar } from './DrugSearchBar';
@@ -620,6 +621,29 @@ export function HealthcarePage() {
               ))}
             </motion.div>
           )}
+        </div>
+
+        {/* Ask TimeMachine button */}
+        <div className="flex justify-center pb-6 px-4">
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => navigate('/', { state: { healthcareMode: true } })}
+            className="flex items-center gap-2.5 px-7 py-3 rounded-full text-sm font-medium text-emerald-200 transition-all duration-300"
+            style={{
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(6, 95, 70, 0.12))',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              boxShadow: '0 0 20px rgba(16, 185, 129, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+            }}
+          >
+            <MessageCircle className="w-4.5 h-4.5" />
+            Ask TimeMachine
+          </motion.button>
         </div>
 
         {/* Footer disclaimer */}

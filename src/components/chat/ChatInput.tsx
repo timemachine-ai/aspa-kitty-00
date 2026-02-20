@@ -83,9 +83,11 @@ interface ExtendedChatInputProps extends ChatInputProps {
   participants?: GroupChatParticipant[];
   replyTo?: ReplyTo | null;
   onClearReply?: () => void;
+  initialMode?: PlusMenuOption | null;
+  onModeChange?: (mode: PlusMenuOption | null) => void;
 }
 
-export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default' as Persona, isGroupMode, participants, replyTo, onClearReply }: ExtendedChatInputProps) {
+export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default' as Persona, isGroupMode, participants, replyTo, onClearReply, initialMode, onModeChange }: ExtendedChatInputProps) {
   const [message, setMessage] = useState('');
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
@@ -103,6 +105,20 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
   const navigate = useNavigate();
   const contour = useContour();
   const contourRef = useRef<HTMLDivElement>(null);
+
+  // Auto-set plus option when initialMode is provided (e.g., from healthcare page navigation)
+  useEffect(() => {
+    if (initialMode && initialMode !== selectedPlusOption) {
+      setSelectedPlusOption(initialMode);
+    }
+  }, [initialMode]);
+
+  // Notify parent of mode changes
+  useEffect(() => {
+    if (onModeChange) {
+      onModeChange(selectedPlusOption);
+    }
+  }, [selectedPlusOption, onModeChange]);
 
   useEffect(() => {
     const handleResize = () => {
