@@ -1765,11 +1765,13 @@ The memory tags will be processed and removed from the visible response, so writ
     const reasoningEffortToUse: string = specialModeConfig?.reasoningEffort ?? 'low';
 
     // Healthcare RAG: inject database context into system prompt when in TM Healthcare mode
+    // Scans the last few messages (not just the latest) so follow-up questions
+    // like "what are the alternatives?" still carry drug-name context forward.
     if (specialMode === 'tm-healthcare') {
-      // Get the last user message for RAG context extraction
-      const lastUserMessage = [...messages].reverse().find((m: any) => !m.isAI);
-      if (lastUserMessage?.content) {
-        const ragContext = await fetchHealthcareRAGContext(lastUserMessage.content);
+      const recentMessages = messages.slice(-6); // last 6 messages (~3 turns)
+      const combinedText = recentMessages.map((m: any) => m.content).join(' ');
+      if (combinedText.trim()) {
+        const ragContext = await fetchHealthcareRAGContext(combinedText);
         if (ragContext) {
           systemPromptToUse = systemPromptToUse + ragContext;
         }
