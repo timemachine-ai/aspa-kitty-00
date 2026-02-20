@@ -623,8 +623,8 @@ export function HealthcarePage() {
           )}
         </div>
 
-        {/* Ask TimeMachine button */}
-        <div className="flex justify-center pb-6 px-4">
+        {/* Ask TimeMachine button — hidden on mobile (shown as floating below) */}
+        <div className="hidden sm:flex justify-center pb-6 px-4">
           <motion.button
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -647,7 +647,7 @@ export function HealthcarePage() {
         </div>
 
         {/* Footer disclaimer */}
-        <p className="text-center text-white/15 text-xs pb-8 px-4">
+        <p className="text-center text-white/15 text-xs pb-20 sm:pb-8 px-4">
           TimeMachine Healthcare is for informational purposes only. Always consult a licensed physician or pharmacist before starting any medication.
         </p>
       </div>
@@ -671,6 +671,26 @@ export function HealthcarePage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Floating Ask TimeMachine button — mobile only */}
+      <motion.button
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => navigate('/', { state: { healthcareMode: true } })}
+        className="sm:hidden fixed bottom-5 right-5 z-30 flex items-center gap-2 px-5 py-3 rounded-full text-sm font-medium text-emerald-200 shadow-lg"
+        style={{
+          background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 95, 70, 0.2))',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(16, 185, 129, 0.35)',
+          boxShadow: '0 4px 24px rgba(16, 185, 129, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        }}
+      >
+        <MessageCircle className="w-4 h-4" />
+        Ask TimeMachine
+      </motion.button>
     </div>
   );
 }

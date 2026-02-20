@@ -62,6 +62,9 @@ export function DrugSearchBar({ onSelect, onSearch, placeholder }: DrugSearchBar
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim().length < 2) return;
+    // Cancel any pending debounce so it doesn't re-open the dropdown
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    setSuggestions([]);
     setIsOpen(false);
     onSearch(query.trim(), category);
   };
@@ -120,14 +123,14 @@ export function DrugSearchBar({ onSelect, onSearch, placeholder }: DrugSearchBar
       <form onSubmit={handleSubmit}>
         <div
           className={`
-            flex items-center gap-3 px-5 py-4 rounded-2xl
+            flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-3 sm:px-5 sm:py-4 rounded-2xl
             bg-white/8 border border-white/15
             backdrop-blur-xl
             transition-all duration-200
             ${isOpen ? 'border-emerald-400/50 shadow-[0_0_20px_rgba(52,211,153,0.15)]' : 'hover:border-white/25'}
           `}
         >
-          {/* Category selector */}
+          {/* Category selector — full width on mobile, inline on sm+ */}
           <div className="flex-shrink-0 relative">
             <select
               value={category}
@@ -139,7 +142,7 @@ export function DrugSearchBar({ onSelect, onSearch, placeholder }: DrugSearchBar
                   fetchSuggestions(query, newCat);
                 }
               }}
-              className="appearance-none bg-white/10 border border-white/15 rounded-xl pl-3 pr-7 py-1.5 text-white text-xs font-medium cursor-pointer outline-none hover:bg-white/15 focus:border-emerald-400/50 transition-colors"
+              className="appearance-none w-full sm:w-auto bg-white/10 border border-white/15 rounded-xl pl-3 pr-7 py-1.5 text-white text-xs font-medium cursor-pointer outline-none hover:bg-white/15 focus:border-emerald-400/50 transition-colors"
             >
               {CATEGORY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value} className="bg-gray-900 text-white">
@@ -150,60 +153,63 @@ export function DrugSearchBar({ onSelect, onSearch, placeholder }: DrugSearchBar
             <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40 pointer-events-none" />
           </div>
 
-          {/* Divider */}
-          <div className="w-px h-6 bg-white/10 flex-shrink-0" />
+          {/* Divider — hidden on mobile */}
+          <div className="hidden sm:block w-px h-6 bg-white/10 flex-shrink-0" />
 
-          {/* Icon */}
-          <div className="flex-shrink-0">
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
-            ) : (
-              <Search className="w-5 h-5 text-white/40" />
-            )}
+          {/* Search input row */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            {/* Icon */}
+            <div className="flex-shrink-0">
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
+              ) : (
+                <Search className="w-5 h-5 text-white/40" />
+              )}
+            </div>
+
+            {/* Input */}
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onFocus={() => query.trim().length >= 2 && suggestions.length > 0 && setIsOpen(true)}
+              placeholder={placeholder ?? (
+                category === 'brand' ? 'Search drug / brand name...' :
+                category === 'generic' ? 'Search generic / ingredient...' :
+                'Search symptom or condition...'
+              )}
+              className="flex-1 min-w-0 bg-transparent text-white placeholder-white/30 text-sm sm:text-base outline-none"
+              autoComplete="off"
+              spellCheck={false}
+            />
+
+            {/* Clear button */}
+            <AnimatePresence>
+              {query.length > 0 && (
+                <motion.button
+                  type="button"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  onClick={handleClear}
+                  className="flex-shrink-0 p-1 rounded-full text-white/30 hover:text-white/70 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </motion.button>
+              )}
+            </AnimatePresence>
+
+            {/* Search button */}
+            <motion.button
+              type="submit"
+              whileTap={{ scale: 0.95 }}
+              className="flex-shrink-0 px-3 sm:px-4 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-sm font-medium hover:bg-emerald-500/30 transition-colors"
+            >
+              Search
+            </motion.button>
           </div>
-
-          {/* Input */}
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={handleChange}
-            onKeyDown={handleKeyDown}
-            onFocus={() => query.trim().length >= 2 && suggestions.length > 0 && setIsOpen(true)}
-            placeholder={placeholder ?? (
-              category === 'brand' ? 'Search by drug / brand name...' :
-              category === 'generic' ? 'Search by generic / active ingredient...' :
-              'Search by symptom or condition...'
-            )}
-            className="flex-1 bg-transparent text-white placeholder-white/30 text-base outline-none"
-            autoComplete="off"
-            spellCheck={false}
-          />
-
-          {/* Clear button */}
-          <AnimatePresence>
-            {query.length > 0 && (
-              <motion.button
-                type="button"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                onClick={handleClear}
-                className="flex-shrink-0 p-1 rounded-full text-white/30 hover:text-white/70 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </motion.button>
-            )}
-          </AnimatePresence>
-
-          {/* Search button */}
-          <motion.button
-            type="submit"
-            whileTap={{ scale: 0.95 }}
-            className="flex-shrink-0 px-4 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-sm font-medium hover:bg-emerald-500/30 transition-colors"
-          >
-            Search
-          </motion.button>
         </div>
       </form>
 
