@@ -22,6 +22,30 @@ export interface DrugSearchResult {
 export type SearchCategory = 'brand' | 'generic' | 'indication';
 
 /**
+ * Client-side re-ranking: exact match > prefix match > substring match.
+ * Within each tier, original relevance ordering is preserved.
+ * The `field` callback extracts the string to compare against the query.
+ */
+function rankByMatchQuality(
+  results: DrugSearchResult[],
+  query: string,
+  field: (r: DrugSearchResult) => string,
+): DrugSearchResult[] {
+  const q = query.toLowerCase();
+  return [...results].sort((a, b) => {
+    const scoreOf = (r: DrugSearchResult) => {
+      const val = field(r).toLowerCase();
+      if (val === q) return 3;           // exact match
+      if (val.startsWith(q)) return 2;   // prefix match
+      return 1;                          // substring match
+    };
+    const diff = scoreOf(b) - scoreOf(a);
+    if (diff !== 0) return diff;
+    return b.relevance - a.relevance;    // tiebreak by existing relevance
+  });
+}
+
+/**
  * Search drugs using the pg_trgm-powered Postgres RPC function.
  * Falls back to a multi-query ILIKE search if the RPC is unavailable.
  * When a category is provided, only searches that specific field.
@@ -45,7 +69,12 @@ export async function searchDrugs(query: string, category?: SearchCategory): Pro
     return fallbackSearch(trimmed);
   }
 
-  return (data as DrugSearchResult[]) ?? [];
+  // Re-rank RPC results so exact/prefix brand-name matches surface first
+  return rankByMatchQuality(
+    (data as DrugSearchResult[]) ?? [],
+    trimmed,
+    (r) => r.brand_name,
+  );
 }
 
 // ─── Helper: shape a raw brands row into DrugSearchResult ─────────────────────
@@ -91,7 +120,11 @@ async function categorySearch(query: string, category: SearchCategory): Promise<
       .select(BRAND_SELECT)
       .ilike('name', ilike)
       .limit(20);
-    return (data ?? []).map((b: any) => shapeBrand(b, 1));
+    return rankByMatchQuality(
+      (data ?? []).map((b: any) => shapeBrand(b, 1)),
+      query,
+      (r) => r.brand_name,
+    );
   }
 
   if (category === 'generic') {
@@ -109,7 +142,11 @@ async function categorySearch(query: string, category: SearchCategory): Promise<
       .select(BRAND_SELECT)
       .in('generic_id', ids)
       .limit(20);
-    return (data ?? []).map((b: any) => shapeBrand(b, 0.8));
+    return rankByMatchQuality(
+      (data ?? []).map((b: any) => shapeBrand(b, 0.8)),
+      query,
+      (r) => r.generic_name,
+    );
   }
 
   // category === 'indication'
@@ -199,8 +236,41 @@ async function fallbackSearch(query: string): Promise<DrugSearchResult[]> {
     }
   }
 
-  // Sort by relevance desc
-  return combined.sort((a, b) => b.relevance - a.relevance).slice(0, 20);
+  // Sort by match quality (exact > prefix > substring), then by relevance
+  return rankByMatchQuality(combined, query, (r) => r.brand_name).slice(0, 20);
+}
+
+/**
+ * Fetch alternative brands — other brands containing the same generic (active ingredient).
+ * Excludes the current brand and supports optional name filtering.
+ */
+export async function getAlternativeBrands(
+  genericId: number,
+  excludeBrandId: number,
+  filter?: string,
+): Promise<DrugSearchResult[]> {
+  let query = supabase
+    .from('brands')
+    .select(BRAND_SELECT)
+    .eq('generic_id', genericId)
+    .neq('id', excludeBrandId)
+    .limit(50);
+
+  if (filter && filter.trim().length >= 1) {
+    query = query.ilike('name', `%${filter.trim()}%`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.warn('[Healthcare] Error fetching alternative brands:', error.message);
+    return [];
+  }
+
+  const results = (data ?? []).map((b: any) => shapeBrand(b, 1));
+  return filter
+    ? rankByMatchQuality(results, filter, (r) => r.brand_name)
+    : results;
 }
 
 /**
