@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Plus, X, CornerDownRight, ImagePlus, Code, Music, HeartPulse } from 'lucide-react';
+import { Send, Plus, X, CornerDownRight, ImagePlus, Code, Music, HeartPulse, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { VoiceRecorder } from './VoiceRecorder';
 import { ChatInputProps, ImageDimensions } from '../../types/chat';
 import { LoadingSpinner } from '../loading/LoadingSpinner';
 import { ImagePreview } from './ImagePreview';
+import { PdfPreview } from './PdfPreview';
 import { AI_PERSONAS } from '../../config/constants';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
@@ -60,6 +61,27 @@ const convertImageToBase64 = (file: File): Promise<string> => {
   });
 };
 
+const convertFileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to convert file to base64'));
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
 // Get image dimensions from a File
 const getImageDimensions = (file: File): Promise<ImageDimensions> => {
   return new Promise((resolve, reject) => {
@@ -93,11 +115,14 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
+  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   const [showMentionCall, setShowMentionCall] = useState(false);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [selectedPlusOption, setSelectedPlusOption] = useState<PlusMenuOption | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const plusMenuRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { theme } = useTheme();
@@ -227,6 +252,8 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
 
     if (option === 'upload-photos') {
       fileInputRef.current?.click();
+    } else if (option === 'upload-pdf') {
+      pdfInputRef.current?.click();
     }
   };
 
@@ -234,7 +261,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     e.preventDefault();
     // Don't send messages when contour is focused (textbox belongs to the tool)
     if (contour.isFocused) return;
-    if ((message.trim() || selectedImages.length > 0) && !isLoading && !isUploading) {
+    if ((message.trim() || selectedImages.length > 0 || selectedPdf) && !isLoading && !isUploading) {
       // Close mention modal when sending message
       setShowMentionCall(false);
 
@@ -262,7 +289,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
           const publicUrls = successfulUploads.map(result => result.url);
           setUploadedImageUrls(publicUrls);
 
-          const activeMode = selectedPlusOption && selectedPlusOption !== 'upload-photos' ? selectedPlusOption : undefined;
+          const activeMode = selectedPlusOption && selectedPlusOption !== 'upload-photos' && selectedPlusOption !== 'upload-pdf' ? selectedPlusOption : undefined;
           await onSendMessage(message, base64Images, undefined, publicUrls, firstImageDimensions, undefined, activeMode);
           setSelectedImages([]);
           setImagePreviewUrls([]);
@@ -273,8 +300,22 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
         } finally {
           setIsUploading(false);
         }
+      } else if (selectedPdf && pdfBase64) {
+        setIsUploading(true);
+        try {
+          const activeMode = selectedPlusOption && selectedPlusOption !== 'upload-photos' && selectedPlusOption !== 'upload-pdf' ? selectedPlusOption : undefined;
+          await onSendMessage(message, undefined, undefined, undefined, undefined, undefined, activeMode, pdfBase64, selectedPdf.name);
+          setSelectedPdf(null);
+          setPdfBase64(null);
+          if (pdfInputRef.current) pdfInputRef.current.value = '';
+        } catch (error) {
+          alert('Failed to process PDF. Please try again.');
+          console.error('Error processing PDF:', error);
+        } finally {
+          setIsUploading(false);
+        }
       } else {
-        const activeMode = selectedPlusOption && selectedPlusOption !== 'upload-photos' ? selectedPlusOption : undefined;
+        const activeMode = selectedPlusOption && selectedPlusOption !== 'upload-photos' && selectedPlusOption !== 'upload-pdf' ? selectedPlusOption : undefined;
         await onSendMessage(message, undefined, undefined, undefined, undefined, undefined, activeMode);
       }
       setMessage('');
@@ -456,6 +497,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
 
   const plusOptionIcons: Record<PlusMenuOption, React.ComponentType<{ className?: string }>> = {
     'upload-photos': ImagePlus,
+    'upload-pdf': FileText,
     'web-coding': Code,
     'music-compose': Music,
     'tm-healthcare': HeartPulse,
@@ -489,6 +531,33 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     setImagePreviewUrls(urls);
   };
 
+  const handlePdfSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      alert('Please select a valid PDF file.');
+      return;
+    }
+    // 10 MB limit for PDFs (base64 encoding adds ~33% overhead for API transfer)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('PDF file size must be under 10 MB.');
+      return;
+    }
+    try {
+      const base64 = await convertFileToBase64(file);
+      setSelectedPdf(file);
+      setPdfBase64(base64);
+    } catch {
+      alert('Failed to read PDF file. Please try again.');
+    }
+  };
+
+  const removePdf = () => {
+    setSelectedPdf(null);
+    setPdfBase64(null);
+    if (pdfInputRef.current) pdfInputRef.current.value = '';
+  };
+
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     if (isDesktop) {
       e.preventDefault();
@@ -499,6 +568,25 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     if (!isDesktop) return;
     e.preventDefault();
     const files = Array.from(e.dataTransfer.files);
+
+    // Check if any dropped file is a PDF
+    const pdfFile = files.find(f => f.type === 'application/pdf');
+    if (pdfFile) {
+      if (pdfFile.size > 10 * 1024 * 1024) {
+        alert('PDF file size must be under 10 MB.');
+        return;
+      }
+      try {
+        const base64 = await convertFileToBase64(pdfFile);
+        setSelectedPdf(pdfFile);
+        setPdfBase64(base64);
+        setSelectedPlusOption('upload-pdf');
+      } catch {
+        alert('Failed to read PDF file. Please try again.');
+      }
+      return;
+    }
+
     if (files.length > 4) {
       alert('You can upload a maximum of 4 images.');
       return;
@@ -506,7 +594,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     const validImageFiles = files.filter(file => validImageTypes.includes(file.type));
     if (validImageFiles.length === 0) {
-      alert('Please drop valid image files (JPEG, PNG, GIF, WebP).');
+      alert('Please drop valid image or PDF files.');
       return;
     }
     setSelectedImages(validImageFiles);
@@ -581,6 +669,16 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
           ))}
         </div>
       )}
+      {selectedPdf && (
+        <div className="flex gap-2 mb-4">
+          <PdfPreview
+            fileName={selectedPdf.name}
+            fileSize={formatFileSize(selectedPdf.size)}
+            onRemove={removePdf}
+            isUploading={isUploading}
+          />
+        </div>
+      )}
       <div className="relative" onDragOver={handleDragOver} onDrop={handleDrop}>
         <div className="relative flex items-center gap-2">
           <input
@@ -590,6 +688,13 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
             onChange={handleImageSelect}
             ref={fileInputRef}
             multiple
+          />
+          <input
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={handlePdfSelect}
+            ref={pdfInputRef}
           />
           
           <div className="relative" ref={plusMenuRef}>
@@ -667,7 +772,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
                   type="submit"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  disabled={isLoading || isUploading || (!message.trim() && selectedImages.length === 0)}
+                  disabled={isLoading || isUploading || (!message.trim() && selectedImages.length === 0 && !selectedPdf)}
                   className={`p-3 rounded-full ${theme.text} disabled:opacity-50 relative group transition-all duration-300`}
                   style={{
                     background: `linear-gradient(135deg, ${personaStyles.tintColors[currentPersona]}, rgba(255, 255, 255, 0.05))`,

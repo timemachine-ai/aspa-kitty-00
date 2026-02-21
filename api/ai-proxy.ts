@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import pdfParse from 'pdf-parse';
 import { SPECIAL_MODE_CONFIGS } from './specialModePrompts.js';
 import { PERSONA_AUDIO_CONFIGS } from './audio.js';
 
@@ -702,6 +703,33 @@ async function fetchHealthcareRAGContext(userMessage: string): Promise<string> {
   } catch (err) {
     console.error('[Healthcare RAG] Error fetching context:', err);
     return '';
+  }
+}
+
+/**
+ * Extract text content from a base64-encoded PDF using pdf-parse.
+ * Truncates at ~60k characters to stay within LLM context limits.
+ */
+async function extractPdfText(base64Data: string): Promise<string> {
+  try {
+    // Strip data URI prefix if present
+    const raw = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+    const buffer = Buffer.from(raw, 'base64');
+    const data = await pdfParse(buffer);
+
+    let text = data.text || '';
+    const pageCount = data.numpages || 0;
+
+    // Truncate very large PDFs to keep within context limits
+    const MAX_CHARS = 60000;
+    if (text.length > MAX_CHARS) {
+      text = text.slice(0, MAX_CHARS) + '\n\n[... PDF content truncated due to length ...]';
+    }
+
+    return `<pdf_document pages="${pageCount}">\n${text}\n</pdf_document>`;
+  } catch (err) {
+    console.error('[PDF Parse] Error extracting text:', err);
+    return '<pdf_document error="true">Failed to extract text from the PDF. The file may be corrupted, password-protected, or contain only scanned images without OCR text.</pdf_document>';
   }
 }
 
@@ -1678,7 +1706,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { messages, persona = 'default', imageData, audioData, heatLevel = 2, stream = false, inputImageUrls, imageDimensions, userId, userMemories, specialMode } = req.body;
+    const { messages, persona = 'default', imageData, audioData, heatLevel = 2, stream = false, inputImageUrls, imageDimensions, userId, userMemories, specialMode, pdfData, pdfFileName } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Invalid messages format' });
@@ -1778,6 +1806,18 @@ The memory tags will be processed and removed from the visible response, so writ
       }
     }
 
+    // PDF RAG: parse PDF and inject extracted text into the last user message
+    // This runs before the main AI call so the model has full document context
+    let pdfRagContext = '';
+    if (pdfData) {
+      try {
+        pdfRagContext = await extractPdfText(pdfData);
+      } catch (err) {
+        console.error('[PDF RAG] Error extracting PDF text:', err);
+        pdfRagContext = '<pdf_document error="true">Failed to extract text from the uploaded PDF.</pdf_document>';
+      }
+    }
+
     // Handle audio transcription if audioData is provided
     let processedMessages = [...messages];
     let isAudioInput = false;
@@ -1873,6 +1913,20 @@ The memory tags will be processed and removed from the visible response, so writ
           }))
         ];
       }
+    }
+
+    // PDF RAG injection: enrich the last user message with extracted PDF text
+    if (pdfRagContext && apiMessages.length > 0) {
+      const lastMsgIndex = apiMessages.length - 1;
+      const lastMsg = apiMessages[lastMsgIndex];
+      const userPrompt = lastMsg.content?.startsWith('[PDF:') ? '' : (lastMsg.content || '');
+      const pdfLabel = pdfFileName ? `"${pdfFileName}"` : 'the uploaded PDF';
+
+      const enrichedContent = userPrompt
+        ? `The user uploaded a PDF file (${pdfLabel}). Here is the extracted text content:\n\n${pdfRagContext}\n\nUser's message about the PDF: ${userPrompt}`
+        : `The user uploaded a PDF file (${pdfLabel}). Here is the extracted text content:\n\n${pdfRagContext}\n\nPlease summarize and respond to the content of this PDF.`;
+
+      apiMessages[lastMsgIndex] = { ...lastMsg, content: enrichedContent };
     }
 
     // Handle streaming vs non-streaming responses

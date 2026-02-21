@@ -1,11 +1,12 @@
 import React, { memo } from 'react';
 import { motion } from 'framer-motion';
+import { FileText } from 'lucide-react';
 import { MessageProps } from '../../types/chat';
 import { slideInFromRight, slideInFromLeft } from '../../utils/animations';
 import { useTheme } from '../../context/ThemeContext';
 import { AudioPlayerBubble } from './AudioPlayerBubble';
 
-function UserMessageComponent({ content, imageData, audioData, inputImageUrls, sender_nickname, sender_avatar, isGroupMode }: MessageProps) {
+function UserMessageComponent({ content, imageData, audioData, inputImageUrls, pdfFileName, sender_nickname, sender_avatar, isGroupMode }: MessageProps) {
   const { theme } = useTheme();
 
   // Check if this is another user's message in group mode
@@ -98,8 +99,18 @@ function UserMessageComponent({ content, imageData, audioData, inputImageUrls, s
             </div>
           )}
 
-            {/* Display text content if present */}
-            {content && <div style={{ whiteSpace: 'pre-wrap' }}>{content}</div>}
+            {/* Display PDF attachment indicator if present */}
+            {pdfFileName && (
+              <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
+                <div className="flex items-center justify-center w-8 h-8 rounded-md bg-red-500/20 border border-red-500/30 flex-shrink-0">
+                  <FileText className="w-4 h-4 text-red-400" />
+                </div>
+                <span className="text-white/70 text-sm truncate">{pdfFileName}</span>
+              </div>
+            )}
+
+            {/* Display text content if present (hide placeholder for PDF-only messages) */}
+            {content && !content.startsWith('[PDF:') && <div style={{ whiteSpace: 'pre-wrap' }}>{content}</div>}
           </div>
         )}
       </div>

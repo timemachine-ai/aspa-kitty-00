@@ -165,12 +165,14 @@ export function useChat(
 
         if (firstUserMessage) {
           if (firstUserMessage.content && firstUserMessage.content.trim() &&
-            firstUserMessage.content !== '[Image message]' && firstUserMessage.content !== '[Audio message]') {
+            firstUserMessage.content !== '[Image message]' && firstUserMessage.content !== '[Audio message]' && !firstUserMessage.content.startsWith('[PDF:')) {
             sessionName = firstUserMessage.content.slice(0, 50);
           } else if (firstUserMessage.imageData || (firstUserMessage.inputImageUrls && firstUserMessage.inputImageUrls.length > 0)) {
             sessionName = 'Image message';
           } else if (firstUserMessage.audioData) {
             sessionName = 'Audio message';
+          } else if (firstUserMessage.pdfFileName) {
+            sessionName = `PDF: ${firstUserMessage.pdfFileName}`;
           }
         }
 
@@ -453,7 +455,9 @@ export function useChat(
     inputImageUrls?: string[],
     imageDimensions?: ImageDimensions,
     replyTo?: { id: number; content: string; sender_nickname?: string; isAI: boolean },
-    specialMode?: string
+    specialMode?: string,
+    pdfData?: string,
+    pdfFileName?: string
   ) => {
     let messagePersona = currentPersona;
     let messageContent = content;
@@ -466,26 +470,30 @@ export function useChat(
       messageContent = mentionMatch[2];
     }
 
-    // Handle audio/image data - if we have audio/images but no text content, create a message indicating the input type
+    // Handle audio/image/pdf data - if we have audio/images/pdf but no text content, create a message indicating the input type
     let finalContent = messageContent;
     if (audioData && !messageContent.trim()) {
       finalContent = '[Audio message]'; // Placeholder text for UI
     } else if ((imageData || (inputImageUrls && inputImageUrls.length > 0)) && !messageContent.trim()) {
       finalContent = '[Image message]'; // Placeholder text for UI
+    } else if (pdfData && !messageContent.trim()) {
+      finalContent = `[PDF: ${pdfFileName || 'document.pdf'}]`; // Placeholder text for UI
     }
 
     // Create user message with content for display
-    // Use finalContent if it's a placeholder for image/audio-only messages, otherwise keep original content
-    const displayContent = (finalContent === '[Image message]' || finalContent === '[Audio message]') ? finalContent : content;
+    // Use finalContent if it's a placeholder for image/audio/pdf-only messages, otherwise keep original content
+    const displayContent = (finalContent === '[Image message]' || finalContent === '[Audio message]' || finalContent.startsWith('[PDF:')) ? finalContent : content;
     const userMessage: Message = {
       id: Date.now(),
-      content: displayContent, // Use placeholder for image/audio-only, otherwise original content
+      content: displayContent, // Use placeholder for image/audio/pdf-only, otherwise original content
       isAI: false,
       hasAnimated: false,
       imageData: imageData,
       audioData: audioData,
       inputImageUrls: inputImageUrls,
       imageDimensions: imageDimensions,
+      pdfData: pdfData ? 'attached' : undefined, // Don't store full base64 in message state, just flag it
+      pdfFileName: pdfFileName,
       // Add sender info for collaborative mode
       sender_id: isCollaborative ? userId || undefined : undefined,
       sender_nickname: isCollaborative ? userProfile?.nickname || undefined : undefined,
@@ -508,7 +516,7 @@ export function useChat(
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     setError(null);
-    // Set initial loading phase based on whether images are attached
+    // Set initial loading phase based on whether images/pdf are attached
     const hasImages = !!(imageData || (inputImageUrls && inputImageUrls.length > 0));
     setLoadingPhase(hasImages ? 'analyzing_photo' : 'thinking');
 
@@ -623,7 +631,9 @@ export function useChat(
         // onStatusChange callback for image pipeline UX
         (status) => {
           setLoadingPhase(status);
-        }
+        },
+        pdfData,
+        pdfFileName
       );
     } else {
       // Use non-streaming response (fallback) - send API messages (without @mention in content and without initial message)
@@ -639,7 +649,9 @@ export function useChat(
           imageDimensions,
           userId || undefined,
           userMemoryContext,
-          specialMode
+          specialMode,
+          pdfData,
+          pdfFileName
         );
 
         const emotion = extractEmotion(aiResponse.content);
