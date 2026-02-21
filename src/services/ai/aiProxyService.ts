@@ -13,6 +13,7 @@ interface AIResponse {
   thinking?: string;
   audioUrl?: string;
   youtubeMusic?: YouTubeMusicData;
+  pdfDocumentId?: string;
 }
 
 // Custom error class for rate limits
@@ -50,7 +51,8 @@ export async function generateAIResponseStreaming(
   specialMode?: string,
   onStatusChange?: (status: 'analyzing_photo' | 'thinking') => void,
   pdfData?: string,
-  pdfFileName?: string
+  pdfFileName?: string,
+  pdfDocumentId?: string
 ): Promise<void> {
   try {
     // Call the Vercel API route with streaming enabled
@@ -75,18 +77,19 @@ export async function generateAIResponseStreaming(
         userMemories,
         specialMode,
         pdfData,
-        pdfFileName
+        pdfFileName,
+        pdfDocumentId
       })
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      
+
       // Check for rate limit errors
       if (response.status === 429 || errorData.type === 'rateLimit') {
         throw new RateLimitError('Rate limit exceeded');
       }
-      
+
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
 
@@ -100,6 +103,7 @@ export async function generateAIResponseStreaming(
     let fullContent = '';
     let audioUrl: string | undefined;
     let youtubeMusic: YouTubeMusicData | undefined;
+    let pdfDocId: string | undefined;
 
     try {
       while (true) {
@@ -108,6 +112,13 @@ export async function generateAIResponseStreaming(
         if (done) break;
 
         let chunk = decoder.decode(value, { stream: true });
+
+        // Check for PDF document ID marker (emitted before AI response)
+        const pdfDocMatch = chunk.match(/\[PDF_DOC_ID\](.*?)\[\/PDF_DOC_ID\]/);
+        if (pdfDocMatch) {
+          pdfDocId = pdfDocMatch[1];
+          chunk = chunk.replace(/\[PDF_DOC_ID\].*?\[\/PDF_DOC_ID\]/, '');
+        }
 
         // Check for image analysis status markers
         if (chunk.includes('[IMAGE_ANALYZING]')) {
@@ -153,7 +164,8 @@ export async function generateAIResponseStreaming(
           content: cleanContent,
           thinking,
           audioUrl,
-          youtubeMusic
+          youtubeMusic,
+          pdfDocumentId: pdfDocId
         });
       }
 
@@ -193,7 +205,8 @@ export async function generateAIResponse(
   userMemories?: UserMemoryContext,
   specialMode?: string,
   pdfData?: string,
-  pdfFileName?: string
+  pdfFileName?: string,
+  pdfDocumentId?: string
 ): Promise<AIResponse> {
   try {
     // Call the Vercel API route without streaming
@@ -218,18 +231,19 @@ export async function generateAIResponse(
         userMemories,
         specialMode,
         pdfData,
-        pdfFileName
+        pdfFileName,
+        pdfDocumentId
       })
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      
+
       // Check for rate limit errors
       if (response.status === 429 || errorData.type === 'rateLimit') {
         throw new RateLimitError('Rate limit exceeded');
       }
-      
+
       throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
     }
 

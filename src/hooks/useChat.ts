@@ -106,6 +106,8 @@ export function useChat(
   const [loadingPhase, setLoadingPhase] = useState<'analyzing_photo' | 'thinking' | null>(null);
   // Pending remote music - music received from group chat that needs user action to play
   const [pendingRemoteMusic, setPendingRemoteMusic] = useState<YouTubeMusicData | null>(null);
+  // PDF RAG: document ID for the currently active PDF in this session
+  const [activePdfDocumentId, setActivePdfDocumentId] = useState<string | null>(null);
 
   // Collaborative mode state
   const [isCollaborative, setIsCollaborative] = useState(false);
@@ -227,6 +229,7 @@ export function useChat(
     }
 
     setError(null);
+    setActivePdfDocumentId(null); // Clear PDF context on persona switch
 
     // Start new chat with new persona
     const newSessionId = generateUUID();
@@ -265,6 +268,7 @@ export function useChat(
     // Start fresh chat with same persona
     const newSessionId = generateUUID();
     setCurrentSessionId(newSessionId);
+    setActivePdfDocumentId(null); // Clear PDF context on new chat
 
     const initialMessage = cleanContent(AI_PERSONAS[currentPersona].initialMessage);
     setMessages([{
@@ -604,6 +608,11 @@ export function useChat(
             setYoutubeMusic(response.youtubeMusic);
           }
 
+          // Persist PDF document ID for follow-up messages in this session
+          if (response.pdfDocumentId) {
+            setActivePdfDocumentId(response.pdfDocumentId);
+          }
+
           setLoadingPhase(null);
           completeStreamingMessage(aiMessageId, cleanedContent, response.thinking, response.audioUrl);
         },
@@ -633,7 +642,9 @@ export function useChat(
           setLoadingPhase(status);
         },
         pdfData,
-        pdfFileName
+        pdfFileName,
+        // Pass existing PDF document ID for follow-up messages (RAG retrieval)
+        activePdfDocumentId || undefined
       );
     } else {
       // Use non-streaming response (fallback) - send API messages (without @mention in content and without initial message)
@@ -651,7 +662,8 @@ export function useChat(
           userMemoryContext,
           specialMode,
           pdfData,
-          pdfFileName
+          pdfFileName,
+          activePdfDocumentId || undefined
         );
 
         const emotion = extractEmotion(aiResponse.content);
@@ -659,6 +671,11 @@ export function useChat(
 
         if (emotion) {
           setCurrentEmotion(emotion);
+        }
+
+        // Persist PDF document ID for follow-up messages
+        if (aiResponse.pdfDocumentId) {
+          setActivePdfDocumentId(aiResponse.pdfDocumentId);
         }
 
         setLoadingPhase(null);
@@ -725,6 +742,7 @@ export function useChat(
     setCurrentSessionId(session.id);
     setPersonaTheme(session.persona);
     setError(null);
+    setActivePdfDocumentId(null); // Clear PDF context when loading a different chat
 
     // Set heat level if it's a pro session
     if (session.heat_level) {
