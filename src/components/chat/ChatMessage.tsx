@@ -37,6 +37,7 @@ export function ChatMessage({
   audioData,
   audioUrl,
   inputImageUrls,
+  pdfFileName,
   isStreaming,
   streamingMessageId,
   loadingPhase,
@@ -273,6 +274,7 @@ export function ChatMessage({
         imageData={imageData}
         audioData={audioData}
         inputImageUrls={inputImageUrls}
+        pdfFileName={pdfFileName}
         sender_nickname={isOtherUserMessage ? sender_nickname : undefined}
         sender_avatar={isOtherUserMessage ? sender_avatar : undefined}
         isGroupMode={isGroupMode}

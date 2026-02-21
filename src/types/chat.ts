@@ -14,6 +14,8 @@ export interface Message {
   audioUrl?: string; // Add audioUrl field for AI audio responses
   inputImageUrls?: string[]; // Add inputImageUrls field for publicly accessible image URLs
   imageDimensions?: ImageDimensions; // Dimensions of the first uploaded image (for edit operations)
+  pdfData?: string; // Base64-encoded PDF file data
+  pdfFileName?: string; // Original PDF filename for display
   // Group chat sender info (optional - only present in group mode)
   sender_id?: string;
   sender_nickname?: string;
@@ -45,12 +47,12 @@ export interface ReplyToData {
 }
 
 export interface ChatActions {
-  handleSendMessage: (message: string, imageData?: string | string[], audioData?: string, inputImageUrls?: string[], imageDimensions?: ImageDimensions, replyTo?: ReplyToData, specialMode?: string) => Promise<void>;
+  handleSendMessage: (message: string, imageData?: string | string[], audioData?: string, inputImageUrls?: string[], imageDimensions?: ImageDimensions, replyTo?: ReplyToData, specialMode?: string, pdfData?: string, pdfFileName?: string) => Promise<void>;
   setChatMode: (isChatMode: boolean) => void;
 }
 
 export interface ChatInputProps {
-  onSendMessage: (message: string, imageData?: string | string[], audioData?: string, inputImageUrls?: string[], imageDimensions?: ImageDimensions, replyTo?: ReplyToData, specialMode?: string) => Promise<void>;
+  onSendMessage: (message: string, imageData?: string | string[], audioData?: string, inputImageUrls?: string[], imageDimensions?: ImageDimensions, replyTo?: ReplyToData, specialMode?: string, pdfData?: string, pdfFileName?: string) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -68,6 +70,7 @@ export interface MessageProps {
   imageData?: string | string[];
   audioData?: string;
   inputImageUrls?: string[]; // URLs of uploaded images (for persistence)
+  pdfFileName?: string; // Original PDF filename for display in message bubble
   // Group chat sender info
   sender_nickname?: string;
   sender_avatar?: string;
