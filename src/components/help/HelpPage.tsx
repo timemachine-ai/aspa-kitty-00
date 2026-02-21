@@ -145,7 +145,7 @@ export function HelpPage() {
           <motion.button
             whileHover={{ scale: 1.05, x: -2 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/home')}
+            onClick={() => navigate('/')}
             className="flex items-center gap-2 text-white/60 hover:text-white transition-colors"
           >
             <ArrowLeft size={20} />

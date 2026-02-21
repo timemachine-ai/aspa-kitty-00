@@ -29,6 +29,7 @@ import { GroupSettingsPage } from './components/groupchat/GroupSettingsPage';
 import { HomePage } from './components/home/HomePage';
 import { NotesPage } from './components/notes/NotesPage';
 import { HealthcarePage } from './components/healthcare/HealthcarePage';
+import { WalletPage } from './components/wallet/WalletPage';
 import {
   getGroupChat,
   getGroupChatInvite,
@@ -91,7 +92,7 @@ function ChatByIdPage() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/home')}
+            onClick={() => navigate('/')}
             className="px-6 py-3 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-200"
           >
             Go Home
@@ -866,7 +867,7 @@ function AppContent() {
       <Route path="/account" element={
         <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-hidden`}>
           <SEOHead title="Account" description="Manage your TimeMachine Chat account settings and profile." path="/account" noIndex />
-          <AccountPage onBack={() => navigate('/home')} />
+          <AccountPage onBack={() => navigate('/')} />
         </div>
       } />
       <Route path="/history" element={
@@ -888,6 +889,7 @@ function AppContent() {
       <Route path="/help" element={<><SEOHead title="Help" description="Get help with TimeMachine — learn about AI personas, group chats, image generation, and all features." path="/help" /><HelpPage /></>} />
       <Route path="/notes" element={<><SEOHead title="Notes" description="Capture your thoughts with TimeMachine Notes — a powerful Notion-like editor built right into TimeMachine." path="/notes" /><NotesPage /></>} />
       <Route path="/healthcare" element={<><SEOHead title="Healthcare" description="Search medicines, brands, generics, and drug information — including dosage, side effects, and indications. Powered by TimeMachine Healthcare." path="/healthcare" /><HealthcarePage /></>} />
+      <Route path="/wallet" element={<><SEOHead title="Wallet" description="Your digital wallet for payments, transfers, and financial management. Powered by TimeMachine." path="/wallet" /><WalletPage /></>} />
       <Route path="/chat/:id" element={<><SEOHead title="Chat" noIndex /><ChatByIdPage /></>} />
       <Route path="/groupchat/:id" element={<><SEOHead title="Group Chat" noIndex /><GroupChatWrapper /></>} />
       <Route path="/groupchat/:id/settings" element={<><SEOHead title="Group Settings" noIndex /><GroupSettingsPage /></>} />

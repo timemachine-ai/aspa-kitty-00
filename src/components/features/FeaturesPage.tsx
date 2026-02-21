@@ -73,7 +73,7 @@ export function FeaturesPage() {
           <motion.button
             whileHover={{ scale: 1.05, x: -3 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/home')}
+            onClick={() => navigate('/')}
             className="flex items-center gap-2 text-white/50 hover:text-white transition-colors"
           >
             <ArrowLeft size={18} />
@@ -227,7 +227,7 @@ export function FeaturesPage() {
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate('/home')}
+            onClick={() => navigate('/')}
             className="px-8 py-4 rounded-2xl text-white font-semibold text-base"
             style={{
               background: 'linear-gradient(135deg, rgba(139,92,246,0.3) 0%, rgba(124,58,237,0.2) 100%)',

@@ -2332,7 +2332,7 @@ export function NotesPage() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/home')}
+              onClick={() => navigate('/')}
               className="p-2 rounded-xl text-white/40 hover:text-white/70 hover:bg-white/5 transition-all"
             >
               <ArrowLeft className="w-5 h-5" />

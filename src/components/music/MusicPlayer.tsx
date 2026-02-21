@@ -14,8 +14,8 @@ export function MusicPlayer(_props: MusicPlayerProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Don't show the home button if we're already on /home
-  if (location.pathname === '/home') return null;
+  // Don't show the home button if we're already on the chat UI (default page)
+  if (location.pathname === '/') return null;
 
   const glassStyle = {
     background: 'rgba(255, 255, 255, 0.05)',
@@ -30,7 +30,7 @@ export function MusicPlayer(_props: MusicPlayerProps) {
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        onClick={() => navigate('/home')}
+        onClick={() => navigate('/')}
         className="p-3 rounded-full transition-all duration-300 relative group overflow-hidden"
         style={glassStyle}
         aria-label="Go to Home"
