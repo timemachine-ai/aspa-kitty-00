@@ -98,7 +98,7 @@ export function AlbumPage() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/home')}
+            onClick={() => navigate('/')}
             className="mt-4 px-6 py-3 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-200"
           >
             Go Home
@@ -159,7 +159,7 @@ export function AlbumPage() {
           <motion.button
             whileHover={{ scale: 1.05, x: -2 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => currentView === 'list' ? navigate('/home') : setCurrentView('list')}
+            onClick={() => currentView === 'list' ? navigate('/') : setCurrentView('list')}
             className="flex items-center gap-2 text-white/60 hover:text-white transition-colors"
           >
             <ArrowLeft size={20} />

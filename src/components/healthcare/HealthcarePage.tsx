@@ -477,11 +477,11 @@ export function HealthcarePage() {
           <motion.button
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            onClick={() => navigate('/home')}
+            onClick={() => navigate('/')}
             className="flex items-center gap-2 text-white/40 hover:text-white/80 transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            <span className="text-sm">Home</span>
+            <span className="text-sm">Back</span>
           </motion.button>
         </div>
 

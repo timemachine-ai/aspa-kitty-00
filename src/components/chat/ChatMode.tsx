@@ -1,5 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { BookOpen, HeartPulse, Wallet } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
 import { Message } from '../../types/chat';
 import { AI_PERSONAS } from '../../config/constants';
@@ -39,6 +41,7 @@ export function ChatMode({
   onReact
 }: ChatModeProps) {
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   // Track the last user message ID we've scrolled to (prevents duplicate scrolls)
   const lastScrolledUserMsgId = useRef<number | null>(null);
@@ -129,16 +132,48 @@ export function ChatMode({
               transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
               className="h-[calc(100vh-16rem)] flex items-center justify-center"
             >
-              <div className="text-lg sm:text-xl font-normal text-neutral-400 text-left px-4">
-                <div className="flex items-center">
-                  <span>Start a</span>
-                  <FlipWords
-                    words={["better", "brighter", "dream", '"my"']}
-                    duration={2500}
-                    className={flipWordsColor}
-                  />
+              <div className="flex flex-col items-start px-4">
+                <div className="text-lg sm:text-xl font-normal text-neutral-400 text-left">
+                  <div className="flex items-center">
+                    <span>Start a</span>
+                    <FlipWords
+                      words={["better", "brighter", "dream", '"my"']}
+                      duration={2500}
+                      className={flipWordsColor}
+                    />
+                  </div>
+                  <div>future with TimeMachine.</div>
                 </div>
-                <div>future with TimeMachine.</div>
+
+                {/* Quick access pills */}
+                <div className="flex items-center gap-2.5 mt-8">
+                  {([
+                    { label: 'Notes', icon: BookOpen, route: '/notes' },
+                    { label: 'Healthcare', icon: HeartPulse, route: '/healthcare' },
+                    { label: 'Wallet', icon: Wallet, route: '/wallet' },
+                  ] as const).map((item, i) => (
+                    <motion.button
+                      key={item.label}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.3 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                      whileHover={{ scale: 1.04, y: -1 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => navigate(item.route)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-full text-white/50 hover:text-white/80 transition-colors duration-200"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+                      }}
+                    >
+                      <item.icon className="w-3.5 h-3.5" />
+                      <span className="text-xs font-medium tracking-wide">{item.label}</span>
+                    </motion.button>
+                  ))}
+                </div>
               </div>
             </motion.div>
           )}
