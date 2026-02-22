@@ -19,7 +19,7 @@ export function LifestyleLayout() {
   const currentTab = tabs.find(t => location.pathname.startsWith(t.path)) || tabs[0];
 
   return (
-    <div className={`min-h-screen ${theme.background} ${theme.text} relative overflow-x-hidden`}>
+    <div className={`h-screen overflow-y-auto custom-scrollbar ${theme.background} ${theme.text} relative overflow-x-hidden`}>
       {/* Ambient background matching initial theme */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-15%] left-[-10%] w-[600px] h-[600px] rounded-full bg-purple-500/6 blur-3xl" />
@@ -52,9 +52,8 @@ export function LifestyleLayout() {
                 <button
                   key={tab.path}
                   onClick={() => navigate(tab.path)}
-                  className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 ${
-                    isActive ? 'text-white' : 'text-white/40 hover:text-white/80 hover:bg-white/5'
-                  }`}
+                  className={`relative flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-300 ${isActive ? 'text-white' : 'text-white/40 hover:text-white/80 hover:bg-white/5'
+                    }`}
                 >
                   {isActive && (
                     <motion.div
@@ -71,7 +70,7 @@ export function LifestyleLayout() {
               );
             })}
           </motion.div>
-          
+
           <div className="w-10 h-10" /> {/* Spacer to balance flex-between */}
         </div>
 
