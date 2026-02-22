@@ -36,10 +36,6 @@ export function LifestyleLayout() {
           currentTab.name === 'Fashion' ? 'bg-sky-500/10' :
             'bg-purple-500/10'
           }`} />
-        <div className={`absolute bottom-[10%] right-[-15%] w-[500px] h-[500px] rounded-full blur-3xl transition-colors duration-1000 ${currentTab.name === 'CookBook' ? 'bg-amber-500/10' :
-          currentTab.name === 'Fashion' ? 'bg-cyan-500/10' :
-            'bg-violet-500/10'
-          }`} />
         <div className={`absolute top-[40%] left-[50%] w-[400px] h-[400px] rounded-full blur-3xl transition-colors duration-1000 ${currentTab.name === 'CookBook' ? 'bg-red-500/5' :
           currentTab.name === 'Fashion' ? 'bg-blue-500/5' :
             'bg-fuchsia-500/5'
