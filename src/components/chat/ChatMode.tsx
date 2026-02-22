@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, HeartPulse, ShoppingBag } from 'lucide-react';
+import { BookOpen, HeartPulse, Sparkles } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
 import { Message } from '../../types/chat';
 import { AI_PERSONAS } from '../../config/constants';
@@ -150,7 +150,7 @@ export function ChatMode({
                   {([
                     { label: 'Notes', icon: BookOpen, route: '/notes' },
                     { label: 'Healthcare', icon: HeartPulse, route: '/healthcare' },
-                    { label: 'Shop', icon: ShoppingBag, route: '/shop' },
+                    { label: 'Lifestyle', icon: Sparkles, route: '/lifestyle' },
                   ] as const).map((item, i) => (
                     <motion.button
                       key={item.label}
