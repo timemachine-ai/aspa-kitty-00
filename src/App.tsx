@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
-import { Routes, Route, useNavigate, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { Routes, Route, useNavigate, useLocation, useParams, useSearchParams, Navigate } from 'react-router-dom';
 import { ChatInput } from './components/chat/ChatInput';
 import { BrandLogo } from './components/brand/BrandLogo';
 import { MusicPlayer } from './components/music/MusicPlayer';
@@ -30,7 +30,11 @@ import { HomePage } from './components/home/HomePage';
 import { NotesPage } from './components/notes/NotesPage';
 import { HealthcarePage } from './components/healthcare/HealthcarePage';
 import { ShopPage } from './components/shop/ShopPage';
-import { LifestylePage } from './components/lifestyle/LifestylePage';
+import { LifestyleLayout } from './components/lifestyle/LifestyleLayout';
+import { CookBookPage } from './components/lifestyle/CookBookPage';
+import { FashionPage } from './components/lifestyle/FashionPage';
+import { ShoppingListPage } from './components/lifestyle/ShoppingListPage';
+import { PremiumCalendarPage } from './components/lifestyle/PremiumCalendarPage';
 import {
   getGroupChat,
   getGroupChatInvite,
@@ -891,7 +895,13 @@ function AppContent() {
       <Route path="/notes" element={<><SEOHead title="Notes" description="Capture your thoughts with TimeMachine Notes — a powerful Notion-like editor built right into TimeMachine." path="/notes" /><NotesPage /></>} />
       <Route path="/healthcare" element={<><SEOHead title="Healthcare" description="Search medicines, brands, generics, and drug information — including dosage, side effects, and indications. Powered by TimeMachine Healthcare." path="/healthcare" /><HealthcarePage /></>} />
       <Route path="/shop" element={<><SEOHead title="Shop" description="Physical goods from the TimeMachine universe. Apparel, accessories, and more." path="/shop" /><ShopPage /></>} />
-      <Route path="/lifestyle" element={<><SEOHead title="Lifestyle" description="Everyday essentials — calendar, shopping list, and expense tracker. All in one place with TimeMachine." path="/lifestyle" /><LifestylePage /></>} />
+      <Route path="/lifestyle" element={<><SEOHead title="Lifestyle" description="Everyday essentials — calendar, shopping list, and expense tracker. All in one place with TimeMachine." path="/lifestyle" /><LifestyleLayout /></>}>
+        <Route index element={<Navigate to="cookbook" replace />} />
+        <Route path="cookbook" element={<><SEOHead title="CookBook" path="/lifestyle/cookbook" /><CookBookPage /></>} />
+        <Route path="fashion" element={<><SEOHead title="Fashion" path="/lifestyle/fashion" /><FashionPage /></>} />
+        <Route path="shopping-list" element={<><SEOHead title="Shopping List" path="/lifestyle/shopping-list" /><ShoppingListPage /></>} />
+        <Route path="calendar" element={<><SEOHead title="Calendar" path="/lifestyle/calendar" /><PremiumCalendarPage /></>} />
+      </Route>
       <Route path="/chat/:id" element={<><SEOHead title="Chat" noIndex /><ChatByIdPage /></>} />
       <Route path="/groupchat/:id" element={<><SEOHead title="Group Chat" noIndex /><GroupChatWrapper /></>} />
       <Route path="/groupchat/:id/settings" element={<><SEOHead title="Group Settings" noIndex /><GroupSettingsPage /></>} />
