@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ChefHat, Clock, ArrowRight, Star, Heart, Flame } from 'lucide-react';
+import { Search, ChefHat, Clock, ArrowRight, Star, Heart, Flame, Sparkles } from 'lucide-react';
+import { ChefAIModal } from './ChefAIModal';
 
 const fadeUp = (delay = 0) => ({
     initial: { opacity: 0, y: 20 },
@@ -75,6 +76,7 @@ const RECIPES = [
 export function CookBookPage() {
     const [search, setSearch] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
+    const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
     const categories = ['All', 'Breakfast', 'Dinner', 'Healthy', 'Italian', 'Japanese'];
 
@@ -165,8 +167,8 @@ export function CookBookPage() {
                         key={cat}
                         onClick={() => setActiveCategory(cat)}
                         className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${activeCategory === cat
-                                ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]'
-                                : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5'
+                            ? 'bg-white text-black shadow-[0_0_20px_rgba(255,255,255,0.3)]'
+                            : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5'
                             }`}
                     >
                         {cat}
@@ -239,6 +241,28 @@ export function CookBookPage() {
                     <p className="text-white/20 mt-2">Try adjusting your search or category filter.</p>
                 </div>
             )}
+
+            {/* Floating AI Button */}
+            <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsAIModalOpen(true)}
+                className="fixed bottom-10 inset-x-0 mx-auto w-fit px-8 py-4 rounded-full bg-gradient-to-r from-orange-600/90 to-pink-600/90 backdrop-blur-xl border border-white/20 shadow-[0_0_40px_rgba(234,88,12,0.4)] text-white font-bold flex items-center justify-center gap-3 group z-40 hover:from-orange-500/90 hover:to-pink-500/90 transition-all"
+            >
+                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                </div>
+                Ask TimeMachine
+            </motion.button>
+
+            {/* AI Modal */}
+            <ChefAIModal
+                isOpen={isAIModalOpen}
+                onClose={() => setIsAIModalOpen(false)}
+            />
         </div>
     );
 }
