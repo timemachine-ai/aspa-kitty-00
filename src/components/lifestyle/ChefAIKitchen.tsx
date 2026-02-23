@@ -1,0 +1,421 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, ChefHat, Clock, Flame, CheckCircle2, ArrowLeft, Plus, X, Search, Utensils } from 'lucide-react';
+
+interface ChefAIKitchenProps {
+    onClose: () => void;
+}
+
+const steps = [
+    "Analyzing flavor profile...",
+    "Consulting culinary archives...",
+    "Balancing ingredients...",
+    "Connecting to kitchen orchestrator...",
+    "Plating the digital dish..."
+];
+
+const CRAVINGS = ['Healthy', 'Comfort Food', 'Spicy', 'Sweet', 'High Protein', 'Vegan', 'Quick Bite'];
+
+export function ChefAIKitchen({ onClose }: ChefAIKitchenProps) {
+    const [ingredients, setIngredients] = useState<string[]>([]);
+    const [ingredientInput, setIngredientInput] = useState('');
+    const [activeCraving, setActiveCraving] = useState<string | null>(null);
+    const [prompt, setPrompt] = useState('');
+
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [result, setResult] = useState<any | null>(null);
+    const [loadingStep, setLoadingStep] = useState(0);
+
+    const handleAddIngredient = () => {
+        if (ingredientInput.trim() && !ingredients.includes(ingredientInput.trim())) {
+            setIngredients([...ingredients, ingredientInput.trim()]);
+            setIngredientInput('');
+        }
+    };
+
+    const removeIngredient = (ing: string) => {
+        setIngredients(ingredients.filter(i => i !== ing));
+    };
+
+    const handleCook = () => {
+        setIsGenerating(true);
+        setResult(null);
+        setLoadingStep(0);
+
+        // Simulate multi-step AI generation
+        let currentStep = 0;
+        const interval = setInterval(() => {
+            currentStep++;
+            if (currentStep < steps.length) {
+                setLoadingStep(currentStep);
+            } else {
+                clearInterval(interval);
+                setIsGenerating(false);
+                setResult({
+                    title: "Quantum Truffle Pasta",
+                    description: "A futuristic take on a classic Italian dish, infused with synthetic truffle essence and zero-gravity shaped pasta.",
+                    time: "30 min",
+                    difficulty: "Medium",
+                    calories: "450 kcal",
+                    image: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?q=80&w=2000&auto=format&fit=crop",
+                    ingredients: [
+                        { name: "Zero-G Pasta", amount: "200g", checked: false },
+                        { name: "Synthetic Truffle Oil", amount: "2 tbsp", checked: false },
+                        { name: "Neo-Parmesan", amount: "50g", checked: false },
+                        { name: "Himalayan Pink Salt", amount: "1 tsp", checked: false },
+                        { name: "Micro-greens", amount: "Handful", checked: false },
+                    ],
+                    instructions: [
+                        "Boil the Zero-G pasta in heavily salted water until exactly al dente (approx 8 minutes).",
+                        "In a separate pan, warm the Synthetic Truffle Oil over low heat.",
+                        "Drain the pasta, reserving 1/4 cup of the starchy water.",
+                        "Toss the pasta in the truffle oil, adding the reserved water and Neo-Parmesan simultaneously.",
+                        "Stir vigorously off the heat until a sleek emulsion forms.",
+                        "Garnish with Micro-greens and a final dusting of Neo-Parmesan."
+                    ]
+                });
+            }
+        }, 1200);
+    };
+
+    const toggleCheckIngredient = (idx: number) => {
+        if (!result) return;
+        const newIngredients = [...result.ingredients];
+        newIngredients[idx].checked = !newIngredients[idx].checked;
+        setResult({ ...result, ingredients: newIngredients });
+    };
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40, scale: 0.98 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full min-h-[calc(100vh-140px)] bg-black/40 border border-white/10 rounded-[40px] shadow-2xl overflow-hidden flex flex-col relative z-20 backdrop-blur-3xl"
+        >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 md:p-8 border-b border-white/5 bg-white/5 relative z-30 shrink-0">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={onClose}
+                        className="w-12 h-12 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 hover:text-white transition-colors border border-white/10"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+                            <h2 className="text-2xl font-black text-white tracking-tight leading-none">TimeMachine Chef</h2>
+                        </div>
+                        <p className="text-white/50 text-xs font-semibold uppercase tracking-widest">AI Culinary Engine</p>
+                    </div>
+                </div>
+
+                {result && !isGenerating && (
+                    <button
+                        onClick={() => setResult(null)}
+                        className="px-6 py-2.5 rounded-full bg-white/5 hover:bg-white/10 text-white text-sm font-semibold transition-colors border border-white/10 flex items-center gap-2"
+                    >
+                        <Utensils className="w-4 h-4" /> Start Over
+                    </button>
+                )}
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+                <AnimatePresence mode="wait">
+
+                    {/* Input Phase */}
+                    {!isGenerating && !result && (
+                        <motion.div
+                            key="input"
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.98 }}
+                            transition={{ duration: 0.4 }}
+                            className="p-8 md:p-12 lg:p-16 max-w-5xl mx-auto w-full"
+                        >
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+                                {/* Left Col: Forms */}
+                                <div className="space-y-12">
+
+                                    {/* Ingredients Basket */}
+                                    <section>
+                                        <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                                            Ingredients Basket
+                                        </h3>
+                                        <p className="text-white/40 text-sm mb-6">What do you have in your fridge right now?</p>
+
+                                        <div className="relative mb-4">
+                                            <input
+                                                type="text"
+                                                value={ingredientInput}
+                                                onChange={(e) => setIngredientInput(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') handleAddIngredient();
+                                                }}
+                                                placeholder="Add an ingredient (e.g., Chicken breast)"
+                                                className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-5 pr-14 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all shadow-inner"
+                                            />
+                                            <button
+                                                onClick={handleAddIngredient}
+                                                className="absolute right-2 top-2 bottom-2 aspect-square rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+                                            >
+                                                <Plus className="w-5 h-5" />
+                                            </button>
+                                        </div>
+
+                                        {/* Basket visual */}
+                                        <div className="min-h-[100px] p-5 rounded-[24px] bg-black/30 border border-white/5 backdrop-blur-md shadow-inner flex flex-wrap gap-2 items-start content-start">
+                                            {ingredients.length === 0 ? (
+                                                <div className="w-full h-full flex flex-col items-center justify-center text-white/20 pt-4">
+                                                    <Search className="w-6 h-6 mb-2 opacity-50" />
+                                                    <span className="text-xs uppercase font-semibold tracking-wider">Basket is empty</span>
+                                                </div>
+                                            ) : (
+                                                <AnimatePresence>
+                                                    {ingredients.map(ing => (
+                                                        <motion.div
+                                                            key={ing}
+                                                            initial={{ opacity: 0, scale: 0.8 }}
+                                                            animate={{ opacity: 1, scale: 1 }}
+                                                            exit={{ opacity: 0, scale: 0.8 }}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/20 border border-orange-500/30 text-orange-200 text-sm font-medium pr-1.5"
+                                                        >
+                                                            <span>{ing}</span>
+                                                            <button
+                                                                onClick={() => removeIngredient(ing)}
+                                                                className="w-5 h-5 rounded-full bg-orange-500/20 hover:bg-orange-500/40 flex items-center justify-center transition-colors text-orange-200"
+                                                            >
+                                                                <X className="w-3 h-3" />
+                                                            </button>
+                                                        </motion.div>
+                                                    ))}
+                                                </AnimatePresence>
+                                            )}
+                                        </div>
+                                    </section>
+
+                                    {/* Cravings */}
+                                    <section>
+                                        <h3 className="text-xl font-bold text-white mb-2">Cravings</h3>
+                                        <p className="text-white/40 text-sm mb-6">What vibe are you going for?</p>
+                                        <div className="flex flex-wrap gap-3">
+                                            {CRAVINGS.map(craving => (
+                                                <button
+                                                    key={craving}
+                                                    onClick={() => setActiveCraving(craving === activeCraving ? null : craving)}
+                                                    className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 border ${activeCraving === craving
+                                                        ? 'bg-pink-500 text-white border-pink-400 shadow-[0_0_20px_rgba(236,72,153,0.4)]'
+                                                        : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white'
+                                                        }`}
+                                                >
+                                                    {craving}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </section>
+                                </div>
+
+                                {/* Right Col: Prompt & Action */}
+                                <div className="space-y-12">
+                                    <section>
+                                        <h3 className="text-xl font-bold text-white mb-2">Additional Instructions</h3>
+                                        <p className="text-white/40 text-sm mb-6">Any dietary restrictions or wild concepts?</p>
+                                        <textarea
+                                            value={prompt}
+                                            onChange={(e) => setPrompt(e.target.value)}
+                                            placeholder="E.g., Make it low carb but completely decadent. Needs to look like it came from the year 2077."
+                                            className="w-full h-40 bg-white/5 border border-white/10 rounded-3xl py-5 px-6 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500/50 transition-all shadow-inner resize-none custom-scrollbar"
+                                        />
+                                    </section>
+
+                                    <div className="pt-4">
+                                        <motion.button
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            onClick={handleCook}
+                                            className="w-full py-5 rounded-2xl bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 text-white font-black text-lg uppercase tracking-widest shadow-[0_0_40px_rgba(236,72,153,0.4)] hover:shadow-[0_0_60px_rgba(236,72,153,0.6)] transition-all flex items-center justify-center gap-3 group relative overflow-hidden"
+                                        >
+                                            {/* Shine effect */}
+                                            <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />
+                                            <ChefHat className="w-6 h-6" /> Begin Cooking
+                                        </motion.button>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* Generating State */}
+                    {isGenerating && (
+                        <motion.div
+                            key="generating"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-black/20 z-40 backdrop-blur-md"
+                        >
+                            <div className="relative w-40 h-40 mb-12 flex items-center justify-center">
+                                {/* Air persona style glowing rings */}
+                                <motion.div
+                                    animate={{ rotate: 360, scale: [1, 1.1, 1] }}
+                                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                    className="absolute inset-0 rounded-full border-t-2 border-r-2 border-orange-500 opacity-50 blur-[2px]"
+                                />
+                                <motion.div
+                                    animate={{ rotate: -360, scale: [1, 1.2, 1] }}
+                                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                                    className="absolute inset-2 rounded-full border-b-2 border-l-2 border-pink-500 opacity-50 blur-[2px]"
+                                />
+                                <motion.div
+                                    animate={{ rotate: 180, scale: [1, 1.15, 1] }}
+                                    transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+                                    className="absolute inset-4 rounded-full border-t-2 border-4 border-purple-500 opacity-30 blur-[4px]"
+                                />
+
+                                {/* Core orb */}
+                                <div className="absolute inset-10 rounded-full bg-gradient-to-tr from-orange-500 via-pink-500 to-purple-500 blur-[20px] animate-pulse opacity-70" />
+
+                                <ChefHat className="w-12 h-12 text-white relative z-10 animate-bounce" />
+                            </div>
+
+                            <h3 className="text-3xl font-black text-white mb-4 tracking-tight">TimeMachine is Cooking</h3>
+                            <div className="h-8">
+                                <AnimatePresence mode="wait">
+                                    <motion.p
+                                        key={loadingStep}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="text-pink-400 font-bold uppercase tracking-widest text-sm"
+                                    >
+                                        {steps[loadingStep]}
+                                    </motion.p>
+                                </AnimatePresence>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* Result State */}
+                    {result && !isGenerating && (
+                        <motion.div
+                            key="result"
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.6 }}
+                            className="p-8 md:p-12 lg:p-16"
+                        >
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
+                                {/* Left Col: Image & Info */}
+                                <div className="space-y-8">
+                                    <div className="relative aspect-[4/5] lg:aspect-square rounded-[40px] overflow-hidden group shadow-[0_0_50px_rgba(236,72,153,0.2)]">
+                                        <img src={result.image} alt={result.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80" />
+
+                                        <div className="absolute top-6 left-6 px-4 py-2 rounded-full bg-white/10 backdrop-blur-xl text-white text-xs font-bold uppercase tracking-widest border border-white/20 flex items-center gap-2 shadow-xl">
+                                            <Sparkles className="w-4 h-4 text-pink-400" /> AI Generated
+                                        </div>
+
+                                        <div className="absolute bottom-8 left-8 right-8">
+                                            <h1 className="text-4xl lg:text-5xl font-black text-white mb-4 leading-tight">{result.title}</h1>
+
+                                            <div className="flex gap-4 backdrop-blur-md bg-white/5 p-4 rounded-3xl border border-white/10">
+                                                <div className="flex-1 flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
+                                                        <Clock className="w-5 h-5 text-orange-400" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-white/40 text-[10px] uppercase font-bold tracking-wider mb-0.5">Time</div>
+                                                        <div className="text-white font-semibold">{result.time}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="w-px bg-white/10" />
+                                                <div className="flex-1 flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center">
+                                                        <Flame className="w-5 h-5 text-pink-400" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-white/40 text-[10px] uppercase font-bold tracking-wider mb-0.5">Energy</div>
+                                                        <div className="text-white font-semibold">{result.calories}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
+                                        <h4 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <ChefHat className="w-4 h-4" /> Chef's Note
+                                        </h4>
+                                        <p className="text-white/80 leading-relaxed text-lg">{result.description}</p>
+                                    </div>
+                                </div>
+
+                                {/* Right Col: Ingredients & Steps */}
+                                <div className="space-y-12 py-4">
+                                    {/* Ingredients */}
+                                    <section>
+                                        <h3 className="text-2xl font-black text-white mb-6 flex items-center gap-3">
+                                            Ingredients
+                                            <span className="px-3 py-1 rounded-full bg-white/10 text-white/50 text-sm font-semibold">
+                                                {result.ingredients.filter((i: any) => i.checked).length} / {result.ingredients.length}
+                                            </span>
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {result.ingredients.map((ing: any, idx: number) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={() => toggleCheckIngredient(idx)}
+                                                    className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 group ${ing.checked
+                                                            ? 'bg-white/5 border-white/20'
+                                                            : 'bg-black/30 border-transparent hover:bg-white/5 hover:border-white/10'
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${ing.checked
+                                                                ? 'bg-gradient-to-tr from-orange-500 to-pink-500 scale-110 shadow-[0_0_15px_rgba(236,72,153,0.4)]'
+                                                                : 'bg-white/10 group-hover:bg-white/20'
+                                                            }`}>
+                                                            {ing.checked && <CheckCircle2 className="w-4 h-4 text-white" />}
+                                                        </div>
+                                                        <span className={`text-lg font-medium transition-colors ${ing.checked ? 'text-white/40 line-through' : 'text-white'
+                                                            }`}>
+                                                            {ing.name}
+                                                        </span>
+                                                    </div>
+                                                    <span className={`text-sm font-bold tracking-wider transition-colors ${ing.checked ? 'text-white/20' : 'text-orange-400'
+                                                        }`}>
+                                                        {ing.amount}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </section>
+
+                                    {/* Instructions */}
+                                    <section>
+                                        <h3 className="text-2xl font-black text-white mb-8">Instructions</h3>
+                                        <div className="space-y-8 relative before:absolute before:inset-y-0 before:left-5 before:w-px before:bg-white/10">
+                                            {result.instructions.map((step: string, idx: number) => (
+                                                <div key={idx} className="flex gap-6 relative">
+                                                    <div className="w-10 h-10 shrink-0 rounded-full bg-black border-2 border-white/10 flex items-center justify-center text-white/40 font-black text-sm relative z-10 
+                                                                    Shadow-[0_0_20px_rgba(0,0,0,0.5)] group-hover:border-pink-500/50 group-hover:text-pink-400 transition-colors">
+                                                        {idx + 1}
+                                                    </div>
+                                                    <p className="text-white/70 leading-relaxed text-lg pt-1">
+                                                        {step}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+        </motion.div>
+    );
+}
