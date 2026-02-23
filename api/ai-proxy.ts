@@ -1,7 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import * as pdfParseModule from 'pdf-parse';
-const pdfParse: any = 'default' in pdfParseModule ? (pdfParseModule as any).default : pdfParseModule;
 import { SPECIAL_MODE_CONFIGS } from './specialModePrompts.js';
 import { PERSONA_AUDIO_CONFIGS } from './audio.js';
 
@@ -755,6 +753,30 @@ async function processPdfForRag(
   userId: string | null,
   fileName: string | null
 ): Promise<{ documentId: string; pageCount: number; chunkCount: number }> {
+  // Polyfills for pdfjs-dist / pdf-parse in Node environments
+  if (typeof globalThis !== 'undefined') {
+    if (!globalThis.DOMMatrix) {
+      // @ts-ignore
+      globalThis.DOMMatrix = class DOMMatrix {
+        constructor() { return [1, 0, 0, 1, 0, 0]; }
+      };
+    }
+    if (!globalThis.Path2D) {
+      // @ts-ignore
+      globalThis.Path2D = class Path2D { };
+    }
+    if (!globalThis.ImageData) {
+      // @ts-ignore
+      globalThis.ImageData = class ImageData {
+        data = []; width = 0; height = 0;
+      };
+    }
+  }
+
+  // Dynamically import pdf-parse to ensure polyfills are active before it evaluates
+  const pdfParseModule = await import('pdf-parse');
+  const pdfParse: any = 'default' in pdfParseModule ? (pdfParseModule as any).default : pdfParseModule;
+
   // Strip data URI prefix if present
   const raw = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
   const buffer = Buffer.from(raw, 'base64');
