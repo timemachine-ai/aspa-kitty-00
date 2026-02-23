@@ -99,9 +99,9 @@ The JSON must perfectly match this structure:
 
             const parsedResult = JSON.parse(finalContent);
 
-            // Generate a dynamic image URL using Pollinations
+            // Generate a dynamic image URL using the internal image API (uses zimage model)
             const imagePrompt = `professional food photography of ${parsedResult.title}, appetizing, 4k, cinematic lighting, highly detailed`;
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=800&height=800&nologo=true`;
+            const imageUrl = `/api/image?prompt=${encodeURIComponent(imagePrompt)}&process=create&persona=pro&orientation=portrait`;
 
             parsedResult.image = imageUrl;
 
