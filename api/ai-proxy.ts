@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import pdfParse from 'pdf-parse';
+import * as pdfParseModule from 'pdf-parse';
+const pdfParse: any = 'default' in pdfParseModule ? (pdfParseModule as any).default : pdfParseModule;
 import { SPECIAL_MODE_CONFIGS } from './specialModePrompts.js';
 import { PERSONA_AUDIO_CONFIGS } from './audio.js';
 
@@ -1481,7 +1482,7 @@ async function callCerebrasAirAPIStreaming(
     top_p: 1,
     stream: true,
     reasoning_effort: reasoningEffort
- };
+  };
 
   if (tools && tools.length > 0) {
     requestBody.tools = tools;
@@ -1637,7 +1638,7 @@ async function callGroqStandardAPIStreaming(
 // Helper function to process streaming buffer
 function processBuffer(line: string, controller: ReadableStreamDefaultController) {
   const trimmedLine = line.trim();
-  
+
   if (!trimmedLine || trimmedLine === 'data: [DONE]') {
     return;
   }
@@ -1646,10 +1647,10 @@ function processBuffer(line: string, controller: ReadableStreamDefaultController
     try {
       const jsonStr = trimmedLine.slice(6); // Remove 'data: ' prefix
       const data = JSON.parse(jsonStr);
-      
+
       if (data.choices && data.choices[0]) {
         const choice = data.choices[0];
-        
+
         // Handle content delta
         if (choice.delta && choice.delta.content) {
           controller.enqueue(new TextEncoder().encode(
@@ -1659,7 +1660,7 @@ function processBuffer(line: string, controller: ReadableStreamDefaultController
             }) + '\n'
           ));
         }
-        
+
         // Handle tool calls
         if (choice.delta && choice.delta.tool_calls) {
           controller.enqueue(new TextEncoder().encode(
@@ -1669,7 +1670,7 @@ function processBuffer(line: string, controller: ReadableStreamDefaultController
             }) + '\n'
           ));
         }
-        
+
         // Handle finish reason
         if (choice.finish_reason) {
           controller.enqueue(new TextEncoder().encode(
@@ -2010,7 +2011,7 @@ The memory tags will be processed and removed from the visible response, so writ
         }
 
         const transcriptionText = await transcriptionResponse.text();
-        
+
         // Replace the last message content with transcribed text if it was an audio message
         if (processedMessages.length > 0) {
           const lastMessage = processedMessages[processedMessages.length - 1];
@@ -2537,18 +2538,18 @@ The memory tags will be processed and removed from the visible response, so writ
 
   } catch (error) {
     console.error('AI Proxy Error:', error);
-    
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
+
     // Check for rate limit errors
     if (errorMessage.includes('Rate limit') || errorMessage.includes('429')) {
-      return res.status(429).json({ 
+      return res.status(429).json({
         error: 'Rate limit exceeded',
         type: 'rateLimit'
       });
     }
-    
-    return res.status(500).json({ 
+
+    return res.status(500).json({
       error: 'We are facing huge load on our servers and thus we\'ve had to temporarily limit access to maintain system stability. Please be patient, we hate this as much as you do but this thing doesn\'t grow on trees :")'
     });
   }
