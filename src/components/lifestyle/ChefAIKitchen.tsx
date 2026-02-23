@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ChefHat, Clock, Flame, CheckCircle2, ArrowLeft, Plus, X, Search, Utensils } from 'lucide-react';
+import { generateAIResponse } from '../../services/ai/aiProxyService';
 
 interface ChefAIKitchenProps {
     onClose: () => void;
@@ -37,45 +38,87 @@ export function ChefAIKitchen({ onClose }: ChefAIKitchenProps) {
         setIngredients(ingredients.filter(i => i !== ing));
     };
 
-    const handleCook = () => {
+    const handleCook = async () => {
         setIsGenerating(true);
         setResult(null);
         setLoadingStep(0);
 
-        // Simulate multi-step AI generation
+        // Simulate multi-step AI generation visually
         let currentStep = 0;
         const interval = setInterval(() => {
-            currentStep++;
-            if (currentStep < steps.length) {
+            if (currentStep < steps.length - 1) {
+                currentStep++;
                 setLoadingStep(currentStep);
-            } else {
-                clearInterval(interval);
-                setIsGenerating(false);
-                setResult({
-                    title: "Quantum Truffle Pasta",
-                    description: "A futuristic take on a classic Italian dish, infused with synthetic truffle essence and zero-gravity shaped pasta.",
-                    time: "30 min",
-                    difficulty: "Medium",
-                    calories: "450 kcal",
-                    image: "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?q=80&w=2000&auto=format&fit=crop",
-                    ingredients: [
-                        { name: "Zero-G Pasta", amount: "200g", checked: false },
-                        { name: "Synthetic Truffle Oil", amount: "2 tbsp", checked: false },
-                        { name: "Neo-Parmesan", amount: "50g", checked: false },
-                        { name: "Himalayan Pink Salt", amount: "1 tsp", checked: false },
-                        { name: "Micro-greens", amount: "Handful", checked: false },
-                    ],
-                    instructions: [
-                        "Boil the Zero-G pasta in heavily salted water until exactly al dente (approx 8 minutes).",
-                        "In a separate pan, warm the Synthetic Truffle Oil over low heat.",
-                        "Drain the pasta, reserving 1/4 cup of the starchy water.",
-                        "Toss the pasta in the truffle oil, adding the reserved water and Neo-Parmesan simultaneously.",
-                        "Stir vigorously off the heat until a sleek emulsion forms.",
-                        "Garnish with Micro-greens and a final dusting of Neo-Parmesan."
-                    ]
-                });
             }
-        }, 1200);
+        }, 2000);
+
+        try {
+            const systemContent = `You are the TimeMachine Culinary Engine. Create a highly creative, delicious recipe.
+Ingredients available: ${ingredients.length > 0 ? ingredients.join(', ') : 'None, suggest a random dish'}
+Cravings/Vibe: ${activeCraving || 'Surprise me'}
+Additional Instructions: ${prompt || 'None'}
+
+CRITICAL: You MUST return ONLY a valid JSON object. Do not include markdown code blocks, backticks, or any other text.
+The JSON must perfectly match this structure:
+{
+  "title": "Creative Recipe Name (e.g., Quantum Truffle Pasta)",
+  "description": "A punchy, delicious Chef's Note describing the dish.",
+  "time": "Total time (e.g., 30 min)",
+  "difficulty": "Easy, Medium, or Hard",
+  "calories": "Estimated calories (e.g., 450 kcal)",
+  "ingredients": [
+    { "name": "Ingredient Name", "amount": "Quantity", "checked": false }
+  ],
+  "instructions": [
+    "Step 1...",
+    "Step 2..."
+  ]
+}`;
+
+            // Call AI
+            const response = await generateAIResponse([
+                { id: 1, content: systemContent, isAI: false, hasAnimated: false }
+            ], undefined, '', 'pro');
+
+            // Parse response
+            let finalContent = response.content;
+
+            // Strip markdown formatting if AI still includes it
+            if (finalContent.includes('\`\`\`json')) {
+                finalContent = finalContent.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
+            } else if (finalContent.includes('\`\`\`')) {
+                finalContent = finalContent.replace(/\`\`\`/g, '').trim();
+            }
+
+            // Sometimes there's conversational text before/after the JSON
+            const jsonStart = finalContent.indexOf('{');
+            const jsonEnd = finalContent.lastIndexOf('}');
+            if (jsonStart !== -1 && jsonEnd !== -1) {
+                finalContent = finalContent.substring(jsonStart, jsonEnd + 1);
+            }
+
+            const parsedResult = JSON.parse(finalContent);
+
+            // Generate a dynamic image URL using Pollinations
+            const imagePrompt = `professional food photography of ${parsedResult.title}, appetizing, 4k, cinematic lighting, highly detailed`;
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(imagePrompt)}?width=800&height=800&nologo=true`;
+
+            parsedResult.image = imageUrl;
+
+            clearInterval(interval);
+            setLoadingStep(steps.length - 1);
+
+            setTimeout(() => {
+                setIsGenerating(false);
+                setResult(parsedResult);
+            }, 800);
+
+        } catch (error) {
+            console.error("AI Generation Error:", error);
+            clearInterval(interval);
+            setIsGenerating(false);
+            alert("The TimeMachine kitchen is currently overloaded. Please try again.");
+        }
     };
 
     const toggleCheckIngredient = (idx: number) => {
@@ -368,14 +411,14 @@ export function ChefAIKitchen({ onClose }: ChefAIKitchenProps) {
                                                     key={idx}
                                                     onClick={() => toggleCheckIngredient(idx)}
                                                     className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 group ${ing.checked
-                                                            ? 'bg-white/5 border-white/20'
-                                                            : 'bg-black/30 border-transparent hover:bg-white/5 hover:border-white/10'
+                                                        ? 'bg-white/5 border-white/20'
+                                                        : 'bg-black/30 border-transparent hover:bg-white/5 hover:border-white/10'
                                                         }`}
                                                 >
                                                     <div className="flex items-center gap-4">
                                                         <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${ing.checked
-                                                                ? 'bg-gradient-to-tr from-orange-500 to-pink-500 scale-110 shadow-[0_0_15px_rgba(236,72,153,0.4)]'
-                                                                : 'bg-white/10 group-hover:bg-white/20'
+                                                            ? 'bg-gradient-to-tr from-orange-500 to-pink-500 scale-110 shadow-[0_0_15px_rgba(236,72,153,0.4)]'
+                                                            : 'bg-white/10 group-hover:bg-white/20'
                                                             }`}>
                                                             {ing.checked && <CheckCircle2 className="w-4 h-4 text-white" />}
                                                         </div>

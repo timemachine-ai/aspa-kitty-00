@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Heart, Wand2, Scissors, Camera, Image as ImageIcon, Sparkles as SparkleIcon, Download, UploadCloud } from 'lucide-react';
+import { generateAIResponse } from '../../services/ai/aiProxyService';
 
 const fadeUp = (delay = 0) => ({
     initial: { opacity: 0, y: 30 },
@@ -43,28 +44,62 @@ export function FashionPage() {
     const [isDesigning, setIsDesigning] = useState(false);
     const [generatedDesigns, setGeneratedDesigns] = useState<any[]>([]);
 
-    const handleDesignSubmit = () => {
+    const handleDesignSubmit = async () => {
         if (!designerPrompt.trim()) return;
         setIsDesigning(true);
+        setGeneratedDesigns([]);
 
-        // Simulate AI feeling
-        setTimeout(() => {
+        try {
+            const systemContent = `You are the TimeMachine Digital Fashion Atelier AI. The user wants to design clothing based on this prompt: "${designerPrompt}".
+CRITICAL: You MUST return ONLY a valid JSON array of exactly two (2) design objects. Do not include markdown code blocks, backticks, or any other text.
+The JSON must perfectly match this structure:
+[
+  {
+    "title": "Creative Fashion Design Name (e.g., Holographic Trench Coat)",
+    "description": "A visually striking description of the garment and materials",
+    "prompt": "Highly detailed image generation prompt for this specific design (e.g., fashion editorial photography, runway model wearing [design], cinematic lighting, 8k)"
+  },
+  {
+    "title": "A related but distinct variation",
+    "description": "...",
+    "prompt": "..."
+  }
+]`;
+
+            const response = await generateAIResponse([
+                { id: 1, content: systemContent, isAI: false, hasAnimated: false }
+            ], undefined, '', 'pro');
+
+            let finalContent = response.content;
+
+            if (finalContent.includes('\`\`\`json')) {
+                finalContent = finalContent.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
+            } else if (finalContent.includes('\`\`\`')) {
+                finalContent = finalContent.replace(/\`\`\`/g, '').trim();
+            }
+
+            const jsonStart = finalContent.indexOf('[');
+            const jsonEnd = finalContent.lastIndexOf(']');
+            if (jsonStart !== -1 && jsonEnd !== -1) {
+                finalContent = finalContent.substring(jsonStart, jsonEnd + 1);
+            }
+
+            const parsedDesigns = JSON.parse(finalContent);
+
+            const newDesigns = parsedDesigns.map((design: any, idx: number) => ({
+                id: Date.now() + idx,
+                title: design.title,
+                prompt: design.description,
+                image: `https://image.pollinations.ai/prompt/${encodeURIComponent(design.prompt + ", fashion editorial photography, cinematic lighting, 8k resolution, highly detailed")}?width=800&height=1000&nologo=true`
+            }));
+
+            setGeneratedDesigns(newDesigns);
+        } catch (error) {
+            console.error("AI Generation Error:", error);
+            alert("The TimeMachine atelier is currently overloaded. Please try again.");
+        } finally {
             setIsDesigning(false);
-            setGeneratedDesigns([
-                {
-                    id: 1,
-                    image: 'https://images.unsplash.com/photo-1579493941151-50da256cb747?q=80&w=1000&auto=format&fit=crop',
-                    title: 'Neon Cyber Punk Jacket',
-                    prompt: designerPrompt
-                },
-                {
-                    id: 2,
-                    image: 'https://images.unsplash.com/photo-1550614000-4b95d4edae38?q=80&w=1000&auto=format&fit=crop',
-                    title: 'Holographic Trench',
-                    prompt: designerPrompt
-                }
-            ]);
-        }, 3000);
+        }
     };
 
     return (
