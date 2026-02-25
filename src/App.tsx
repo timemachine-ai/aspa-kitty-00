@@ -880,7 +880,6 @@ function AppContent() {
           <MainChatPage
             brandOverride={{
               name: 'Rêveoulé',
-              watermark: 'by TimeMachine',
               textColorClass: 'text-[#59090C]',
               glowColor: 'transparent'
             }}

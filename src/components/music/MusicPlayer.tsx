@@ -14,8 +14,8 @@ export function MusicPlayer(_props: MusicPlayerProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Don't show the home button if we're already on the chat UI (default page)
-  if (location.pathname === '/') return null;
+  // Don't show the home button if we're already on the chat UI (default page) or the reveoule branded page
+  if (location.pathname === '/' || location.pathname === '/reveoule') return null;
 
   const glassStyle = {
     background: 'rgba(255, 255, 255, 0.05)',
