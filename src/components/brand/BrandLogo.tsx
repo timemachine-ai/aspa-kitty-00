@@ -7,6 +7,13 @@ import { useAuth } from '../../context/AuthContext';
 import { AgentsModal } from '../agents/AgentsModal';
 import { ChatSession } from '../../services/chat/chatService';
 
+export interface BrandOverride {
+  name: string;
+  watermark?: string;
+  textColorClass?: string;
+  glowColor?: string;
+}
+
 interface BrandLogoProps {
   onPersonaChange: (persona: keyof typeof AI_PERSONAS) => void;
   currentPersona: keyof typeof AI_PERSONAS;
@@ -16,6 +23,7 @@ interface BrandLogoProps {
   onOpenAccount?: () => void;
   onOpenHistory?: () => void;
   onOpenSettings?: () => void;
+  brandOverride?: BrandOverride;
 }
 
 const personaColors = {
@@ -44,7 +52,8 @@ export function BrandLogo({
   onOpenAuth,
   onOpenAccount,
   onOpenHistory,
-  onOpenSettings
+  onOpenSettings,
+  brandOverride
 }: BrandLogoProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showAgents, setShowAgents] = useState(false);
@@ -92,19 +101,26 @@ export function BrandLogo({
           className="relative z-50 flex items-center gap-2 cursor-pointer group"
           onClick={toggleDropdown}
         >
-          <h1
-            className={`text-xl sm:text-2xl font-bold ${personaColors[currentPersona]} transition-colors duration-300`}
-            style={{
-              fontFamily: 'Montserrat, sans-serif',
-              textShadow: `
-                0 0 20px ${personaGlowColors[currentPersona]},
-                0 0 40px ${personaGlowColors[currentPersona].replace(/[\d.]+\)$/, '0.3)')},
-                0 0 60px ${personaGlowColors[currentPersona].replace(/[\d.]+\)$/, '0.1)')}
-              `
-            }}
-          >
-            {AI_PERSONAS[currentPersona].name}
-          </h1>
+          <div className="flex flex-col">
+            <h1
+              className={`text-xl sm:text-2xl font-bold ${brandOverride?.textColorClass || personaColors[currentPersona]} transition-colors duration-300`}
+              style={{
+                fontFamily: 'Montserrat, sans-serif',
+                textShadow: `
+                  0 0 20px ${brandOverride?.glowColor || personaGlowColors[currentPersona]},
+                  0 0 40px ${(brandOverride?.glowColor || personaGlowColors[currentPersona]).replace(/[\d.]+\)$/, '0.3)')},
+                  0 0 60px ${(brandOverride?.glowColor || personaGlowColors[currentPersona]).replace(/[\d.]+\)$/, '0.1)')}
+                `
+              }}
+            >
+              {brandOverride?.name || AI_PERSONAS[currentPersona].name}
+            </h1>
+            {brandOverride?.watermark && (
+              <span className="text-[10px] sm:text-xs text-white/50 -mt-1 tracking-wider uppercase" style={{ fontFamily: 'Inter, sans-serif' }}>
+                {brandOverride.watermark}
+              </span>
+            )}
+          </div>
           <motion.div
             animate={{ rotate: isOpen ? 180 : 0 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
@@ -192,30 +208,30 @@ export function BrandLogo({
             {Object.entries(AI_PERSONAS)
               .filter(([key]) => ['default', 'girlie', 'pro'].includes(key)) // Only show TimeMachine personas
               .map(([key, persona]) => (
-              <motion.button
-                key={key}
-                whileHover={{
-                  scale: 1.03,
-                  background: `linear-gradient(90deg, ${personaGlowColors[key as keyof typeof personaGlowColors]} 0%, transparent 100%)`
-                }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => handlePersonaSelect(key as keyof typeof AI_PERSONAS)}
-                className={`w-full px-4 py-3 text-left transition-all duration-300
+                <motion.button
+                  key={key}
+                  whileHover={{
+                    scale: 1.03,
+                    background: `linear-gradient(90deg, ${personaGlowColors[key as keyof typeof personaGlowColors]} 0%, transparent 100%)`
+                  }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => handlePersonaSelect(key as keyof typeof AI_PERSONAS)}
+                  className={`w-full px-4 py-3 text-left transition-all duration-300
                   ${currentPersona === key ? personaColors[key as keyof typeof personaColors] : theme.text}
                   ${currentPersona === key ? `bg-gradient-to-r from-[${personaGlowColors[key as keyof typeof personaGlowColors]}] to-black/10` : 'bg-transparent'}
                   flex flex-col gap-1 border-b border-white/5 last:border-b-0`}
-                style={{
-                  background: currentPersona === key ?
-                    `linear-gradient(to right, ${personaGlowColors[key as keyof typeof personaGlowColors]}, rgba(0,0,0,0.1))` :
-                    'transparent'
-                }}
-              >
-                <div className="font-bold text-sm">{persona.name}</div>
-                <div className={`text-xs opacity-70 ${theme.text}`}>
-                  {personaDescriptions[key as keyof typeof personaDescriptions]}
-                </div>
-              </motion.button>
-            ))}
+                  style={{
+                    background: currentPersona === key ?
+                      `linear-gradient(to right, ${personaGlowColors[key as keyof typeof personaGlowColors]}, rgba(0,0,0,0.1))` :
+                      'transparent'
+                  }}
+                >
+                  <div className="font-bold text-sm">{persona.name}</div>
+                  <div className={`text-xs opacity-70 ${theme.text}`}>
+                    {personaDescriptions[key as keyof typeof personaDescriptions]}
+                  </div>
+                </motion.button>
+              ))}
             <motion.button
               whileHover={{
                 scale: 1.03,
