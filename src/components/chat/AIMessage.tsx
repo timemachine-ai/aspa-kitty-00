@@ -12,6 +12,7 @@ import { GeneratedImage } from './GeneratedImage';
 import { AnimatedShinyText } from '../ui/AnimatedShinyText';
 import { AudioPlayerBubble } from './AudioPlayerBubble';
 import { CodeBlock } from './CodeBlock';
+import { BrandOverride } from '../brand/BrandLogo';
 
 interface AIMessageProps extends MessageProps {
   isChatMode: boolean;
@@ -24,6 +25,7 @@ interface AIMessageProps extends MessageProps {
   isStreamingActive?: boolean;
   loadingPhase?: 'analyzing_photo' | 'thinking' | null;
   specialMode?: string;
+  brandOverride?: BrandOverride;
 }
 
 const SPECIAL_MODE_SHIMMER_TEXT: Record<string, string> = {
@@ -104,7 +106,8 @@ function AIMessageComponent({
   audioUrl,
   isStreamingActive = false,
   loadingPhase,
-  specialMode
+  specialMode,
+  brandOverride
 }: AIMessageProps) {
   const [showReasoning, setShowReasoning] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -197,7 +200,7 @@ function AIMessageComponent({
       const timeout = setTimeout(() => {
         setIsRecordingVoice(false);
       }, 3000);
-      
+
       return () => clearTimeout(timeout);
     } else if (audioUrl && content) {
       setIsRecordingVoice(false);
@@ -365,7 +368,7 @@ function AIMessageComponent({
               gradientAnimationDuration={2}
               textClassName="text-base"
               className="py-1"
-              style={{ 
+              style={{
                 fontFamily: 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif',
                 fontSize: '16px'
               }}
@@ -434,7 +437,7 @@ function AIMessageComponent({
             <div className="flex flex-col gap-1">
               {/* Persona name with streaming indicator */}
               <div className={`text-xs font-medium ${personaColor} opacity-60 flex items-center gap-2`}>
-                {AI_PERSONAS[displayPersona].name}
+                {brandOverride?.personaName || AI_PERSONAS[displayPersona].name}
                 {isStreamingActive && (
                   <motion.div
                     animate={{ opacity: [0.3, 1, 0.3] }}
@@ -477,11 +480,10 @@ function AIMessageComponent({
               </div>
             </div>
           ) : (
-            <div className={`${theme.text} ${
-              isChatMode
+            <div className={`${theme.text} ${isChatMode
                 ? 'text-base sm:text-lg'
                 : 'text-xl sm:text-2xl md:text-3xl'
-            } w-full max-w-4xl mx-auto text-center`}>
+              } w-full max-w-4xl mx-auto text-center`}>
               {cleanContent ? (
                 <>
                   <ReactMarkdown

@@ -5,6 +5,7 @@ import { AIMessage } from './AIMessage';
 import { UserMessage } from './UserMessage';
 import { Message } from '../../types/chat';
 import { AI_PERSONAS } from '../../config/constants';
+import { BrandOverride } from '../brand/BrandLogo';
 
 interface ChatMessageProps extends Message {
   isChatMode: boolean;
@@ -18,6 +19,7 @@ interface ChatMessageProps extends Message {
   currentUserId?: string;
   onReply?: (message: { id: number; content: string; sender_nickname?: string; isAI: boolean }) => void;
   onReact?: (messageId: number, emoji: string) => void;
+  brandOverride?: BrandOverride;
 }
 
 // Quick react emoji options
@@ -50,7 +52,8 @@ export function ChatMessage({
   reactions,
   specialMode,
   onReply,
-  onReact
+  onReact,
+  brandOverride
 }: ChatMessageProps) {
   const [showActions, setShowActions] = useState(false);
   const [actionsLocked, setActionsLocked] = useState(false); // For mobile click-to-lock
@@ -253,6 +256,7 @@ export function ChatMessage({
           isStreamingActive={streamingMessageId === id}
           loadingPhase={streamingMessageId === id ? loadingPhase : undefined}
           specialMode={specialMode}
+          brandOverride={brandOverride}
         />
         {renderReactions()}
         {renderActions()}

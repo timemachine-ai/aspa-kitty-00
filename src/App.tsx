@@ -801,6 +801,7 @@ function MainChatPage({ groupChatId, brandOverride, backgroundClass: customBackg
                   currentUserId={user?.id}
                   onReply={isCollaborative ? handleReply : undefined}
                   onReact={isCollaborative ? handleReact : undefined}
+                  brandOverride={brandOverride}
                 />
               ) : (
                 <StageMode
@@ -881,7 +882,8 @@ function AppContent() {
             brandOverride={{
               name: 'Rêveoulé',
               textColorClass: 'text-[#59090C]',
-              glowColor: 'transparent'
+              glowColor: 'transparent',
+              personaName: 'Skin Advisor'
             }}
             backgroundClass="reveoule-bg"
           />

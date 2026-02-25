@@ -7,6 +7,7 @@ import { Message } from '../../types/chat';
 import { AI_PERSONAS } from '../../config/constants';
 import { useTheme } from '../../context/ThemeContext';
 import { FlipWords } from '../ui/FlipWords';
+import { BrandOverride } from '../brand/BrandLogo';
 
 interface ReplyTo {
   id: number;
@@ -26,6 +27,7 @@ interface ChatModeProps {
   currentUserId?: string;
   onReply?: (message: ReplyTo) => void;
   onReact?: (messageId: number, emoji: string) => void;
+  brandOverride?: BrandOverride;
 }
 
 export function ChatMode({
@@ -38,7 +40,8 @@ export function ChatMode({
   isGroupMode,
   currentUserId,
   onReply,
-  onReact
+  onReact,
+  brandOverride
 }: ChatModeProps) {
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -203,6 +206,7 @@ export function ChatMode({
                     currentUserId={currentUserId}
                     onReply={onReply}
                     onReact={onReact}
+                    brandOverride={brandOverride}
                   />
                 </div>
               );

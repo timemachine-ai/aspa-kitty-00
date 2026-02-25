@@ -12,6 +12,7 @@ export interface BrandOverride {
   watermark?: string;
   textColorClass?: string;
   glowColor?: string;
+  personaName?: string;
 }
 
 interface BrandLogoProps {

@@ -284,7 +284,6 @@ body {
 
 /* Action Buttons (Send, Voice, Plus) */
 #reveoule-theme form button.rounded-full.group,
-#reveoule-theme button.rounded-full.text-white\/50,
 #reveoule-theme .VoiceRecorder-button {
   background: #370506 !important;
   border: 1px solid #E5DED6 !important;
@@ -293,7 +292,6 @@ body {
 }
 
 #reveoule-theme form button.rounded-full.group:hover,
-#reveoule-theme button.rounded-full.text-white\/50:hover,
 #reveoule-theme .VoiceRecorder-button:hover {
   background: #2b0405 !important;
   border-color: #FFFFFF !important;
@@ -302,7 +300,6 @@ body {
 
 /* Icons inside overrides */
 #reveoule-theme form button.rounded-full.group svg,
-#reveoule-theme button.rounded-full.text-white\/50 svg,
 #reveoule-theme .VoiceRecorder-button svg {
   color: #E5DED6 !important;
 }
@@ -325,5 +322,29 @@ body {
 
 #reveoule-theme button[aria-label="Open Group Chat"] svg,
 #reveoule-theme button[aria-label="Sign Up"] svg {
+  color: #59090C !important;
+}
+
+/* Chat Bubbles Optimization */
+/* User Message Bubble */
+#reveoule-theme .bg-purple-500\/10.border-purple-500\/20,
+#reveoule-theme .bg-blue-500\/10.border-blue-500\/20 {
+  background: rgba(89, 9, 12, 0.08) !important;
+  border-color: rgba(89, 9, 12, 0.2) !important;
+  box-shadow: none !important;
+  color: #000000 !important;
+}
+
+/* Make sure text inside User Bubble is black */
+#reveoule-theme .bg-purple-500\/10.border-purple-500\/20 *,
+#reveoule-theme .bg-blue-500\/10.border-blue-500\/20 * {
+  color: #000000 !important;
+}
+
+/* AI Message Bubble formatting - Enforce Royal Crimson Red */
+#reveoule-theme .prose,
+#reveoule-theme .prose p,
+#reveoule-theme .prose li,
+#reveoule-theme .prose strong {
   color: #59090C !important;
 }
