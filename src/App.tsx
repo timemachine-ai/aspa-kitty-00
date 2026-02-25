@@ -881,8 +881,8 @@ function AppContent() {
             brandOverride={{
               name: 'Rêveoulé',
               watermark: 'by TimeMachine',
-              textColorClass: 'text-[#E5DED6]',
-              glowColor: 'rgba(229,222,214,0.6)'
+              textColorClass: 'text-[#59090C]',
+              glowColor: 'transparent'
             }}
             backgroundClass="reveoule-bg"
           />

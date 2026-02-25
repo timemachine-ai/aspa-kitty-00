@@ -6,13 +6,15 @@
 @import './stylesheet/UniversalGlassKit.css';
 
 /* Prevent white borders on iOS */
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
   min-height: -webkit-fill-available;
   overflow: hidden;
-  background: #000000; /* Solid black to match App.tsx and remove gradient */
+  background: #000000;
+  /* Solid black to match App.tsx and remove gradient */
   font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
@@ -81,21 +83,25 @@ html, body {
 
 /* Enhanced glass morphism */
 .glass-morphism {
-  background: rgba(200, 200, 255, 0.1); /* Slight blue tint for frosted glass */
+  background: rgba(200, 200, 255, 0.1);
+  /* Slight blue tint for frosted glass */
   backdrop-filter: blur(20px) saturate(200%);
   -webkit-backdrop-filter: blur(20px) saturate(200%);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 
-    0 8px 16px rgba(0, 0, 0, 0.1), /* Softer, diffused shadow */
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08); /* Inner highlight */
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    /* Softer, diffused shadow */
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  /* Inner highlight */
 }
 
 .glass-button {
-  background: rgba(200, 200, 255, 0.1); /* Match the tint */
+  background: rgba(200, 200, 255, 0.1);
+  /* Match the tint */
   backdrop-filter: blur(15px) saturate(200%);
   -webkit-backdrop-filter: blur(15px) saturate(200%);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 
+  box-shadow:
     0 2px 4px rgba(0, 0, 0, 0.1),
     inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -105,15 +111,16 @@ html, body {
   background: rgba(200, 200, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-1px);
-  box-shadow: 
+  box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.15),
-    0 0 8px rgba(255, 255, 255, 0.2), /* Subtle glow on hover */
+    0 0 8px rgba(255, 255, 255, 0.2),
+    /* Subtle glow on hover */
     inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 .glass-button:active {
   transform: translateY(0);
-  box-shadow: 
+  box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.1),
     inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
@@ -134,14 +141,12 @@ html, body {
   content: '';
   position: absolute;
   inset: -1px;
-  background: linear-gradient(
-    45deg,
-    rgba(255, 255, 255, 0.1),
-    rgba(255, 255, 255, 0.05) 30%,
-    rgba(255, 255, 255, 0) 50%,
-    rgba(255, 255, 255, 0.05) 70%,
-    rgba(255, 255, 255, 0.1)
-  );
+  background: linear-gradient(45deg,
+      rgba(255, 255, 255, 0.1),
+      rgba(255, 255, 255, 0.05) 30%,
+      rgba(255, 255, 255, 0) 50%,
+      rgba(255, 255, 255, 0.05) 70%,
+      rgba(255, 255, 255, 0.1));
   border-radius: inherit;
   z-index: -1;
   transition: opacity 0.3s ease;
@@ -154,9 +159,12 @@ html, body {
 
 /* Enhanced animations */
 @keyframes subtle-float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-4px);
   }
@@ -167,10 +175,13 @@ html, body {
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.5;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.8;
     transform: scale(1.05);
@@ -183,11 +194,9 @@ html, body {
 
 /* Enhanced text styles */
 .text-gradient {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.95),
-    rgba(255, 255, 255, 0.7)
-  );
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.95),
+      rgba(255, 255, 255, 0.7));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -210,62 +219,108 @@ html, body {
   .safe-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
-  
+
   .safe-top {
     padding-top: max(1rem, env(safe-area-inset-top));
-}
+  }
 }
 
-/* Rêveoulé Premium Custom Theme */
+/* Rêveoulé Luxury Minimalist Light Theme */
 .reveoule-bg {
-  /* Deep, rich dark cherry base with elegant radial lighting */
-  background: radial-gradient(circle at 50% 0%, rgba(229, 222, 214, 0.08) 0%, transparent 50%),
-              radial-gradient(circle at 50% 100%, rgba(89, 9, 12, 0.8) 0%, transparent 80%),
-              #130203; /* Very dark base to prevent muddiness */
+  /* Clean white to warm beige minimalist background */
+  background: linear-gradient(180deg, #FFFFFF 0%, #E5DED6 100%);
 }
 
-/* Override all default persona accents to match Rêveoulé brand */
+/* Override global text to Deep Crimson */
+#reveoule-theme {
+  color: #59090C !important;
+}
+
+/* Primary headings and brand logo */
+#reveoule-theme h1,
+#reveoule-theme .font-bold {
+  color: #59090C !important;
+  text-shadow: none !important;
+}
+
+/* Subtitles, watermarks, muted text */
+#reveoule-theme .text-white\/50,
+#reveoule-theme .text-neutral-400,
+#reveoule-theme .opacity-50,
+#reveoule-theme .text-gray-400,
+#reveoule-theme .text-white\/60 {
+  color: rgba(89, 9, 12, 0.6) !important;
+}
+
+/* Override persona accents (e.g. "brighter" text) */
 #reveoule-theme .text-purple-400,
 #reveoule-theme .text-pink-400,
 #reveoule-theme .text-cyan-400 {
-  color: #E5DED6 !important;
-  text-shadow: 0 0 15px rgba(229, 222, 214, 0.3) !important;
+  color: #59090C !important;
+  text-shadow: none !important;
 }
 
-#reveoule-theme .bg-purple-500\/20,
-#reveoule-theme .bg-gradient-to-r.from-purple-500 {
-  background: rgba(229, 222, 214, 0.1) !important;
+/* Backgrounds and blur effects */
+#reveoule-theme .bg-white\/5,
+#reveoule-theme .bg-white\/10,
+#reveoule-theme .bg-purple-500\/20 {
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(89, 9, 12, 0.1) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02) !important;
 }
 
-#reveoule-theme .border-purple-500\/30 {
-  border-color: rgba(229, 222, 214, 0.2) !important;
+/* Textarea and Inputs */
+#reveoule-theme textarea {
+  background: #FFFFFF !important;
+  border: 1px solid rgba(89, 9, 12, 0.15) !important;
+  color: #59090C !important;
+  box-shadow: 0 4px 20px rgba(89, 9, 12, 0.03) !important;
 }
 
-/* Chat Input and Quick Access Buttons */
+#reveoule-theme textarea::placeholder {
+  color: rgba(89, 9, 12, 0.4) !important;
+}
+
+/* Action Buttons (Send, Voice, Plus) */
 #reveoule-theme form button.rounded-full.group,
 #reveoule-theme button.rounded-full.text-white\/50 {
-  background: linear-gradient(135deg, rgba(89, 9, 12, 0.4), rgba(255, 255, 255, 0.03)) !important;
-  border-color: rgba(229, 222, 214, 0.15) !important;
-  box-shadow: 0 0 15px rgba(89, 9, 12, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-  color: #E5DED6 !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(89, 9, 12, 0.15) !important;
+  box-shadow: 0 2px 10px rgba(89, 9, 12, 0.04) !important;
+  color: #59090C !important;
 }
 
 #reveoule-theme form button.rounded-full.group:hover,
 #reveoule-theme button.rounded-full.text-white\/50:hover {
-  background: linear-gradient(135deg, rgba(89, 9, 12, 0.6), rgba(255, 255, 255, 0.08)) !important;
-  border-color: rgba(229, 222, 214, 0.3) !important;
-  color: #FFFFFF !important;
+  background: #FDFBF9 !important;
+  border-color: rgba(89, 9, 12, 0.3) !important;
+  transform: translateY(-1px);
 }
 
-/* Icons inside the overrides */
+/* Icons inside overrides */
 #reveoule-theme form button.rounded-full.group svg,
 #reveoule-theme button.rounded-full.text-white\/50 svg {
-  color: #E5DED6 !important;
+  color: #59090C !important;
 }
 
-/* Focus rings */
+/* Remove glow borders for inputs */
 #reveoule-theme .ring-purple-500\/50,
 #reveoule-theme *:focus {
-  --tw-ring-color: rgba(229, 222, 214, 0.2) !important;
-  border-color: rgba(229, 222, 214, 0.2) !important;
+  --tw-ring-color: rgba(89, 9, 12, 0.15) !important;
+  border-color: rgba(89, 9, 12, 0.3) !important;
+}
+
+/* Top buttons (Group Chat, Sign Up) */
+#reveoule-theme button[aria-label="Open Group Chat"],
+#reveoule-theme button[aria-label="Sign Up"] {
+  background: #FFFFFF !important;
+  color: #59090C !important;
+  border: 1px solid rgba(89, 9, 12, 0.1) !important;
+  box-shadow: 0 2px 10px rgba(89, 9, 12, 0.03) !important;
+}
+
+#reveoule-theme button[aria-label="Open Group Chat"] svg,
+#reveoule-theme button[aria-label="Sign Up"] svg {
+  color: #59090C !important;
 }
