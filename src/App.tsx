@@ -467,6 +467,7 @@ function MainChatPage({ groupChatId, brandOverride, backgroundClass: customBackg
 
   return (
     <div
+      id={brandOverride ? 'reveoule-theme' : undefined}
       className={`min-h-screen ${backgroundClass} ${theme.text} relative overflow-hidden transition-all duration-700`}
       style={{ minHeight: 'calc(var(--vh, 1vh) * 100)' }}
     >
@@ -883,7 +884,7 @@ function AppContent() {
               textColorClass: 'text-[#E5DED6]',
               glowColor: 'rgba(229,222,214,0.6)'
             }}
-            backgroundClass="bg-gradient-to-t from-[#59090C] to-[#E5DED6]"
+            backgroundClass="reveoule-bg"
           />
         </>
       } />
