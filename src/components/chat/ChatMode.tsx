@@ -163,7 +163,7 @@ export function ChatMode({
                       whileHover={{ scale: 1.04, y: -1 }}
                       whileTap={{ scale: 0.97 }}
                       onClick={() => navigate(item.route)}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-full text-white/50 hover:text-white/80 transition-colors duration-200"
+                      className="reveoule-action-pill flex items-center gap-2 px-4 py-2.5 rounded-full text-white/50 hover:text-white/80 transition-colors duration-200"
                       style={{
                         background: 'rgba(255, 255, 255, 0.04)',
                         backdropFilter: 'blur(20px)',
