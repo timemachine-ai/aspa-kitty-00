@@ -254,6 +254,15 @@ export const CONTOUR_COMMANDS: ContourCommand[] = [
 
   // Modes
   {
+    id: 'snippets',
+    name: 'Snippets Manager',
+    description: 'Manage and copy text snippets/prompts',
+    icon: 'FileText',
+    category: 'productivity',
+    keywords: ['snippets', 'templates', 'prompts', 'text', 'expansion'],
+    action: { type: 'inline', handler: 'snippets' },
+  },
+  {
     id: 'web-coding',
     name: 'Web Coding Mode',
     description: 'Start a web coding session',

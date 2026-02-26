@@ -39,6 +39,11 @@ import {
   testRegex,
   searchCommands,
   groupByCategory,
+  createSnippetResult,
+  detectNavigation,
+  detectQuickNote,
+  detectQuickEvent,
+  detectWebViewer,
 } from './moduleRegistry';
 
 export type { ModuleId, ModuleData, ContourState, ContourMode };
@@ -125,7 +130,23 @@ export function useContour() {
     const graph = detectGraph(trimmed);
     if (graph) return { id: 'graph', focused: false, graph };
 
-    // 15. Math (broadest match, lowest priority)
+    // 15. Quick Note (/note <text>)
+    const note = detectQuickNote(trimmed);
+    if (note) return { id: 'quick-note', focused: false, quickNote: note };
+
+    // 16. Quick Event (/event <text>)
+    const event = detectQuickEvent(trimmed);
+    if (event) return { id: 'quick-event', focused: false, quickEvent: event };
+
+    // 17. Navigation command (go <page>)
+    const nav = detectNavigation(trimmed);
+    if (nav) return { id: 'navigation', focused: false, navigation: nav };
+
+    // 18. Web Viewer (/search, /google, or raw URL)
+    const web = detectWebViewer(trimmed);
+    if (web) return { id: 'web-viewer', focused: false, webViewer: web };
+
+    // 19. Math (broadest match, lowest priority)
     if (isMathExpression(trimmed)) {
       const calc = evaluateMath(trimmed);
       if (calc) return { id: 'calculator', focused: false, calculator: calc };
@@ -227,6 +248,9 @@ export function useContour() {
         if (!trimmed) return { id: 'graph', focused: true };
         const graph = detectGraph(trimmed);
         return { id: 'graph', focused: true, graph: graph || undefined };
+      }
+      case 'snippets': {
+        return { id: 'snippets', focused: true, snippets: createSnippetResult() };
       }
       case 'help': {
         return { id: 'help', focused: true };

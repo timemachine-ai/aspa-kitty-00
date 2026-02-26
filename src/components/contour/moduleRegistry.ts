@@ -33,6 +33,11 @@ export type { UrlEncodeResult } from './modules/urlEncoder';
 export type { HashResult } from './modules/hashGenerator';
 export type { RegexResult } from './modules/regexTester';
 export type { GraphResult } from './modules/graphPlotter';
+export type { SnippetResult } from './modules/snippetManager';
+export type { NavigationResult } from './modules/appNavigation';
+export type { QuickNoteResult } from './modules/quickNote';
+export type { QuickEventResult } from './modules/quickEvent';
+export type { WebViewerResult } from './modules/webViewer';
 
 // ─── Detect functions (re-exported) ───────────────────────────
 
@@ -54,6 +59,11 @@ export { detectUrlEncoded, processUrl } from './modules/urlEncoder';
 export { createHashResult, resolveHash } from './modules/hashGenerator';
 export { testRegex } from './modules/regexTester';
 export { detectGraph } from './modules/graphPlotter';
+export { createSnippetResult } from './modules/snippetManager';
+export { detectNavigation } from './modules/appNavigation';
+export { detectQuickNote } from './modules/quickNote';
+export { detectQuickEvent } from './modules/quickEvent';
+export { detectWebViewer } from './modules/webViewer';
 
 // ─── Core types ───────────────────────────────────────────────
 
@@ -75,6 +85,11 @@ import type { UrlEncodeResult } from './modules/urlEncoder';
 import type { HashResult } from './modules/hashGenerator';
 import type { RegexResult } from './modules/regexTester';
 import type { GraphResult } from './modules/graphPlotter';
+import type { SnippetResult } from './modules/snippetManager';
+import type { NavigationResult } from './modules/appNavigation';
+import type { QuickNoteResult } from './modules/quickNote';
+import type { QuickEventResult } from './modules/quickEvent';
+import type { WebViewerResult } from './modules/webViewer';
 
 import { ContourCommand, searchCommands, groupByCategory } from './modules/commands';
 export { searchCommands, groupByCategory };
@@ -84,8 +99,12 @@ export type ModuleId =
   | 'calculator' | 'units' | 'currency' | 'timezone' | 'color'
   | 'date' | 'timer' | 'random' | 'wordcount'
   | 'translator' | 'dictionary'
+  | 'translator' | 'dictionary'
   | 'lorem' | 'json-format' | 'base64' | 'url-encode' | 'hash' | 'regex'
   | 'graph'
+  | 'snippets' | 'navigation'
+  | 'quick-note' | 'quick-event'
+  | 'web-viewer'
   | 'help';
 
 export type ContourMode = 'hidden' | 'commands' | 'module';
@@ -111,6 +130,11 @@ export interface ModuleData {
   hash?: HashResult;
   regex?: RegexResult;
   graph?: GraphResult;
+  snippets?: SnippetResult;
+  navigation?: NavigationResult;
+  quickNote?: QuickNoteResult;
+  quickEvent?: QuickEventResult;
+  webViewer?: WebViewerResult;
 }
 
 export interface ContourState {
@@ -142,6 +166,7 @@ export const HANDLER_TO_MODULE: Record<string, ModuleId> = {
   'hash': 'hash',
   'regex': 'regex',
   'graph-plotter': 'graph',
+  'snippets': 'snippets',
   'help': 'help',
 };
 
@@ -152,23 +177,25 @@ export const MODULE_META: Record<ModuleId, {
   label: string;
   placeholder: string;
 }> = {
-  calculator:    { icon: Calculator,      label: 'Calculator',       placeholder: 'Type a math expression... (e.g., 5+3*2)' },
-  units:         { icon: ArrowLeftRight,  label: 'Unit Converter',   placeholder: 'e.g., 5km to miles, 100f to c, 2kg to lb' },
-  currency:      { icon: DollarSign,      label: 'Currency Converter', placeholder: 'e.g., 50 usd to eur, 100 gbp to jpy' },
-  timezone:      { icon: Globe,           label: 'Timezone Converter', placeholder: 'e.g., 3pm EST in IST, now in Tokyo' },
-  color:         { icon: Palette,         label: 'Color Converter',  placeholder: 'e.g., #ff5733, rgb(255,87,51), coral' },
-  date:          { icon: Calendar,        label: 'Date Calculator',  placeholder: 'e.g., days until Dec 25, 30 days from now' },
-  timer:         { icon: Timer,           label: 'Timer',            placeholder: 'e.g., 5m, 1h30m, 90s, 10:00' },
-  random:        { icon: Shuffle,         label: 'Random Generator', placeholder: 'e.g., uuid, password 16, roll 2d6, flip coin, random 1-100' },
-  wordcount:     { icon: Type,            label: 'Word Counter',     placeholder: 'Type or paste text to count words, characters, sentences...' },
-  translator:    { icon: Globe,           label: 'Translator',       placeholder: 'e.g., food in bangla, hello in spanish, translate thanks to french' },
-  dictionary:    { icon: BookOpen,        label: 'Dictionary',       placeholder: 'e.g., perplexed meaning, define serendipity' },
-  lorem:         { icon: FileText,        label: 'Lorem Ipsum',      placeholder: 'e.g., lorem 3p, lorem 5s, lorem 50w' },
-  'json-format': { icon: Braces,          label: 'JSON Formatter',   placeholder: 'Paste JSON to format or validate...' },
-  base64:        { icon: Lock,            label: 'Base64',           placeholder: 'Type text to encode, or paste Base64 to decode' },
-  'url-encode':  { icon: Link,            label: 'URL Encoder',      placeholder: 'Type text to encode, or paste encoded URL to decode' },
-  hash:          { icon: Hash,            label: 'Hash Generator',   placeholder: 'Type text to generate MD5, SHA-1, SHA-256 hashes' },
-  regex:         { icon: FileSearch,      label: 'Regex Tester',     placeholder: 'Type a regex pattern to test...' },
-  graph:         { icon: TrendingUp,      label: 'Graph Plotter',    placeholder: 'Type an equation, e.g. sin(x) · x^2+3x+7 · y=2x+1' },
-  help:          { icon: HelpCircle,      label: 'Help',             placeholder: '' },
+  calculator: { icon: Calculator, label: 'Calculator', placeholder: 'Type a math expression... (e.g., 5+3*2)' },
+  units: { icon: ArrowLeftRight, label: 'Unit Converter', placeholder: 'e.g., 5km to miles, 100f to c, 2kg to lb' },
+  currency: { icon: DollarSign, label: 'Currency Converter', placeholder: 'e.g., 50 usd to eur, 100 gbp to jpy' },
+  timezone: { icon: Globe, label: 'Timezone Converter', placeholder: 'e.g., 3pm EST in IST, now in Tokyo' },
+  color: { icon: Palette, label: 'Color Converter', placeholder: 'e.g., #ff5733, rgb(255,87,51), coral' },
+  date: { icon: Calendar, label: 'Date Calculator', placeholder: 'e.g., days until Dec 25, 30 days from now' },
+  timer: { icon: Timer, label: 'Timer', placeholder: 'e.g., 5m, 1h30m, 90s, 10:00' },
+  random: { icon: Shuffle, label: 'Random Generator', placeholder: 'e.g., uuid, password 16, roll 2d6, flip coin, random 1-100' },
+  wordcount: { icon: Type, label: 'Word Counter', placeholder: 'Type or paste text to count words, characters, sentences...' },
+  translator: { icon: Globe, label: 'Translator', placeholder: 'e.g., food in bangla, hello in spanish, translate thanks to french' },
+  dictionary: { icon: BookOpen, label: 'Dictionary', placeholder: 'e.g., perplexed meaning, define serendipity' },
+  lorem: { icon: FileText, label: 'Lorem Ipsum', placeholder: 'e.g., lorem 3p, lorem 5s, lorem 50w' },
+  'json-format': { icon: Braces, label: 'JSON Formatter', placeholder: 'Paste JSON to format or validate...' },
+  base64: { icon: Lock, label: 'Base64', placeholder: 'Type text to encode, or paste Base64 to decode' },
+  'url-encode': { icon: Link, label: 'URL Encoder', placeholder: 'Type text to encode, or paste encoded URL to decode' },
+  hash: { icon: Hash, label: 'Hash Generator', placeholder: 'Type text to generate MD5, SHA-1, SHA-256 hashes' },
+  regex: { icon: FileSearch, label: 'Regex Tester', placeholder: 'Type a regex pattern to test...' },
+  graph: { icon: TrendingUp, label: 'Graph Plotter', placeholder: 'Type an equation, e.g. sin(x) · x^2+3x+7 · y=2x+1' },
+  snippets: { icon: FileText, label: 'Snippets', placeholder: 'Manage your text snippets and prompts...' },
+  navigation: { icon: FileText, label: 'Navigation', placeholder: 'Navigate across the app...' },
+  help: { icon: HelpCircle, label: 'Help', placeholder: '' },
 };

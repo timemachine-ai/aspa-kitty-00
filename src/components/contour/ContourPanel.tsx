@@ -20,6 +20,12 @@ import {
   GraphView,
   getIcon,
 } from './views';
+import { SnippetsView } from './views/SnippetsView';
+import { NavigationView } from './views/NavigationView';
+import { QuickNoteView } from './views/QuickNoteView';
+import { QuickEventView } from './views/QuickEventView';
+import { WebViewerView } from './views/WebViewerView';
+import { useNavigate } from 'react-router-dom';
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -81,6 +87,8 @@ function ModuleContent({
   onTimerReset?: () => void;
   onSetTimerDuration?: (seconds: number) => void;
 }) {
+  const navigate = useNavigate();
+
   switch (module.id) {
     case 'graph':
       return <GraphView module={module} accent={accent} />;
@@ -123,6 +131,16 @@ function ModuleContent({
       return <HashView module={module} accent={accent} onCopyValue={onCopyValue} />;
     case 'regex':
       return <RegexView module={module} accent={accent} onCopyValue={onCopyValue} />;
+    case 'snippets':
+      return <SnippetsView module={module} accent={accent} onCopyValue={onCopyValue} />;
+    case 'navigation':
+      return <NavigationView module={module} accent={accent} onNavigate={(path) => { navigate(path); }} />;
+    case 'quick-note':
+      return <QuickNoteView module={module} accent={accent} />;
+    case 'quick-event':
+      return <QuickEventView module={module} accent={accent} />;
+    case 'web-viewer':
+      return <WebViewerView module={module} accent={accent} />;
     case 'help':
       return <HelpView module={module} accent={accent} />;
     default:
