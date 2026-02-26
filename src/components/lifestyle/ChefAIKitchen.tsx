@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ChefHat, Clock, Flame, CheckCircle2, ArrowLeft, Plus, X, Search, Utensils } from 'lucide-react';
+import { Sparkles, ChefHat, Clock, Flame, ArrowLeft, Plus, X, Search, Utensils } from 'lucide-react';
 import { generateAIResponse } from '../../services/ai/aiProxyService';
 
 interface ChefAIKitchenProps {
@@ -121,12 +121,7 @@ The JSON must perfectly match this structure:
         }
     };
 
-    const toggleCheckIngredient = (idx: number) => {
-        if (!result) return;
-        const newIngredients = [...result.ingredients];
-        newIngredients[idx].checked = !newIngredients[idx].checked;
-        setResult({ ...result, ingredients: newIngredients });
-    };
+    // toggleCheckIngredient removed as it is no longer used
 
     return (
         <motion.div
@@ -347,112 +342,93 @@ The JSON must perfectly match this structure:
                             initial={{ opacity: 0, scale: 0.98 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.6 }}
-                            className="p-8 md:p-12 lg:p-16"
+                            className="w-full max-w-4xl mx-auto bg-[#111] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl my-8 md:my-12"
                         >
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
-                                {/* Left Col: Image & Info */}
-                                <div className="space-y-8">
-                                    <div className="relative aspect-[4/5] lg:aspect-square rounded-[40px] overflow-hidden group shadow-[0_0_50px_rgba(236,72,153,0.2)]">
-                                        <img src={result.image} alt={result.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80" />
+                            <div className="relative h-64 sm:h-80 md:h-96 w-full">
+                                <img
+                                    src={result.image}
+                                    alt={result.title}
+                                    className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-[#111] via-black/40 to-transparent" />
 
-                                        <div className="absolute top-6 left-6 px-4 py-2 rounded-full bg-white/10 backdrop-blur-xl text-white text-xs font-bold uppercase tracking-widest border border-white/20 flex items-center gap-2 shadow-xl">
-                                            <Sparkles className="w-4 h-4 text-pink-400" /> AI Generated
-                                        </div>
-
-                                        <div className="absolute bottom-8 left-8 right-8">
-                                            <h1 className="text-4xl lg:text-5xl font-black text-white mb-4 leading-tight">{result.title}</h1>
-
-                                            <div className="flex gap-4 backdrop-blur-md bg-white/5 p-4 rounded-3xl border border-white/10">
-                                                <div className="flex-1 flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
-                                                        <Clock className="w-5 h-5 text-orange-400" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-white/40 text-[10px] uppercase font-bold tracking-wider mb-0.5">Time</div>
-                                                        <div className="text-white font-semibold">{result.time}</div>
-                                                    </div>
-                                                </div>
-                                                <div className="w-px bg-white/10" />
-                                                <div className="flex-1 flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-pink-500/20 flex items-center justify-center">
-                                                        <Flame className="w-5 h-5 text-pink-400" />
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-white/40 text-[10px] uppercase font-bold tracking-wider mb-0.5">Energy</div>
-                                                        <div className="text-white font-semibold">{result.calories}</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
-                                        <h4 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
-                                            <ChefHat className="w-4 h-4" /> Chef's Note
-                                        </h4>
-                                        <p className="text-white/80 leading-relaxed text-lg">{result.description}</p>
-                                    </div>
+                                <div className="absolute top-6 left-6 px-4 py-2 rounded-full bg-white/10 backdrop-blur-xl text-white text-xs font-bold uppercase tracking-widest border border-white/20 flex items-center gap-2 shadow-xl">
+                                    <Sparkles className="w-4 h-4 text-pink-400" /> AI Generated
                                 </div>
 
-                                {/* Right Col: Ingredients & Steps */}
-                                <div className="space-y-12 py-4">
-                                    {/* Ingredients */}
-                                    <section>
-                                        <h3 className="text-2xl font-black text-white mb-6 flex items-center gap-3">
-                                            Ingredients
-                                            <span className="px-3 py-1 rounded-full bg-white/10 text-white/50 text-sm font-semibold">
-                                                {result.ingredients.filter((i: any) => i.checked).length} / {result.ingredients.length}
-                                            </span>
-                                        </h3>
-                                        <div className="space-y-3">
-                                            {result.ingredients.map((ing: any, idx: number) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => toggleCheckIngredient(idx)}
-                                                    className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all duration-300 group ${ing.checked
-                                                        ? 'bg-white/5 border-white/20'
-                                                        : 'bg-black/30 border-transparent hover:bg-white/5 hover:border-white/10'
-                                                        }`}
-                                                >
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${ing.checked
-                                                            ? 'bg-gradient-to-tr from-orange-500 to-pink-500 scale-110 shadow-[0_0_15px_rgba(236,72,153,0.4)]'
-                                                            : 'bg-white/10 group-hover:bg-white/20'
-                                                            }`}>
-                                                            {ing.checked && <CheckCircle2 className="w-4 h-4 text-white" />}
-                                                        </div>
-                                                        <span className={`text-lg font-medium transition-colors ${ing.checked ? 'text-white/40 line-through' : 'text-white'
-                                                            }`}>
-                                                            {ing.name}
-                                                        </span>
-                                                    </div>
-                                                    <span className={`text-sm font-bold tracking-wider transition-colors ${ing.checked ? 'text-white/20' : 'text-orange-400'
-                                                        }`}>
-                                                        {ing.amount}
-                                                    </span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </section>
+                                <div className="absolute bottom-6 left-6 right-6">
+                                    <div className="flex flex-wrap gap-2 mb-3">
+                                        <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white/90 text-sm font-medium border border-white/10">
+                                            {activeCraving || 'Surprise'}
+                                        </span>
+                                    </div>
+                                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight">
+                                        {result.title}
+                                    </h2>
+                                </div>
+                            </div>
 
-                                    {/* Instructions */}
-                                    <section>
-                                        <h3 className="text-2xl font-black text-white mb-8">Instructions</h3>
-                                        <div className="space-y-8 relative before:absolute before:inset-y-0 before:left-5 before:w-px before:bg-white/10">
-                                            {result.instructions.map((step: string, idx: number) => (
-                                                <div key={idx} className="flex gap-6 relative">
-                                                    <div className="w-10 h-10 shrink-0 rounded-full bg-black border-2 border-white/10 flex items-center justify-center text-white/40 font-black text-sm relative z-10 
-                                                                    Shadow-[0_0_20px_rgba(0,0,0,0.5)] group-hover:border-pink-500/50 group-hover:text-pink-400 transition-colors">
-                                                        {idx + 1}
-                                                    </div>
-                                                    <p className="text-white/70 leading-relaxed text-lg pt-1">
-                                                        {step}
-                                                    </p>
-                                                </div>
-                                            ))}
+                            <div className="p-6 md:p-10 grid grid-cols-1 md:grid-cols-3 gap-10">
+                                <div className="md:col-span-1 border-r-0 md:border-r border-white/10 pr-0 md:pr-10">
+                                    <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                        <Flame className="w-5 h-5 text-orange-400" /> Details
+                                    </h3>
+                                    <div className="space-y-4 text-white/70">
+                                        <div className="flex items-center gap-3">
+                                            <ChefHat className="w-5 h-5 text-white/40" />
+                                            <span>TimeMachine AI</span>
                                         </div>
-                                    </section>
+                                        <div className="flex items-center gap-3">
+                                            <Clock className="w-5 h-5 text-white/40" />
+                                            <span>{result.time}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <Flame className="w-5 h-5 text-orange-400" />
+                                            <span>{result.calories}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <span className="px-2 py-1 rounded-md bg-white/10 text-xs font-bold uppercase tracking-wider text-white">
+                                                {result.difficulty}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <h3 className="text-xl font-bold text-white mt-10 mb-6 flex items-center gap-2">
+                                        Ingredients
+                                    </h3>
+                                    <ul className="space-y-3">
+                                        {(result.ingredients || []).map((ing: any, i: number) => (
+                                            <li key={i} className="flex gap-3 text-white/80">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-2 shrink-0"></span>
+                                                <span className="flex-1">{ing.amount ? `${ing.amount} ` : ''}{ing.name}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5 mb-8 mt-2">
+                                        <h4 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-2">
+                                            <Sparkles className="w-4 h-4 text-pink-400" /> Chef's Note
+                                        </h4>
+                                        <p className="text-white/80 leading-relaxed text-[15px]">{result.description}</p>
+                                    </div>
+
+                                    <h3 className="text-2xl font-bold text-white mb-8 flex items-center gap-2">
+                                        <ChefHat className="w-6 h-6 text-orange-400" /> Directions
+                                    </h3>
+                                    <div className="space-y-8">
+                                        {(result.instructions || []).map((step: string, i: number) => (
+                                            <div key={i} className="flex gap-5">
+                                                <div className="shrink-0 w-8 h-8 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center font-bold text-sm">
+                                                    {i + 1}
+                                                </div>
+                                                <p className="text-white/80 leading-relaxed pt-1">
+                                                    {step}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
