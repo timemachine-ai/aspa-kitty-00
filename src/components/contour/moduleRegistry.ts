@@ -167,6 +167,9 @@ export const HANDLER_TO_MODULE: Record<string, ModuleId> = {
   'regex': 'regex',
   'graph-plotter': 'graph',
   'snippets': 'snippets',
+  'web-viewer': 'web-viewer',
+  'quick-note': 'quick-note',
+  'quick-event': 'quick-event',
   'help': 'help',
 };
 
@@ -197,5 +200,8 @@ export const MODULE_META: Record<ModuleId, {
   graph: { icon: TrendingUp, label: 'Graph Plotter', placeholder: 'Type an equation, e.g. sin(x) · x^2+3x+7 · y=2x+1' },
   snippets: { icon: FileText, label: 'Snippets', placeholder: 'Manage your text snippets and prompts...' },
   navigation: { icon: FileText, label: 'Navigation', placeholder: 'Navigate across the app...' },
+  'quick-note': { icon: FileText, label: 'Quick Note', placeholder: 'Type notes...' },
+  'quick-event': { icon: Calendar, label: 'Quick Event', placeholder: 'Type event...' },
+  'web-viewer': { icon: Globe, label: 'Web Viewer', placeholder: 'Search DuckDuckGo or go to URL...' },
   help: { icon: HelpCircle, label: 'Help', placeholder: '' },
 };

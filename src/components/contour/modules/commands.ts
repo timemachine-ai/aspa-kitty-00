@@ -254,6 +254,33 @@ export const CONTOUR_COMMANDS: ContourCommand[] = [
 
   // Modes
   {
+    id: 'web-viewer',
+    name: 'Web Search',
+    description: 'Type /search <query> or /google <query> or just a URL',
+    icon: 'Globe',
+    category: 'search',
+    keywords: ['web', 'search', 'google', 'duckduckgo', 'browser', 'internet'],
+    action: { type: 'inline', handler: 'web-viewer' },
+  },
+  {
+    id: 'quick-note',
+    name: 'Quick Note',
+    description: 'Type /note <text> to quickly save thoughts',
+    icon: 'FileText',
+    category: 'productivity',
+    keywords: ['note', 'capture', 'quick', 'thought', 'write'],
+    action: { type: 'inline', handler: 'quick-note' },
+  },
+  {
+    id: 'quick-event',
+    name: 'Quick Event',
+    description: 'Type /event <text> to schedule quickly',
+    icon: 'Calendar',
+    category: 'productivity',
+    keywords: ['event', 'calendar', 'schedule', 'meeting'],
+    action: { type: 'inline', handler: 'quick-event' },
+  },
+  {
     id: 'snippets',
     name: 'Snippets Manager',
     description: 'Manage and copy text snippets/prompts',

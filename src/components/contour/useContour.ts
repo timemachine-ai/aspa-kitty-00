@@ -252,10 +252,29 @@ export function useContour() {
       case 'snippets': {
         return { id: 'snippets', focused: true, snippets: createSnippetResult() };
       }
+      case 'quick-note': {
+        if (!trimmed) return { id: 'quick-note', focused: true };
+        return { id: 'quick-note', focused: true, quickNote: { content: trimmed } };
+      }
+      case 'quick-event': {
+        if (!trimmed) return { id: 'quick-event', focused: true };
+        const event = detectQuickEvent(`/event ${trimmed}`);
+        return { id: 'quick-event', focused: true, quickEvent: event || undefined };
+      }
+      case 'web-viewer': {
+        if (!trimmed) return { id: 'web-viewer', focused: true };
+        // Very basic parsing for focused mode (default to google search if not url)
+        const isUrl = trimmed.match(/^(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,})(?:\/.*)?$/i);
+        const finalUrl = isUrl
+          ? (trimmed.startsWith('http') ? trimmed : `https://${trimmed}`)
+          : `https://duckduckgo.com/?q=${encodeURIComponent(trimmed)}&ia=web`;
+        return { id: 'web-viewer', focused: true, webViewer: { url: finalUrl, query: isUrl ? undefined : trimmed } };
+      }
       case 'help': {
         return { id: 'help', focused: true };
       }
     }
+    return null;
   }, []);
 
   const analyze = useCallback((input: string) => {
@@ -276,6 +295,17 @@ export function useContour() {
 
       // "/" command palette
       if (trimmed.startsWith('/')) {
+        // 1. Intercept explicit slash commands (Quick Note, Quick Event, Web Viewer)
+        const note = detectQuickNote(trimmed);
+        if (note) return { mode: 'module' as const, module: { id: 'quick-note', focused: false, quickNote: note }, commands: [], commandQuery: '', selectedIndex: 0 };
+
+        const event = detectQuickEvent(trimmed);
+        if (event) return { mode: 'module' as const, module: { id: 'quick-event', focused: false, quickEvent: event }, commands: [], commandQuery: '', selectedIndex: 0 };
+
+        const web = detectWebViewer(trimmed);
+        if (web) return { mode: 'module' as const, module: { id: 'web-viewer', focused: false, webViewer: web }, commands: [], commandQuery: '', selectedIndex: 0 };
+
+        // 2. Normal "/" command palette search
         const query = trimmed.slice(1);
         const commands = searchCommands(query);
         return { mode: 'commands' as const, module: null, commands, commandQuery: query, selectedIndex: 0 };

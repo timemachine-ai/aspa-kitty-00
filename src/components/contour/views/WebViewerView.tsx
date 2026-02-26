@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Globe, ExternalLink, Loader2 } from 'lucide-react';
 import { ModuleData } from '../moduleRegistry';
 
@@ -10,6 +10,16 @@ export function WebViewerView({
 }) {
     const web = module.webViewer;
     const [loading, setLoading] = useState(true);
+    const [debouncedUrl, setDebouncedUrl] = useState(web?.url || '');
+
+    useEffect(() => {
+        if (!web) return;
+        setLoading(true);
+        const timer = setTimeout(() => {
+            setDebouncedUrl(web.url);
+        }, 800);
+        return () => clearTimeout(timer);
+    }, [web?.url]);
 
     if (!web) return null;
 
@@ -40,7 +50,7 @@ export function WebViewerView({
             {/* Browser Canvas */}
             <div className="w-full bg-white relative flex-1" style={{ minHeight: '350px' }}>
                 <iframe
-                    src={web.url}
+                    src={debouncedUrl}
                     className="absolute inset-0 w-full h-full border-none"
                     sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
                     onLoad={() => setLoading(false)}
