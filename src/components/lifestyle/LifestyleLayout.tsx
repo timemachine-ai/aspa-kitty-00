@@ -10,7 +10,7 @@ export function LifestyleLayout() {
   const { theme } = useTheme();
 
   const tabs = useMemo(() => [
-    { name: 'CookBook', path: '/lifestyle/cookbook', icon: BookOpen },
+    { name: 'Kitchen', path: '/lifestyle/cookbook', icon: BookOpen },
     { name: 'Fashion', path: '/lifestyle/fashion', icon: ShoppingBag },
     { name: 'Shopping List', path: '/lifestyle/shopping-list', icon: ShoppingCart },
     { name: 'Calendar', path: '/lifestyle/calendar', icon: CalendarDays },
@@ -19,7 +19,7 @@ export function LifestyleLayout() {
   const currentTab = tabs.find(t => location.pathname.startsWith(t.path)) || tabs[0];
 
   const getDynamicBackground = () => {
-    if (currentTab.name === 'CookBook') {
+    if (currentTab.name === 'Kitchen') {
       return 'bg-gradient-to-t from-orange-950 to-black to-50%';
     }
     if (currentTab.name === 'Fashion') {
@@ -32,11 +32,11 @@ export function LifestyleLayout() {
     <div className={`h-screen overflow-y-auto custom-scrollbar ${getDynamicBackground()} ${theme.text} relative overflow-x-hidden`}>
       {/* Ambient background matching initial theme */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden transition-colors duration-1000">
-        <div className={`absolute top-[-15%] left-[-10%] w-[600px] h-[600px] rounded-full blur-3xl transition-colors duration-1000 ${currentTab.name === 'CookBook' ? 'bg-orange-500/10' :
+        <div className={`absolute top-[-15%] left-[-10%] w-[600px] h-[600px] rounded-full blur-3xl transition-colors duration-1000 ${currentTab.name === 'Kitchen' ? 'bg-orange-500/10' :
           currentTab.name === 'Fashion' ? 'bg-sky-500/10' :
             'bg-purple-500/10'
           }`} />
-        <div className={`absolute top-[40%] left-[50%] w-[400px] h-[400px] rounded-full blur-3xl transition-colors duration-1000 ${currentTab.name === 'CookBook' ? 'bg-red-500/5' :
+        <div className={`absolute top-[40%] left-[50%] w-[400px] h-[400px] rounded-full blur-3xl transition-colors duration-1000 ${currentTab.name === 'Kitchen' ? 'bg-red-500/5' :
           currentTab.name === 'Fashion' ? 'bg-blue-500/5' :
             'bg-fuchsia-500/5'
           }`} />
