@@ -10,7 +10,8 @@ export function WebViewerView({
 }) {
     const web = module.webViewer;
     const [loading, setLoading] = useState(true);
-    const [debouncedUrl, setDebouncedUrl] = useState(web?.url || '');
+    // Initialize to empty string so the very first trigger waits the 800ms debounce
+    const [debouncedUrl, setDebouncedUrl] = useState('');
 
     useEffect(() => {
         if (!web) return;
@@ -48,14 +49,21 @@ export function WebViewerView({
             </div>
 
             {/* Browser Canvas */}
-            <div className="w-full bg-white relative flex-1" style={{ minHeight: '350px' }}>
-                <iframe
-                    src={debouncedUrl}
-                    className="absolute inset-0 w-full h-full border-none"
-                    sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-                    onLoad={() => setLoading(false)}
-                    title="Web Viewer"
-                />
+            <div className="w-full bg-white relative flex-1 flex items-center justify-center" style={{ minHeight: '350px' }}>
+                {debouncedUrl ? (
+                    <iframe
+                        src={debouncedUrl}
+                        className="absolute inset-0 w-full h-full border-none"
+                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                        onLoad={() => setLoading(false)}
+                        title="Web Viewer"
+                    />
+                ) : (
+                    <div className="flex flex-col items-center gap-2 opacity-50">
+                        <Loader2 className="w-6 h-6 animate-spin text-black" />
+                        <span className="text-sm font-medium text-black">Waiting for input...</span>
+                    </div>
+                )}
             </div>
         </div>
     );
