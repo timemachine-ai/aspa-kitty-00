@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Calendar, Check, ArrowRight, Clock } from 'lucide-react';
 import { ModuleData } from '../moduleRegistry';
-import { QuickEventResult, saveQuickEvent } from '../modules/quickEvent';
+import { saveQuickEvent } from '../modules/quickEvent';
 
 export function QuickEventView({
     module,
@@ -14,18 +14,6 @@ export function QuickEventView({
     const [saved, setSaved] = useState(false);
 
     if (!event) return null;
-
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Enter' && !saved) {
-                e.preventDefault();
-                saveQuickEvent(event);
-                setSaved(true);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [event, saved]);
 
     return (
         <div className="p-4 flex flex-col gap-3 mx-2 my-2">

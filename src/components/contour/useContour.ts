@@ -267,7 +267,7 @@ export function useContour() {
         const isUrl = trimmed.match(/^(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9-]+\.[a-zA-Z]{2,})(?:\/.*)?$/i);
         const finalUrl = isUrl
           ? (trimmed.startsWith('http') ? trimmed : `https://${trimmed}`)
-          : `https://duckduckgo.com/?q=${encodeURIComponent(trimmed)}&ia=web`;
+          : `https://www.google.com/search?q=${encodeURIComponent(trimmed)}&igu=1`;
         return { id: 'web-viewer', focused: true, webViewer: { url: finalUrl, query: isUrl ? undefined : trimmed } };
       }
       case 'help': {

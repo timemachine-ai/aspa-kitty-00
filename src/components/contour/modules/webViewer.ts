@@ -12,22 +12,22 @@ export function detectWebViewer(input: string): WebViewerResult | null {
     const trimmed = input.trim();
 
     // 1. Explicit Search Commands
-    // DuckDuckGo (default for /web or /search)
-    const ddgMatch = trimmed.match(/^\/(?:web|search)\s+(.+)$/i);
-    if (ddgMatch) {
-        const query = ddgMatch[1].trim();
+    // "what is " or "whats " shortcut
+    const whatIsMatch = trimmed.match(/^(?:what\s+is|whats|what's)\s+(.+)$/i);
+    if (whatIsMatch) {
+        const query = trimmed; // the whole question
         return {
-            url: `https://duckduckgo.com/?q=${encodeURIComponent(query)}&ia=web`,
+            url: `https://www.google.com/search?q=${encodeURIComponent(query)}&igu=1`,
             query
         };
     }
 
-    // Google
-    const googleMatch = trimmed.match(/^\/google\s+(.+)$/i);
-    if (googleMatch) {
-        const query = googleMatch[1].trim();
+    // Explicit search commands (/search, /google, /web)
+    const searchMatch = trimmed.match(/^\/(?:web|search|google)\s+(.+)$/i);
+    if (searchMatch) {
+        const query = searchMatch[1].trim();
         return {
-            url: `https://www.google.com/search?q=${encodeURIComponent(query)}&igu=1`, // igu=1 sometimes allows google in iframes
+            url: `https://www.google.com/search?q=${encodeURIComponent(query)}&igu=1`,
             query
         };
     }

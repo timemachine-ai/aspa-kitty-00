@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FileText, Check, ArrowRight } from 'lucide-react';
 import { ModuleData } from '../moduleRegistry';
 import { saveQuickNote } from '../modules/quickNote';
@@ -14,18 +14,6 @@ export function QuickNoteView({
     const [saved, setSaved] = useState(false);
 
     if (!note) return null;
-
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Enter' && !saved) {
-                e.preventDefault();
-                saveQuickNote(note.content);
-                setSaved(true);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [note.content, saved]);
 
     return (
         <div className="p-4 flex flex-col gap-3 mx-2 my-2">

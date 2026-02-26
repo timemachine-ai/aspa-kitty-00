@@ -27,17 +27,6 @@ export function NavigationView({
 
     const Icon = ICON_MAP[nav.icon] || ArrowRight;
 
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                onNavigate?.(nav.path);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [nav.path, onNavigate]);
-
     return (
         <div className="p-4 flex items-center gap-4 cursor-pointer hover:bg-white/5 transition-colors rounded-xl mx-2 my-2" onClick={() => onNavigate?.(nav.path)}>
             <div

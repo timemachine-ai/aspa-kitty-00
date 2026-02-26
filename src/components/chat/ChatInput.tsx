@@ -17,6 +17,8 @@ import { GroupChatParticipant } from '../../types/groupChat';
 import { useContour } from '../contour/useContour';
 import { ContourPanel } from '../contour/ContourPanel';
 import { ContourCommand, recordCommandUsage } from '../contour/modules/commands';
+import { saveQuickNote } from '../contour/modules/quickNote';
+import { saveQuickEvent } from '../contour/modules/quickEvent';
 
 type Persona = keyof typeof AI_PERSONAS;
 
@@ -324,7 +326,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
   };
 
   const handleCopyValue = useCallback((value: string) => {
-    navigator.clipboard.writeText(value).catch(() => {});
+    navigator.clipboard.writeText(value).catch(() => { });
   }, []);
 
   const handleContourCommandSelect = useCallback((command: ContourCommand) => {
@@ -361,7 +363,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
           clipboardValue = Math.floor(Date.now() / 1000).toString();
         }
         if (clipboardValue) {
-          navigator.clipboard.writeText(clipboardValue).catch(() => {});
+          navigator.clipboard.writeText(clipboardValue).catch(() => { });
         }
         setMessage('');
         contour.dismiss();
@@ -432,11 +434,30 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
           return;
         }
 
+        // Interactive modules that consume Enter
+        if (['quick-note', 'quick-event', 'navigation'].includes(mod.id)) {
+          e.preventDefault();
+          if (mod.id === 'quick-note' && mod.quickNote) {
+            saveQuickNote(mod.quickNote.content);
+            contour.dismiss();
+            setMessage('');
+          } else if (mod.id === 'quick-event' && mod.quickEvent) {
+            saveQuickEvent(mod.quickEvent);
+            contour.dismiss();
+            setMessage('');
+          } else if (mod.id === 'navigation' && mod.navigation) {
+            navigate(mod.navigation.path);
+            contour.dismiss();
+            setMessage('');
+          }
+          return;
+        }
+
         // Other modules: Enter copies the result
         const copyValue = getModuleCopyValue();
         if (copyValue) {
           e.preventDefault();
-          navigator.clipboard.writeText(copyValue).catch(() => {});
+          navigator.clipboard.writeText(copyValue).catch(() => { });
           if (!contour.isFocused) {
             setMessage('');
             contour.dismiss();
@@ -696,7 +717,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
             onChange={handlePdfSelect}
             ref={pdfInputRef}
           />
-          
+
           <div className="relative" ref={plusMenuRef}>
             <motion.button
               type="button"
@@ -706,11 +727,11 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
               disabled={isLoading || isUploading}
               className={`p-3 rounded-full ${theme.text} disabled:opacity-50 relative group transition-all duration-300`}
               style={{
-                background: `linear-gradient(135deg, ${personaStyles.tintColors[currentPersona]}, rgba(255, 255, 255, 0.05))`,
+                background: `linear-gradient(135deg, ${(personaStyles.tintColors as Record<string, string>)[currentPersona] || personaStyles.tintColors.default}, rgba(255, 255, 255, 0.05))`,
                 backdropFilter: 'blur(20px)',
                 WebkitBackdropFilter: 'blur(20px)',
-                border: `1px solid ${personaStyles.borderColors[currentPersona]}`,
-                boxShadow: `${personaStyles.glowShadow[currentPersona]}, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
+                border: `1px solid ${(personaStyles.borderColors as Record<string, string>)[currentPersona] || personaStyles.borderColors.default}`,
+                boxShadow: `${(personaStyles.glowShadow as Record<string, string>)[currentPersona] || personaStyles.glowShadow.default}, inset 0 1px 0 rgba(255, 255, 255, 0.15)`
               }}
             >
               {selectedPlusOption ? (
@@ -762,7 +783,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
               />
 
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <VoiceRecorder 
+                <VoiceRecorder
                   onSendMessage={onSendMessage}
                   disabled={isLoading || isUploading || message.trim().length > 0}
                   currentPersona={currentPersona}
