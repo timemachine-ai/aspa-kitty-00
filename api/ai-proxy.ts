@@ -838,57 +838,61 @@ async function searchPdfChunks(
   query: string,
   limit = 8
 ): Promise<string> {
-  // Try the RPC full-text search first
-  const { data: rpcData, error: rpcError } = await supabase.rpc('search_pdf_chunks', {
-    p_document_id: documentId,
-    p_query: query,
-    p_limit: limit
-  });
+  const GENERIC_QUERIES = new Set(['summarize the document', 'summarize', '']);
+  const isGenericQuery = GENERIC_QUERIES.has(query.trim().toLowerCase());
 
   let results: { chunk_index: number; content: string }[] = [];
 
-  if (!rpcError && rpcData && rpcData.length > 0) {
-    results = rpcData.map((r: any) => ({
-      chunk_index: r.chunk_index,
-      content: r.content
-    }));
-  } else {
-    // Fallback: ILIKE search with key terms from the query
-    const terms = query
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
-      .split(/\s+/)
-      .filter(t => t.length > 2)
-      .slice(0, 5);
+  // Only attempt FTS for real, specific queries — generic ones return nothing useful
+  if (!isGenericQuery) {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('search_pdf_chunks', {
+      p_document_id: documentId,
+      p_query: query,
+      p_limit: limit
+    });
 
-    if (terms.length > 0) {
-      // Build OR conditions for each term
-      const orFilter = terms.map(t => `content.ilike.%${t}%`).join(',');
-      const { data: ilikeData } = await supabase
-        .from('pdf_chunks')
-        .select('chunk_index, content')
-        .eq('document_id', documentId)
-        .or(orFilter)
-        .order('chunk_index', { ascending: true })
-        .limit(limit);
+    if (!rpcError && rpcData && rpcData.length > 0) {
+      results = rpcData.map((r: any) => ({
+        chunk_index: r.chunk_index,
+        content: r.content
+      }));
+    } else {
+      // Fallback: ILIKE search with key terms from the query
+      const terms = query
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .split(/\s+/)
+        .filter(t => t.length > 2)
+        .slice(0, 5);
 
-      if (ilikeData && ilikeData.length > 0) {
-        results = ilikeData;
+      if (terms.length > 0) {
+        const orFilter = terms.map(t => `content.ilike.%${t}%`).join(',');
+        const { data: ilikeData } = await supabase
+          .from('pdf_chunks')
+          .select('chunk_index, content')
+          .eq('document_id', documentId)
+          .or(orFilter)
+          .order('chunk_index', { ascending: true })
+          .limit(limit);
+
+        if (ilikeData && ilikeData.length > 0) {
+          results = ilikeData;
+        }
       }
     }
+  }
 
-    // Last resort: return the first few chunks (beginning of document)
-    if (results.length === 0) {
-      const { data: firstChunks } = await supabase
-        .from('pdf_chunks')
-        .select('chunk_index, content')
-        .eq('document_id', documentId)
-        .order('chunk_index', { ascending: true })
-        .limit(5);
+  // Last resort (or generic query): return the first chunks in order — always guarantees context
+  if (results.length === 0) {
+    const { data: firstChunks } = await supabase
+      .from('pdf_chunks')
+      .select('chunk_index, content')
+      .eq('document_id', documentId)
+      .order('chunk_index', { ascending: true })
+      .limit(isGenericQuery ? limit : 5);
 
-      if (firstChunks) {
-        results = firstChunks;
-      }
+    if (firstChunks && firstChunks.length > 0) {
+      results = firstChunks;
     }
   }
 
@@ -904,6 +908,7 @@ async function searchPdfChunks(
 
   return `<pdf_context>\nThe following are the most relevant excerpts from the user's uploaded PDF document. Use ONLY these excerpts to answer the user's question about the document. If the answer is not found in these excerpts, say so.\n\n${formattedChunks}\n</pdf_context>`;
 }
+
 
 // Image generation tool configuration
 const imageGenerationTool = {
@@ -1997,9 +2002,12 @@ The memory tags will be processed and removed from the visible response, so writ
     // Search for relevant chunks (works for both first upload and follow-up messages)
     if (resolvedPdfDocId && !pdfRagContext) {
       try {
-        // Use the latest user message as the search query
+        // Use the latest user message as the search query.
+        // Strip [PDF: ...] placeholder text — it's invalid for FTS and gives 0 results.
         const lastUserMsg = [...messages].reverse().find((m: any) => !m.isAI);
-        const searchQuery = lastUserMsg?.content || 'summarize the document';
+        const rawContent = lastUserMsg?.content || '';
+        const cleanedQuery = rawContent.startsWith('[PDF:') ? '' : rawContent.trim();
+        const searchQuery = cleanedQuery || 'summarize the document';
         pdfRagContext = await searchPdfChunks(resolvedPdfDocId, searchQuery);
       } catch (err) {
         console.error('[PDF RAG] Error searching chunks:', err);
