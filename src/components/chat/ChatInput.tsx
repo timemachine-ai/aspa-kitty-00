@@ -309,6 +309,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
           await onSendMessage(message, undefined, undefined, undefined, undefined, undefined, activeMode, pdfBase64, selectedPdf.name);
           setSelectedPdf(null);
           setPdfBase64(null);
+          setSelectedPlusOption(null);
           if (pdfInputRef.current) pdfInputRef.current.value = '';
         } catch (error) {
           alert('Failed to process PDF. Please try again.');

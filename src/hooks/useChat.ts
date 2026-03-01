@@ -698,7 +698,7 @@ export function useChat(
         isStreamingRef.current = false; // Clear streaming flag on error
       }
     }
-  }, [messages, currentPersona, currentProHeatLevel, userId, userProfile, isCollaborative, collaborativeId]);
+  }, [messages, currentPersona, currentProHeatLevel, userId, userProfile, isCollaborative, collaborativeId, activePdfDocumentId, useStreaming, updateStreamingMessage, completeStreamingMessage]);
 
   const markMessageAsAnimated = useCallback((messageId: number) => {
     setMessages(prev => prev.map(msg =>
