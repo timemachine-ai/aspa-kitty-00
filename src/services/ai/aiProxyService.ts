@@ -76,7 +76,7 @@ export async function generateAIResponseStreaming(
         userId,
         userMemories,
         specialMode,
-        pdfData,
+        pdfText,
         pdfFileName,
         pdfDocumentId
       })
