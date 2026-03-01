@@ -350,7 +350,9 @@ function MainChatPage({ groupChatId, brandOverride, backgroundClass: customBackg
     imageUrls?: string[],
     imageDimensions?: import('./types/chat').ImageDimensions,
     replyToData?: import('./types/chat').ReplyToData,
-    specialMode?: string
+    specialMode?: string,
+    pdfText?: string,
+    pdfFileName?: string
   ) => {
     const mentionMatch = message.match(/^@(chatgpt|gemini|claude|grok|girlie|pro)\s/i);
     const targetModel = mentionMatch ? mentionMatch[1].toLowerCase() : currentPersona;
@@ -379,7 +381,7 @@ function MainChatPage({ groupChatId, brandOverride, backgroundClass: customBackg
       incrementCount(targetModel);
     }
 
-    await handleSendMessage(message, imageUrl, audioData, imageUrls, imageDimensions, replyToData || replyTo || undefined, specialMode);
+    await handleSendMessage(message, imageUrl, audioData, imageUrls, imageDimensions, replyToData || replyTo || undefined, specialMode, pdfText, pdfFileName);
     // Clear reply after sending
     setReplyTo(null);
   }, [currentPersona, isAnonymous, isRateLimited, incrementCount, handleSendMessage, replyTo]);
