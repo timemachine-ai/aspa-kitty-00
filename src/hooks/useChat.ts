@@ -514,7 +514,9 @@ export function useChat(
       imageData: imageData,
       audioData: audioData,
       inputImageUrls: inputImageUrls,
-      imageDimensions: imageDimensions
+      imageDimensions: imageDimensions,
+      pdfData: pdfText ? 'attached' : undefined,
+      pdfFileName: pdfFileName
     };
 
     setMessages(prev => [...prev, userMessage]);

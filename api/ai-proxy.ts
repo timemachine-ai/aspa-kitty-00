@@ -767,7 +767,9 @@ async function processPdfForRag(
   userId: string | null,
   fileName: string | null
 ): Promise<{ documentId: string; chunkCount: number }> {
-  if (!extractedText.trim()) {
+  console.log('[PDF RAG] processPdfForRag called. Input text length:', extractedText?.length);
+  if (!extractedText || !extractedText.trim()) {
+    console.warn('[PDF RAG] Empty text provided for PDF RAG processing');
     throw new Error('No text content provided for PDF RAG processing');
   }
 
@@ -792,8 +794,8 @@ async function processPdfForRag(
     const batch = rows.slice(i, i + 50);
     const { error } = await supabase.from('pdf_chunks').insert(batch);
     if (error) {
-      console.error('[PDF RAG] Error inserting chunks:', error);
-      throw new Error(`Failed to store PDF chunks: ${error.message}`);
+      console.error('[PDF RAG] Error inserting chunks:', JSON.stringify(error));
+      throw new Error(`Failed to store PDF chunks: Code ${error.code} - ${error.message} - ${error.details}`);
     }
   }
 
@@ -1961,6 +1963,7 @@ The memory tags will be processed and removed from the visible response, so writ
     let resolvedPdfDocId: string | null = pdfDocumentId || null;
 
     if (pdfText && !pdfDocumentId) {
+      console.log(`[PDF RAG] First upload detected. Text length: ${pdfText.length}, FileName: ${pdfFileName}`);
       // First message with PDF: chunk and store the pre-extracted text
       try {
         const result = await processPdfForRag(pdfText, userId || null, pdfFileName || null);
