@@ -63,32 +63,17 @@ const convertImageToBase64 = (file: File): Promise<string> => {
   });
 };
 
-const convertFileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Failed to convert file to base64'));
-      }
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-};
+
 
 // Extract plain text from a PDF file using pdfjs-dist (runs entirely in the browser)
 async function extractPdfText(file: File): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
   // Dynamically import pdfjs-dist to avoid bundling the full library at startup
   const pdfjsLib = await import('pdfjs-dist');
-  // Point the worker at the bundled worker file
+  // Use CDN-hosted minified worker — avoids source map warnings and ESM worker compat issues
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.mjs',
-      import.meta.url
-    ).toString();
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
   }
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const textParts: string[] = [];
