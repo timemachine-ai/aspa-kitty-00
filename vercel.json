@@ -1,8 +1,7 @@
 {
   "functions": {
     "api/ai-proxy.ts": {
-      "maxDuration": 60,
-      "bodySizeLimit": "15mb"
+      "maxDuration": 60
     }
   },
   "headers": [
