@@ -78,6 +78,31 @@ const convertFileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+// Extract plain text from a PDF file using pdfjs-dist (runs entirely in the browser)
+async function extractPdfText(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  // Dynamically import pdfjs-dist to avoid bundling the full library at startup
+  const pdfjsLib = await import('pdfjs-dist');
+  // Point the worker at the bundled worker file
+  if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.mjs',
+      import.meta.url
+    ).toString();
+  }
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const textParts: string[] = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const tokenized = await page.getTextContent();
+    const pageText = tokenized.items
+      .map((item: any) => ('str' in item ? item.str : ''))
+      .join(' ');
+    textParts.push(pageText);
+  }
+  return textParts.join('\n\n').trim();
+}
+
 const formatFileSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -118,7 +143,7 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
   const [uploadedImageUrls, setUploadedImageUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedPdf, setSelectedPdf] = useState<File | null>(null);
-  const [pdfBase64, setPdfBase64] = useState<string | null>(null);
+  const [pdfText, setPdfText] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   const [showMentionCall, setShowMentionCall] = useState(false);
   const [showPlusMenu, setShowPlusMenu] = useState(false);
@@ -302,13 +327,13 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
         } finally {
           setIsUploading(false);
         }
-      } else if (selectedPdf && pdfBase64) {
+      } else if (selectedPdf && pdfText) {
         setIsUploading(true);
         try {
           const activeMode = selectedPlusOption && selectedPlusOption !== 'upload-photos' && selectedPlusOption !== 'upload-pdf' ? selectedPlusOption : undefined;
-          await onSendMessage(message, undefined, undefined, undefined, undefined, undefined, activeMode, pdfBase64, selectedPdf.name);
+          await onSendMessage(message, undefined, undefined, undefined, undefined, undefined, activeMode, pdfText, selectedPdf.name);
           setSelectedPdf(null);
-          setPdfBase64(null);
+          setPdfText(null);
           setSelectedPlusOption(null);
           if (pdfInputRef.current) pdfInputRef.current.value = '';
         } catch (error) {
@@ -560,23 +585,33 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
       alert('Please select a valid PDF file.');
       return;
     }
-    // 10 MB limit for PDFs (base64 encoding adds ~33% overhead for API transfer)
-    if (file.size > 10 * 1024 * 1024) {
-      alert('PDF file size must be under 10 MB.');
+    // 50 MB limit (text extraction is done client-side so no server body size concern)
+    if (file.size > 50 * 1024 * 1024) {
+      alert('PDF file size must be under 50 MB.');
       return;
     }
+    setIsUploading(true);
+    setSelectedPdf(file);
     try {
-      const base64 = await convertFileToBase64(file);
-      setSelectedPdf(file);
-      setPdfBase64(base64);
-    } catch {
+      const text = await extractPdfText(file);
+      if (!text) {
+        alert('Could not extract text from this PDF. It may be a scanned image-only document.');
+        setSelectedPdf(null);
+        return;
+      }
+      setPdfText(text);
+    } catch (err) {
+      console.error('PDF extraction error:', err);
       alert('Failed to read PDF file. Please try again.');
+      setSelectedPdf(null);
+    } finally {
+      setIsUploading(false);
     }
   };
 
   const removePdf = () => {
     setSelectedPdf(null);
-    setPdfBase64(null);
+    setPdfText(null);
     if (pdfInputRef.current) pdfInputRef.current.value = '';
   };
 
@@ -594,17 +629,27 @@ export function ChatInput({ onSendMessage, isLoading, currentPersona = 'default'
     // Check if any dropped file is a PDF
     const pdfFile = files.find(f => f.type === 'application/pdf');
     if (pdfFile) {
-      if (pdfFile.size > 10 * 1024 * 1024) {
-        alert('PDF file size must be under 10 MB.');
+      if (pdfFile.size > 50 * 1024 * 1024) {
+        alert('PDF file size must be under 50 MB.');
         return;
       }
+      setIsUploading(true);
+      setSelectedPdf(pdfFile);
       try {
-        const base64 = await convertFileToBase64(pdfFile);
-        setSelectedPdf(pdfFile);
-        setPdfBase64(base64);
+        const text = await extractPdfText(pdfFile);
+        if (!text) {
+          alert('Could not extract text from this PDF. It may be a scanned image-only document.');
+          setSelectedPdf(null);
+          return;
+        }
+        setPdfText(text);
         setSelectedPlusOption('upload-pdf');
-      } catch {
+      } catch (err) {
+        console.error('PDF extraction error:', err);
         alert('Failed to read PDF file. Please try again.');
+        setSelectedPdf(null);
+      } finally {
+        setIsUploading(false);
       }
       return;
     }

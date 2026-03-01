@@ -758,52 +758,24 @@ function chunkText(text: string, chunkSize = 1000, overlap = 200): string[] {
  * Process a PDF upload for RAG: extract text, chunk it, store in Supabase.
  * Returns the document ID for future retrieval.
  */
+/**
+ * Store pre-extracted PDF text as RAG chunks in Supabase.
+ * Text extraction is done client-side via pdfjs-dist in the browser.
+ */
 async function processPdfForRag(
-  base64Data: string,
+  extractedText: string,
   userId: string | null,
   fileName: string | null
-): Promise<{ documentId: string; pageCount: number; chunkCount: number }> {
-  // Polyfills for pdfjs-dist / pdf-parse in Node environments
-  if (typeof globalThis !== 'undefined') {
-    if (!globalThis.DOMMatrix) {
-      // @ts-ignore
-      globalThis.DOMMatrix = class DOMMatrix {
-        constructor() { return [1, 0, 0, 1, 0, 0]; }
-      };
-    }
-    if (!globalThis.Path2D) {
-      // @ts-ignore
-      globalThis.Path2D = class Path2D { };
-    }
-    if (!globalThis.ImageData) {
-      // @ts-ignore
-      globalThis.ImageData = class ImageData {
-        data = []; width = 0; height = 0;
-      };
-    }
-  }
-
-  // Dynamically import pdf-parse to ensure polyfills are active before it evaluates
-  const pdfParseModule = await import('pdf-parse');
-  const pdfParse: any = 'default' in pdfParseModule ? (pdfParseModule as any).default : pdfParseModule;
-
-  // Strip data URI prefix if present
-  const raw = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-  const buffer = Buffer.from(raw, 'base64');
-  const data = await pdfParse(buffer);
-
-  const text = data.text || '';
-  const pageCount = data.numpages || 0;
-
-  if (!text.trim()) {
-    throw new Error('No text content could be extracted from the PDF');
+): Promise<{ documentId: string; chunkCount: number }> {
+  if (!extractedText.trim()) {
+    throw new Error('No text content provided for PDF RAG processing');
   }
 
   // Generate a unique document ID
   const documentId = crypto.randomUUID();
 
   // Chunk the text
-  const chunks = chunkText(text);
+  const chunks = chunkText(extractedText);
 
   // Store chunks in Supabase
   const rows = chunks.map((content, index) => ({
@@ -811,7 +783,7 @@ async function processPdfForRag(
     user_id: userId,
     chunk_index: index,
     content,
-    page_count: pageCount,
+    page_count: null,
     file_name: fileName
   }));
 
@@ -821,11 +793,12 @@ async function processPdfForRag(
     const { error } = await supabase.from('pdf_chunks').insert(batch);
     if (error) {
       console.error('[PDF RAG] Error inserting chunks:', error);
-      throw new Error('Failed to store PDF chunks');
+      throw new Error(`Failed to store PDF chunks: ${error.message}`);
     }
   }
 
-  return { documentId, pageCount, chunkCount: chunks.length };
+  console.log(`[PDF RAG] Stored ${chunks.length} chunks for document ${documentId}`);
+  return { documentId, chunkCount: chunks.length };
 }
 
 /**
@@ -1883,7 +1856,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { messages, persona = 'default', imageData, audioData, heatLevel = 2, stream = false, inputImageUrls, imageDimensions, userId, userMemories, specialMode, pdfData, pdfFileName, pdfDocumentId } = req.body;
+    const { messages, persona = 'default', imageData, audioData, heatLevel = 2, stream = false, inputImageUrls, imageDimensions, userId, userMemories, specialMode, pdfText, pdfFileName, pdfDocumentId } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Invalid messages format' });
@@ -1987,15 +1960,15 @@ The memory tags will be processed and removed from the visible response, so writ
     let pdfRagContext = '';
     let resolvedPdfDocId: string | null = pdfDocumentId || null;
 
-    if (pdfData && !pdfDocumentId) {
-      // First upload: parse, chunk, and store in Supabase
+    if (pdfText && !pdfDocumentId) {
+      // First message with PDF: chunk and store the pre-extracted text
       try {
-        const result = await processPdfForRag(pdfData, userId || null, pdfFileName || null);
+        const result = await processPdfForRag(pdfText, userId || null, pdfFileName || null);
         resolvedPdfDocId = result.documentId;
-        console.log(`[PDF RAG] Stored ${result.chunkCount} chunks (${result.pageCount} pages) as ${result.documentId}`);
+        console.log(`[PDF RAG] Stored ${result.chunkCount} chunks as ${result.documentId}`);
       } catch (err) {
-        console.error('[PDF RAG] Error processing PDF:', err);
-        pdfRagContext = '<pdf_context error="true">Failed to process the uploaded PDF. The file may be corrupted, password-protected, or contain only scanned images.</pdf_context>';
+        console.error('[PDF RAG] Error processing PDF text:', err);
+        pdfRagContext = `<pdf_context error="true">Failed to store PDF content for retrieval: ${err instanceof Error ? err.message : String(err)}</pdf_context>`;
       }
     }
 

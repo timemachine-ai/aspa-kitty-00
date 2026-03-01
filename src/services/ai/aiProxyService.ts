@@ -50,7 +50,7 @@ export async function generateAIResponseStreaming(
   userMemories?: UserMemoryContext,
   specialMode?: string,
   onStatusChange?: (status: 'analyzing_photo' | 'thinking') => void,
-  pdfData?: string,
+  pdfText?: string,
   pdfFileName?: string,
   pdfDocumentId?: string
 ): Promise<void> {
@@ -178,12 +178,12 @@ export async function generateAIResponseStreaming(
 
   } catch (error) {
     console.error('Error calling AI proxy:', error);
-    
+
     if (error instanceof RateLimitError) {
       if (onError) onError(error);
       return;
     }
-    
+
     const fallbackError = error instanceof Error ? error : new Error('Unknown error occurred');
     if (onError) {
       onError(fallbackError);
@@ -204,7 +204,7 @@ export async function generateAIResponse(
   userId?: string,
   userMemories?: UserMemoryContext,
   specialMode?: string,
-  pdfData?: string,
+  pdfText?: string,
   pdfFileName?: string,
   pdfDocumentId?: string
 ): Promise<AIResponse> {
@@ -230,7 +230,7 @@ export async function generateAIResponse(
         userId,
         userMemories,
         specialMode,
-        pdfData,
+        pdfText,
         pdfFileName,
         pdfDocumentId
       })
@@ -253,20 +253,20 @@ export async function generateAIResponse(
 
   } catch (error) {
     console.error('Error calling AI proxy:', error);
-    
+
     if (error instanceof RateLimitError) {
       throw error; // Re-throw rate limit errors to be handled by the UI
     }
-    
+
     if (error instanceof Error) {
       // Return simplified error message for other errors
-      return { 
-        content: "I apologize, but I'm having trouble connecting right now. Please try again in a moment." 
+      return {
+        content: "I apologize, but I'm having trouble connecting right now. Please try again in a moment."
       };
     }
-    
-    return { 
-      content: "I apologize, but I'm having trouble connecting right now. Please try again in a moment." 
+
+    return {
+      content: "I apologize, but I'm having trouble connecting right now. Please try again in a moment."
     };
   }
 }

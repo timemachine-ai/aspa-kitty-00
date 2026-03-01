@@ -460,7 +460,7 @@ export function useChat(
     imageDimensions?: ImageDimensions,
     replyTo?: { id: number; content: string; sender_nickname?: string; isAI: boolean },
     specialMode?: string,
-    pdfData?: string,
+    pdfText?: string,
     pdfFileName?: string
   ) => {
     let messagePersona = currentPersona;
@@ -480,7 +480,7 @@ export function useChat(
       finalContent = '[Audio message]'; // Placeholder text for UI
     } else if ((imageData || (inputImageUrls && inputImageUrls.length > 0)) && !messageContent.trim()) {
       finalContent = '[Image message]'; // Placeholder text for UI
-    } else if (pdfData && !messageContent.trim()) {
+    } else if (pdfText && !messageContent.trim()) {
       finalContent = `[PDF: ${pdfFileName || 'document.pdf'}]`; // Placeholder text for UI
     }
 
@@ -496,7 +496,7 @@ export function useChat(
       audioData: audioData,
       inputImageUrls: inputImageUrls,
       imageDimensions: imageDimensions,
-      pdfData: pdfData ? 'attached' : undefined, // Don't store full base64 in message state, just flag it
+      pdfData: pdfText ? 'attached' : undefined, // Just a flag; actual text not stored in message state
       pdfFileName: pdfFileName,
       // Add sender info for collaborative mode
       sender_id: isCollaborative ? userId || undefined : undefined,
@@ -641,7 +641,7 @@ export function useChat(
         (status) => {
           setLoadingPhase(status);
         },
-        pdfData,
+        pdfText,
         pdfFileName,
         // Pass existing PDF document ID for follow-up messages (RAG retrieval)
         activePdfDocumentId || undefined
@@ -661,7 +661,7 @@ export function useChat(
           userId || undefined,
           userMemoryContext,
           specialMode,
-          pdfData,
+          pdfText,
           pdfFileName,
           activePdfDocumentId || undefined
         );
