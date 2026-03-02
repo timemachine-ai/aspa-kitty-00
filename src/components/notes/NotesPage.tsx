@@ -505,17 +505,15 @@ function DoodleBlock({ block, onChange, onDelete, onDuplicate, onResize, dragCon
               <div className="flex gap-1.5 mb-3">
                 <button
                   onClick={() => setTool('pen')}
-                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    tool === 'pen' ? 'bg-white/20 text-white' : 'text-white/40 hover:bg-white/10'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${tool === 'pen' ? 'bg-white/20 text-white' : 'text-white/40 hover:bg-white/10'
+                    }`}
                 >
                   <Pencil className="w-3 h-3" /> Pen
                 </button>
                 <button
                   onClick={() => setTool('eraser')}
-                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    tool === 'eraser' ? 'bg-white/20 text-white' : 'text-white/40 hover:bg-white/10'
-                  }`}
+                  className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${tool === 'eraser' ? 'bg-white/20 text-white' : 'text-white/40 hover:bg-white/10'
+                    }`}
                 >
                   <Eraser className="w-3 h-3" /> Eraser
                 </button>
@@ -787,13 +785,13 @@ function parseMathExpr(input: string): string {
     [/\bsqrt\b/g, 'Math.sqrt'], [/\bcbrt\b/g, 'Math.cbrt'],
     [/\bsinh\b/g, 'Math.sinh'], [/\bcosh\b/g, 'Math.cosh'], [/\btanh\b/g, 'Math.tanh'],
     [/\basin\b/g, 'Math.asin'], [/\bacos\b/g, 'Math.acos'], [/\batan2\b/g, 'Math.atan2'], [/\batan\b/g, 'Math.atan'],
-    [/\bsin\b/g,  'Math.sin'],  [/\bcos\b/g,  'Math.cos'],  [/\btan\b/g,  'Math.tan'],
-    [/\babs\b/g,  'Math.abs'],  [/\bsign\b/g, 'Math.sign'], [/\bhypot\b/g, 'Math.hypot'],
-    [/\bln\b/g,   'Math.log'],  [/\blog10\b/g,'Math.log10'],[/\blog2\b/g, 'Math.log2'],
-    [/\blog\b/g,  'Math.log10'],[/\bexp\b/g,  'Math.exp'],
-    [/\bceil\b/g, 'Math.ceil'], [/\bfloor\b/g,'Math.floor'],[/\bround\b/g,'Math.round'],
-    [/\btrunc\b/g,'Math.trunc'],[/\bpow\b/g,  'Math.pow'],  [/\bmax\b/g,  'Math.max'],
-    [/\bmin\b/g,  'Math.min'],  [/\bmod\b/g,  '%'],
+    [/\bsin\b/g, 'Math.sin'], [/\bcos\b/g, 'Math.cos'], [/\btan\b/g, 'Math.tan'],
+    [/\babs\b/g, 'Math.abs'], [/\bsign\b/g, 'Math.sign'], [/\bhypot\b/g, 'Math.hypot'],
+    [/\bln\b/g, 'Math.log'], [/\blog10\b/g, 'Math.log10'], [/\blog2\b/g, 'Math.log2'],
+    [/\blog\b/g, 'Math.log10'], [/\bexp\b/g, 'Math.exp'],
+    [/\bceil\b/g, 'Math.ceil'], [/\bfloor\b/g, 'Math.floor'], [/\bround\b/g, 'Math.round'],
+    [/\btrunc\b/g, 'Math.trunc'], [/\bpow\b/g, 'Math.pow'], [/\bmax\b/g, 'Math.max'],
+    [/\bmin\b/g, 'Math.min'], [/\bmod\b/g, '%'],
   ];
   for (const [re, rep] of fns) s = s.replace(re, rep);
 
@@ -1621,11 +1619,10 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
         {block.type === 'todo' && (
           <button
             onClick={onToggleCheck}
-            className={`mt-1.5 w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all ${
-              block.checked
-                ? `${themeColors.checkBg} ${themeColors.checkBorder}`
-                : 'border-white/20 hover:border-white/40'
-            }`}
+            className={`mt-1.5 w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all ${block.checked
+              ? `${themeColors.checkBg} ${themeColors.checkBorder}`
+              : 'border-white/20 hover:border-white/40'
+              }`}
           >
             {block.checked && (
               <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -1646,17 +1643,15 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
             onMouseUp={handleTextareaMouseUp}
             placeholder={placeholders[block.type]}
             rows={1}
-            className={`flex-1 bg-transparent outline-none resize-none overflow-hidden placeholder-white/20 ${textSizeClass[block.type]} ${
-              block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''
-            }`}
+            className={`flex-1 bg-transparent outline-none resize-none overflow-hidden placeholder-white/20 ${textSizeClass[block.type]} ${block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''
+              }`}
             style={{ minHeight: '1.5em' }}
             readOnly={hasAIPending}
           />
         ) : (
           <div
-            className={`flex-1 min-w-0 cursor-text ${textSizeClass[block.type]} ${
-              block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''
-            }`}
+            className={`flex-1 min-w-0 cursor-text ${textSizeClass[block.type]} ${block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''
+              }`}
             style={{ minHeight: '1.5em', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
             onClick={onFocus}
             dangerouslySetInnerHTML={{
@@ -1701,7 +1696,7 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
               ><span className="text-[11px] font-bold" style={{ textDecoration: 'underline 2px #a855f7' }}>A</span></button>
               {selToolbar.showColors === 'text' && (
                 <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 flex gap-1 p-1.5 rounded-xl" style={glassCard}>
-                  {['#ffffff','#f87171','#fb923c','#fbbf24','#4ade80','#38bdf8','#a78bfa','#f472b6'].map((c) => (
+                  {['#ffffff', '#f87171', '#fb923c', '#fbbf24', '#4ade80', '#38bdf8', '#a78bfa', '#f472b6'].map((c) => (
                     <button key={c} onClick={() => applyFormat('color', c)} className="w-5 h-5 rounded-full border border-white/20 hover:scale-110 transition-transform" style={{ background: c }} />
                   ))}
                 </div>
@@ -1716,7 +1711,7 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
               ><Highlighter className="w-3.5 h-3.5" /></button>
               {selToolbar.showColors === 'bg' && (
                 <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 flex gap-1 p-1.5 rounded-xl" style={glassCard}>
-                  {['rgba(168,85,247,0.35)','rgba(248,113,113,0.35)','rgba(251,191,36,0.35)','rgba(74,222,128,0.35)','rgba(56,189,248,0.35)','rgba(255,255,255,0.15)'].map((c, i) => (
+                  {['rgba(168,85,247,0.35)', 'rgba(248,113,113,0.35)', 'rgba(251,191,36,0.35)', 'rgba(74,222,128,0.35)', 'rgba(56,189,248,0.35)', 'rgba(255,255,255,0.15)'].map((c, i) => (
                     <button key={i} onClick={() => applyFormat('bg', c)} className="w-5 h-5 rounded border border-white/20 hover:scale-110 transition-transform" style={{ background: c }} />
                   ))}
                 </div>
@@ -1755,9 +1750,8 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
                 <button
                   key={opt.type}
                   onClick={() => { handleContextTypeSelect(opt.type); setShowMenu(false); }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-white/5 transition-colors ${
-                    block.type === opt.type ? themeColors.textAccent : 'text-white/70'
-                  }`}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-white/5 transition-colors ${block.type === opt.type ? themeColors.textAccent : 'text-white/70'
+                    }`}
                 >
                   {opt.icon} {opt.label}
                 </button>
@@ -1874,9 +1868,8 @@ function NoteSidebar({ notes, activeId, onSelect, onNew, onDelete, onToggleStar,
       key={note.id}
       whileTap={{ scale: 0.98 }}
       onClick={() => onSelect(note.id)}
-      className={`w-full text-left px-3 py-2.5 rounded-xl transition-all duration-200 group ${
-        activeId === note.id ? 'bg-white/[0.08]' : 'hover:bg-white/[0.04]'
-      }`}
+      className={`w-full text-left px-3 py-2.5 rounded-xl transition-all duration-200 group ${activeId === note.id ? 'bg-white/[0.08]' : 'hover:bg-white/[0.04]'
+        }`}
     >
       <div className="flex items-start gap-2">
         <span className="text-lg mt-0.5 shrink-0">{note.emoji || '📝'}</span>
@@ -2182,40 +2175,58 @@ export function NotesPage() {
         });
       }
 
-      // Handle new blocks
+      // Handle new blocks — insert ALL in a single state update to preserve order
       const newPending: PendingNewBlock[] = [];
       if (response.newBlocks && response.newBlocks.length > 0) {
+        const newBlockEntries: { id: string; afterBlockId: string; type: BlockType; content: string }[] = [];
+
         for (const nb of response.newBlocks) {
           const tempId = uid();
-          const newBlock: Block = {
-            id: tempId,
-            type: nb.type as BlockType,
-            content: nb.content,
-          };
-
           newPending.push({
             tempId,
             afterBlockId: nb.afterBlockId,
             type: nb.type as BlockType,
             content: nb.content,
           });
-
-          // Insert the block into the note
-          updateNote(activeNoteId, (n) => {
-            const blocks = [...n.blocks];
-            if (nb.afterBlockId === 'START') {
-              blocks.unshift(newBlock);
-            } else {
-              const afterIdx = blocks.findIndex((b) => b.id === nb.afterBlockId);
-              if (afterIdx >= 0) {
-                blocks.splice(afterIdx + 1, 0, newBlock);
-              } else {
-                blocks.push(newBlock);
-              }
-            }
-            return { ...n, blocks };
+          newBlockEntries.push({
+            id: tempId,
+            afterBlockId: nb.afterBlockId,
+            type: nb.type as BlockType,
+            content: nb.content,
           });
         }
+
+        // Single updateNote call so each insertion sees the already-modified array
+        updateNote(activeNoteId, (n) => {
+          const blocks = [...n.blocks];
+          // Track where the last block was inserted so consecutive blocks
+          // sharing the same afterBlockId chain correctly instead of reversing.
+          const lastInsertedIdx = new Map<string, number>();
+
+          for (const entry of newBlockEntries) {
+            const newBlock: Block = { id: entry.id, type: entry.type, content: entry.content };
+            let insertAt: number;
+
+            if (entry.afterBlockId === 'START') {
+              insertAt = 0;
+            } else {
+              // If we previously inserted a block for this same afterBlockId,
+              // chain after the last one we inserted instead of the original anchor.
+              const prevIdx = lastInsertedIdx.get(entry.afterBlockId);
+              if (prevIdx !== undefined) {
+                insertAt = prevIdx + 1;
+              } else {
+                const afterIdx = blocks.findIndex((b) => b.id === entry.afterBlockId);
+                insertAt = afterIdx >= 0 ? afterIdx + 1 : blocks.length;
+              }
+            }
+
+            blocks.splice(insertAt, 0, newBlock);
+            // Remember where we inserted, keyed by the original afterBlockId
+            lastInsertedIdx.set(entry.afterBlockId, insertAt);
+          }
+          return { ...n, blocks };
+        });
       }
 
       setPendingEdits(newPendingEdits);
@@ -2467,9 +2478,8 @@ export function NotesPage() {
                                     updateNote(activeNote.id, (n) => ({ ...n, noteTheme: t.key }));
                                     setShowThemeDropdown(false);
                                   }}
-                                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-white/5 transition-colors ${
-                                    (activeNote.noteTheme || 'purple') === t.key ? 'text-white/90' : 'text-white/50'
-                                  }`}
+                                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-white/5 transition-colors ${(activeNote.noteTheme || 'purple') === t.key ? 'text-white/90' : 'text-white/50'
+                                    }`}
                                 >
                                   <div className={`w-3 h-3 rounded-full ${t.dot}`} />
                                   {t.label} Theme
@@ -2640,26 +2650,26 @@ export function NotesPage() {
             <AnimatePresence>
               {aiMessage && (
                 <div className="absolute bottom-[5.25rem] left-0 right-0 z-20 flex justify-center px-4 pointer-events-none">
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 6 }}
-                  style={{ width: '100%', maxWidth: '42rem' }}
-                >
-                  <div
-                    className="px-4 py-3 rounded-2xl pointer-events-auto"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      backdropFilter: 'blur(20px)',
-                      WebkitBackdropFilter: 'blur(20px)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-                    }}
+                  <motion.div
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    style={{ width: '100%', maxWidth: '42rem' }}
                   >
-                    <p className="text-xs font-medium text-purple-400 opacity-60 mb-1">TimeMachine Air</p>
-                    <p className="text-sm text-white/70">{aiMessage}</p>
-                  </div>
-                </motion.div>
+                    <div
+                      className="px-4 py-3 rounded-2xl pointer-events-auto"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                      }}
+                    >
+                      <p className="text-xs font-medium text-purple-400 opacity-60 mb-1">TimeMachine Air</p>
+                      <p className="text-sm text-white/70">{aiMessage}</p>
+                    </div>
+                  </motion.div>
                 </div>
               )}
             </AnimatePresence>
@@ -2667,64 +2677,64 @@ export function NotesPage() {
             {/* Floating AI Co-pilot Textbox — centered in editor area */}
             <div className="absolute bottom-6 left-0 right-0 z-20 flex justify-center px-4">
               <div style={{ width: '100%', maxWidth: '42rem' }}>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const input = (e.target as HTMLFormElement).elements.namedItem('ai-input') as HTMLInputElement;
-                  if (input.value.trim()) {
-                    handleAISend(input.value.trim());
-                    input.value = '';
-                  }
-                }}
-              >
-                <div className="relative flex items-center">
-                  <input
-                    name="ai-input"
-                    type="text"
-                    placeholder={aiLoading ? 'Thinking...' : 'Ask to edit, enhance or add to notes'}
-                    disabled={aiLoading || !activeNoteId}
-                    className="w-full pl-5 pr-16 rounded-[28px] text-white placeholder-gray-400 outline-none disabled:opacity-50 transition-all duration-300 text-base"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      backdropFilter: 'blur(20px)',
-                      WebkitBackdropFilter: 'blur(20px)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-                      height: '56px',
-                      fontSize: '1rem',
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        const form = e.currentTarget.form;
-                        if (form) form.requestSubmit();
-                      }
-                    }}
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                    <motion.button
-                      type="submit"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const input = (e.target as HTMLFormElement).elements.namedItem('ai-input') as HTMLInputElement;
+                    if (input.value.trim()) {
+                      handleAISend(input.value.trim());
+                      input.value = '';
+                    }
+                  }}
+                >
+                  <div className="relative flex items-center">
+                    <input
+                      name="ai-input"
+                      type="text"
+                      placeholder={aiLoading ? 'Thinking...' : 'Ask to edit, enhance or add to notes'}
                       disabled={aiLoading || !activeNoteId}
-                      className="p-3 rounded-full text-white disabled:opacity-50 relative group transition-all duration-300"
+                      className="w-full pl-5 pr-16 rounded-[28px] text-white placeholder-gray-400 outline-none disabled:opacity-50 transition-all duration-300 text-base"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(255, 255, 255, 0.05))',
+                        background: 'rgba(255, 255, 255, 0.05)',
                         backdropFilter: 'blur(20px)',
                         WebkitBackdropFilter: 'blur(20px)',
-                        border: '1px solid rgba(168, 85, 247, 0.4)',
-                        boxShadow: '0 0 15px rgba(168, 85, 247, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                        height: '56px',
+                        fontSize: '1rem',
                       }}
-                    >
-                      {aiLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <Send className="w-5 h-5 relative z-10" />
-                      )}
-                    </motion.button>
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          const form = e.currentTarget.form;
+                          if (form) form.requestSubmit();
+                        }
+                      }}
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <motion.button
+                        type="submit"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        disabled={aiLoading || !activeNoteId}
+                        className="p-3 rounded-full text-white disabled:opacity-50 relative group transition-all duration-300"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(255, 255, 255, 0.05))',
+                          backdropFilter: 'blur(20px)',
+                          WebkitBackdropFilter: 'blur(20px)',
+                          border: '1px solid rgba(168, 85, 247, 0.4)',
+                          boxShadow: '0 0 15px rgba(168, 85, 247, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15)',
+                        }}
+                      >
+                        {aiLoading ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Send className="w-5 h-5 relative z-10" />
+                        )}
+                      </motion.button>
+                    </div>
                   </div>
-                </div>
-              </form>
+                </form>
               </div>
             </div>
           </div>
