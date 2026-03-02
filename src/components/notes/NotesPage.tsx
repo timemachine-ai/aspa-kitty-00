@@ -1319,7 +1319,6 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const [slashFilter, setSlashFilter] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
-  const pendingClickOffset = useRef<number | null>(null);
 
   // Selection toolbar state
   type SelToolbar = { x: number; y: number; selStart: number; selEnd: number; showColors: false | 'text' | 'bg' };
@@ -1333,20 +1332,14 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
     return () => document.removeEventListener('mousedown', handle);
   }, [selToolbar]);
 
-  // Auto-focus when this block becomes focused
+  // Auto-focus for programmatic focus (keyboard nav, new block).
+  // If the textarea is already the active element (user clicked it),
+  // the browser already positioned the cursor — do nothing.
   useEffect(() => {
-    if (focused && ref.current) {
+    if (focused && ref.current && document.activeElement !== ref.current) {
       ref.current.focus();
-      if (pendingClickOffset.current !== null) {
-        // Click-triggered focus: place cursor at the exact offset captured from the DOM
-        const offset = Math.min(pendingClickOffset.current, ref.current.value.length);
-        ref.current.setSelectionRange(offset, offset);
-        pendingClickOffset.current = null;
-      } else {
-        // Programmatic focus (keyboard nav, new block): cursor at end
-        const len = ref.current.value.length;
-        ref.current.setSelectionRange(len, len);
-      }
+      const len = ref.current.value.length;
+      ref.current.setSelectionRange(len, len);
     }
   }, [focused]);
 
@@ -1640,8 +1633,8 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
           </button>
         )}
 
-        {/* Editable content — textarea when focused, rendered markdown when not */}
-        {focused || hasAIPending ? (
+        {/* Editable content — textarea always in DOM, overlay div when not focused */}
+        <div className="flex-1 min-w-0 relative">
           <textarea
             ref={ref}
             value={block.content}
@@ -1651,41 +1644,22 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
             onMouseUp={handleTextareaMouseUp}
             placeholder={placeholders[block.type]}
             rows={1}
-            className={`flex-1 bg-transparent outline-none resize-none overflow-hidden placeholder-white/20 ${textSizeClass[block.type]} ${block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''
-              }`}
+            className={`w-full bg-transparent outline-none resize-none overflow-hidden placeholder-white/20 ${textSizeClass[block.type]} ${block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''} ${!focused && !hasAIPending ? 'caret-transparent text-transparent selection:bg-transparent' : ''}`}
             style={{ minHeight: '1.5em' }}
             readOnly={hasAIPending}
           />
-        ) : (
-          <div
-            className={`flex-1 min-w-0 cursor-text ${textSizeClass[block.type]} ${block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''
-              }`}
-            style={{ minHeight: '1.5em', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-            onClick={(e) => {
-              // Capture exact caret offset from the DOM while the div is still rendered
-              let offset = 0;
-              const range = document.caretRangeFromPoint?.(e.clientX, e.clientY);
-              if (range) {
-                const walker = document.createTreeWalker(e.currentTarget, NodeFilter.SHOW_TEXT);
-                let node: Node | null;
-                while ((node = walker.nextNode())) {
-                  if (node === range.startContainer) {
-                    offset += range.startOffset;
-                    break;
-                  }
-                  offset += (node.textContent?.length || 0);
-                }
-              }
-              pendingClickOffset.current = offset;
-              onFocus();
-            }}
-            dangerouslySetInnerHTML={{
-              __html: block.content
-                ? renderInline(block.content)
-                : `<span style="color:rgba(255,255,255,0.2)">${placeholders[block.type]}</span>`,
-            }}
-          />
-        )}
+          {!focused && !hasAIPending && (
+            <div
+              className={`absolute inset-0 pointer-events-none ${textSizeClass[block.type]} ${block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''}`}
+              style={{ minHeight: '1.5em', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+              dangerouslySetInnerHTML={{
+                __html: block.content
+                  ? renderInline(block.content)
+                  : `<span style="color:rgba(255,255,255,0.2)">${placeholders[block.type]}</span>`,
+              }}
+            />
+          )}
+        </div>
       </div>
 
       {/* Selection toolbar */}
