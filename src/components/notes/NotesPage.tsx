@@ -1348,7 +1348,7 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
       ref.current.style.height = 'auto';
       ref.current.style.height = `${ref.current.scrollHeight}px`;
     }
-  }, [block.content, block.type]);
+  }, [block.content, block.type, focused]);
 
   // Close menus on outside click
   useEffect(() => {
