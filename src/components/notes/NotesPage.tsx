@@ -1319,7 +1319,7 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const [slashFilter, setSlashFilter] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
-  const pendingClickPos = useRef<{ x: number; y: number } | null>(null);
+  const pendingClickOffset = useRef<number | null>(null);
 
   // Selection toolbar state
   type SelToolbar = { x: number; y: number; selStart: number; selEnd: number; showColors: false | 'text' | 'bg' };
@@ -1337,81 +1337,11 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
   useEffect(() => {
     if (focused && ref.current) {
       ref.current.focus();
-      const clickPos = pendingClickPos.current;
-      pendingClickPos.current = null;
-
-      if (clickPos) {
-        // Click-triggered focus: estimate cursor position from click coordinates
-        requestAnimationFrame(() => {
-          if (!ref.current) return;
-          const ta = ref.current;
-          const rect = ta.getBoundingClientRect();
-          const style = getComputedStyle(ta);
-          const pLeft = parseFloat(style.paddingLeft) || 0;
-          const pTop = parseFloat(style.paddingTop) || 0;
-          const pRight = parseFloat(style.paddingRight) || 0;
-          const lh = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.4;
-          const font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
-          const relX = clickPos.x - rect.left - pLeft;
-          const relY = clickPos.y - rect.top - pTop;
-          const clickedLine = Math.max(0, Math.floor(relY / lh));
-          const textareaWidth = ta.clientWidth - pLeft - pRight;
-          const text = ta.value;
-
-          // Measure text with canvas to find wrapped lines
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          if (!ctx) { ta.setSelectionRange(0, 0); return; }
-          ctx.font = font;
-
-          // Build wrapped lines array
-          const lines: { start: number; end: number }[] = [];
-          let pos = 0;
-          const paragraphs = text.split('\n');
-          for (let p = 0; p < paragraphs.length; p++) {
-            const para = paragraphs[p];
-            if (para === '') {
-              lines.push({ start: pos, end: pos });
-              pos += 1;
-              continue;
-            }
-            let lineStart = pos;
-            let lineText = '';
-            for (let c = 0; c < para.length; c++) {
-              const ch = para[c];
-              const testLine = lineText + ch;
-              if (ctx.measureText(testLine).width > textareaWidth && lineText) {
-                lines.push({ start: lineStart, end: lineStart + lineText.length });
-                lineStart = lineStart + lineText.length;
-                lineText = ch;
-              } else {
-                lineText = testLine;
-              }
-            }
-            lines.push({ start: lineStart, end: lineStart + lineText.length });
-            pos += para.length + 1;
-          }
-
-          // Find character on the clicked line
-          const targetLine = Math.min(clickedLine, lines.length - 1);
-          if (targetLine < 0 || lines.length === 0) { ta.setSelectionRange(0, 0); return; }
-          const line = lines[targetLine];
-          const lineContent = text.substring(line.start, line.end);
-          let charPos = line.end; // default: end of line
-          for (let i = 0; i <= lineContent.length; i++) {
-            const w = ctx.measureText(lineContent.substring(0, i)).width;
-            if (w >= relX) {
-              if (i > 0) {
-                const pw = ctx.measureText(lineContent.substring(0, i - 1)).width;
-                charPos = line.start + (relX - pw < w - relX ? i - 1 : i);
-              } else {
-                charPos = line.start;
-              }
-              break;
-            }
-          }
-          ta.setSelectionRange(charPos, charPos);
-        });
+      if (pendingClickOffset.current !== null) {
+        // Click-triggered focus: place cursor at the exact offset captured from the DOM
+        const offset = Math.min(pendingClickOffset.current, ref.current.value.length);
+        ref.current.setSelectionRange(offset, offset);
+        pendingClickOffset.current = null;
       } else {
         // Programmatic focus (keyboard nav, new block): cursor at end
         const len = ref.current.value.length;
@@ -1731,7 +1661,24 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
             className={`flex-1 min-w-0 cursor-text ${textSizeClass[block.type]} ${block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''
               }`}
             style={{ minHeight: '1.5em', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-            onClick={(e) => { pendingClickPos.current = { x: e.clientX, y: e.clientY }; onFocus(); }}
+            onClick={(e) => {
+              // Capture exact caret offset from the DOM while the div is still rendered
+              let offset = 0;
+              const range = document.caretRangeFromPoint?.(e.clientX, e.clientY);
+              if (range) {
+                const walker = document.createTreeWalker(e.currentTarget, NodeFilter.SHOW_TEXT);
+                let node: Node | null;
+                while ((node = walker.nextNode())) {
+                  if (node === range.startContainer) {
+                    offset += range.startOffset;
+                    break;
+                  }
+                  offset += (node.textContent?.length || 0);
+                }
+              }
+              pendingClickOffset.current = offset;
+              onFocus();
+            }}
             dangerouslySetInnerHTML={{
               __html: block.content
                 ? renderInline(block.content)
