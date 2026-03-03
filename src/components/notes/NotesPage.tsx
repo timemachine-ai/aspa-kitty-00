@@ -1644,21 +1644,19 @@ function BlockEditor({ block, index, focused, noteTheme, dragControls, onFocus, 
             onMouseUp={handleTextareaMouseUp}
             placeholder={placeholders[block.type]}
             rows={1}
-            className={`w-full bg-transparent outline-none resize-none overflow-hidden placeholder-white/20 ${textSizeClass[block.type]} ${block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''} ${!focused && !hasAIPending ? 'caret-transparent text-transparent selection:bg-transparent' : ''}`}
-            style={{ minHeight: '1.5em' }}
+            className={`w-full bg-transparent outline-none resize-none overflow-hidden text-transparent ${textSizeClass[block.type]} ${block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''} ${!focused && !hasAIPending ? 'caret-transparent selection:bg-transparent' : ''}`}
+            style={{ minHeight: '1.5em', caretColor: focused && !hasAIPending ? 'white' : 'transparent' }}
             readOnly={hasAIPending}
           />
-          {!focused && !hasAIPending && (
-            <div
-              className={`absolute inset-0 pointer-events-none ${textSizeClass[block.type]} ${block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''}`}
-              style={{ minHeight: '1.5em', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-              dangerouslySetInnerHTML={{
-                __html: block.content
-                  ? renderInline(block.content)
-                  : `<span style="color:rgba(255,255,255,0.2)">${placeholders[block.type]}</span>`,
-              }}
-            />
-          )}
+          <div
+            className={`absolute inset-0 pointer-events-none ${textSizeClass[block.type]} ${block.type === 'todo' && block.checked ? 'line-through text-white/40' : ''}`}
+            style={{ minHeight: '1.5em', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+            dangerouslySetInnerHTML={{
+              __html: block.content
+                ? renderInline(block.content)
+                : `<span style="color:rgba(255,255,255,0.2)">${placeholders[block.type]}</span>`,
+            }}
+          />
         </div>
       </div>
 
